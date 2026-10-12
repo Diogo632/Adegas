@@ -22,6 +22,19 @@ docs/
 
 ## Como testar
 
+### Pelo GitHub, sem instalar nada
+
+A cada envio de código, o GitHub roda os testes e publica uma prévia em **https://diogo632.github.io/Adegas/** (app e painel, com dados de exemplo).
+
+Para ligar a prévia, **uma vez só**:
+
+1. No GitHub, abra o repositório **Adegas** → **Settings** → **Pages** (menu da esquerda).
+2. Em **Build and deployment**, escolha **Source: Deploy from a branch**.
+3. Em **Branch**, escolha **gh-pages** e a pasta **/ (root)** → **Save**.
+4. Espere 1 ou 2 minutos e abra https://diogo632.github.io/Adegas/ (no celular, toque em **App**).
+
+O andamento fica na aba **Actions**: verde = testes passaram e a prévia foi atualizada.
+
 ### No seu computador e no seu celular
 
 1. Instale o [Node.js](https://nodejs.org) (versão LTS) no computador.
@@ -55,4 +68,4 @@ npm test           # testes das regras (packages/core)
 npm run typecheck  # checagem de tipos de tudo
 ```
 
-`npm run build:demo --workspace @adegas/web` gera uma versão do painel que roda dentro de outra página (usada nas prévias por link).
+`npm run previa` monta na pasta `site/` a mesma prévia publicada no GitHub (página inicial, painel e app).

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Adegas · Prévia</title>
+    <style>
+      /* Mesmas cores do app (packages/core/src/catalogos.ts). */
+      :root {
+        --fundo: #0b0a10;
+        --superficie: #15131d;
+        --borda: #26222f;
+        --destaque: #3a2766;
+        --texto: #f5f3fa;
+        --suave: #a7a1b7;
+        --roxo: #6d28d9;
+        --roxo-claro: #a78bfa;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 32px 16px;
+        background: var(--fundo);
+        color: var(--texto);
+        font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      main {
+        width: 100%;
+        max-width: 520px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .rotulo {
+        margin: 0;
+        color: var(--roxo-claro);
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font: 600 36px/1.1 Georgia, 'Times New Roman', serif;
+      }
+      a.opcao {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 22px;
+        border-radius: 18px;
+        border: 1px solid var(--borda);
+        background: var(--superficie);
+        color: inherit;
+        text-decoration: none;
+        transition: border-color 0.2s, transform 0.2s;
+      }
+      a.opcao:hover,
+      a.opcao:focus-visible {
+        border-color: var(--destaque);
+        transform: translateY(-2px);
+      }
+      a.opcao.principal {
+        background: linear-gradient(140deg, #2b1857, #1b1330 65%);
+        border-color: var(--destaque);
+      }
+      a.opcao strong {
+        font-size: 20px;
+      }
+      a.opcao span {
+        color: var(--suave);
+      }
+      p.nota {
+        margin: 8px 0 0;
+        color: var(--suave);
+        font-size: 14px;
+      }
+      :focus-visible {
+        outline: 2px solid var(--roxo-claro);
+        outline-offset: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="rotulo">Prévia</p>
+      <h1>Adegas</h1>
+      <a class="opcao principal" href="app/">
+        <strong>App</strong>
+        <span>Para o balcão. Abra no celular.</span>
+      </a>
+      <a class="opcao" href="painel/">
+        <strong>Painel</strong>
+        <span>Para a gestão. Melhor no computador.</span>
+      </a>
+      <p class="nota">Dados de exemplo. Ao recarregar a página, tudo volta ao início.</p>
+    </main>
+  </body>
+</html>
