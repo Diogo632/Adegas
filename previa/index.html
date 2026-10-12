@@ -82,6 +82,11 @@
         color: var(--suave);
         font-size: 14px;
       }
+      p.versao {
+        margin: 0;
+        color: #7a748c;
+        font-size: 13px;
+      }
       :focus-visible {
         outline: 2px solid var(--roxo-claro);
         outline-offset: 3px;
@@ -92,15 +97,16 @@
     <main>
       <p class="rotulo">Prévia</p>
       <h1>Adegas</h1>
-      <a class="opcao principal" href="app/">
+      <a class="opcao principal" href="app/?v=__VERSAO__">
         <strong>App</strong>
         <span>Para o balcão. Abra no celular.</span>
       </a>
-      <a class="opcao" href="painel/">
+      <a class="opcao" href="painel/?v=__VERSAO__">
         <strong>Painel</strong>
         <span>Para a gestão. Melhor no computador.</span>
       </a>
       <p class="nota">Dados de exemplo. Ao recarregar a página, tudo volta ao início.</p>
+      <p class="versao">Versão de __QUANDO__ · __VERSAO__</p>
     </main>
   </body>
 </html>

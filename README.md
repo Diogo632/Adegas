@@ -38,6 +38,8 @@ Para ligar a prévia, **uma vez só**:
 
 O andamento fica na aba **Actions**: verde = testes passaram e a prévia foi atualizada.
 
+**Não apareceu a novidade?** Depois que a aba **Actions** fica verde, o GitHub ainda leva 1 ou 2 minutos para trocar o site, e o navegador pode mostrar a cópia antiga por até 10 minutos. Veja a linha **"Versão de …"** no fim da página inicial: se a data não for a do último envio, recarregue forçando (computador: **Ctrl+Shift+R**, no Mac **Cmd+Shift+R**; celular: abra o link numa **aba anônima**).
+
 ### No seu computador e no seu celular
 
 1. Instale o [Node.js](https://nodejs.org) (versão LTS) no computador.
