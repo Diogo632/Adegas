@@ -1,0 +1,14 @@
+{
+  "name": "adegas",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "app": "npm run start --workspace @adegas/mobile",
+    "web": "npm run dev --workspace @adegas/web",
+    "test": "npm test --workspace @adegas/core",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
