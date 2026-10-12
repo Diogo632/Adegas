@@ -4,19 +4,23 @@ import {
   formatarDataHora,
   formatarDinheiro,
   formaPagamento,
+  formatarQuando,
+  lembretesPendentes,
   resumoDoDia,
+  situacaoLembrete,
   saudacao,
   ultimosLancamentos,
   useAdega,
 } from '@adegas/core';
-import { ArrowDownLeft, ArrowUpRight, PackagePlus, ShoppingBag, TriangleAlert } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Bell, Check, PackagePlus, ShoppingBag, Sparkles, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router';
 import { Barra, Numero } from '../componentes/Animados';
 import { ICONE_FORMA } from '../componentes/icones';
 
 export function Inicio() {
-  const { estado } = useAdega();
+  const { estado, concluirLembrete } = useAdega();
   const resumo = resumoDoDia(estado);
+  const lembretes = lembretesPendentes(estado).slice(0, 5);
   const alertas = estoqueBaixo(estado.produtos);
   const movimentos = ultimosLancamentos(estado, 8);
   const maiorForma = Math.max(...Object.values(resumo.porFormaPagamento), 1);
@@ -72,7 +76,7 @@ export function Inicio() {
         </div>
       </section>
 
-      <div className="grade-2">
+      <div className="grade-3">
         <section className="cartao" data-entrada>
           <h2>Recebido por forma de pagamento</h2>
           <div className="barras" role="table" aria-label="Recebido hoje por forma de pagamento">
@@ -123,6 +127,45 @@ export function Inicio() {
                   </Link>
                 </li>
               ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="cartao" data-entrada>
+          <div className="cartao-topo">
+            <h2>Lembretes</h2>
+            <Link to="/assistente" className="link">
+              <Sparkles size={15} strokeWidth={1.8} /> Criar
+            </Link>
+          </div>
+          {lembretes.length === 0 ? (
+            <p className="suave">
+              Nada pendente. Peça ao assistente: “me lembre de pagar o fornecedor sexta às 10h”.
+            </p>
+          ) : (
+            <ul className="lista">
+              {lembretes.map((l) => {
+                const situacao = situacaoLembrete(l);
+                const urgente = situacao !== 'proximo';
+                return (
+                  <li key={l.id}>
+                    <span className={`marcador ${urgente ? 'alerta' : 'lembrete'}`}>
+                      <Bell size={15} strokeWidth={2} />
+                    </span>
+                    <div className="lista-texto">
+                      <strong>{l.texto}</strong>
+                      <small className={situacao === 'atrasado' ? 'atrasado' : undefined}>
+                        {situacao === 'atrasado' ? 'Atrasado · ' : ''}
+                        {formatarQuando(l.quando)}
+                        {l.produtoNome ? ` · ${l.produtoNome}` : ''}
+                      </small>
+                    </div>
+                    <button type="button" className="feito" onClick={() => concluirLembrete(l.id)} aria-label={`Marcar "${l.texto}" como feito`} title="Feito">
+                      <Check size={16} strokeWidth={2.2} />
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

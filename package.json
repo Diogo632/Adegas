@@ -8,7 +8,9 @@
   "scripts": {
     "app": "npm run start --workspace @adegas/mobile",
     "web": "npm run dev --workspace @adegas/web",
-    "test": "npm test --workspace @adegas/core",
+    "mcp": "npm run mcp --workspace @adegas/ia",
+    "assistente": "npm run assistente --workspace @adegas/ia",
+    "test": "npm test --workspace @adegas/core --workspace @adegas/ia",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "previa": "bash scripts/previa.sh",
     "lint": "npm run lint --workspace @adegas/web"

@@ -9,6 +9,7 @@ Documento de referência do esqueleto: quais telas existem, o que cada uma faz e
 | 📱 **App** (`apps/mobile`) | Quem está no balcão | Vender, dar entrada em mercadoria, ver o resumo do dia. Botões grandes, poucas etapas. |
 | 💻 **Web** (`apps/web`) | Dono / gestão no computador | As mesmas ações, com mais informação na tela: frente de caixa com carrinho lateral, tabelas, histórico. Depois: relatórios. |
 | 🧠 **Núcleo** (`packages/core`) | App e web | As regras ficam escritas uma vez só: preço, estoque, custo médio, troco e lançamentos. App e web calculam igual. |
+| 🤖 **Assistente** (`packages/ia`) | App e web | Conversa com IA (Gemini). Consulta e registra tudo pela plataforma por meio de um **servidor MCP**. Detalhes em [`ASSISTENTE.md`](ASSISTENTE.md). |
 | ☁️ **Banco na nuvem** (próxima etapa) | App e web | É por ele que app e web "conversam": uma venda feita no celular aparece no web na hora. |
 
 ```mermaid
@@ -61,7 +62,7 @@ flowchart TD
     Financeiro -->|Nova movimentação| NovaMov
 ```
 
-No **app**, a barra de baixo tem 4 abas: **Início, Estoque, Financeiro e Relatórios**. Vender e dar entrada continuam nos botões grandes do Início.
+No **app**, a barra de baixo tem 5 abas: **Início, Estoque, Financeiro, Relatórios e Assistente**. Vender e dar entrada continuam nos botões grandes do Início.
 
 No **web**, "Nova venda" e "Pagamento" ficam numa tela só (produtos à esquerda, carrinho e pagamento à direita), porque a tela é grande. No **app** são duas telas, para cada uma ter pouca coisa. Na tela de Estoque do web, o produto escolhido abre num painel ao lado da tabela.
 
@@ -145,6 +146,11 @@ Enquanto preenche, o **resumo** mostra: quantas unidades entram, custo por unida
 - **Mais vendidos:** quantidade, faturamento e lucro de cada produto.
 - **Por categoria** e **por forma de pagamento**, com a fatia de cada uma.
 
+### 3.7 Assistente e lembretes
+
+- **Assistente:** conversa em português. Ele usa as mesmas ações das telas (consultar estoque, registrar entrada e venda, lançar despesa, ajustar estoque, buscar financeiro e relatórios, criar lembretes) por meio de um servidor **MCP** e da API do **Gemini**. Mostra cada passo que fez e um atalho para conferir. Lista completa em [`ASSISTENTE.md`](ASSISTENTE.md).
+- **Lembretes:** aparecem no Início (app e painel), do mais urgente para o mais distante; os atrasados ficam em amarelo. Um toque no ✓ conclui. Hoje são criados pelo assistente.
+
 ## 4. O que cada ação muda
 
 | Ação | Estoque | Financeiro |
@@ -156,6 +162,9 @@ Enquanto preenche, o **resumo** mostra: quantas unidades entram, custo por unida
 | Ajuste (contagem) | estoque passa a ser o contado | nada |
 | Editar produto | nada (muda nome, preço, mínimo) | nada |
 | Nova movimentação | nada | + entrada ou − saída, na categoria escolhida |
+| Lembrete | nada | nada (só aparece no Início até ser concluído) |
+
+O assistente não tem regras próprias: cada ferramenta dele faz exatamente uma das ações acima.
 
 ## 5. Regras de negócio (já implementadas no núcleo)
 
@@ -178,6 +187,7 @@ erDiagram
     VENDA ||--|{ LANCAMENTO : "gera receita"
     ENTRADA ||--|| LANCAMENTO : "gera despesa"
     PRODUTO ||--o{ AJUSTE : "corrigido por"
+    PRODUTO |o--o{ LEMBRETE : "pode ter"
 
     PRODUTO {
         texto nome
@@ -223,6 +233,11 @@ erDiagram
         centavos custoUnitario
         texto observacao
     }
+    LEMBRETE {
+        texto texto
+        data quando
+        bool concluido
+    }
 ```
 
 Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, Cigarros, Gelo e carvão, Petiscos, Outros.
@@ -237,6 +252,7 @@ Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, 
 | **2. Banco na nuvem + login** | App e web passam a ver os mesmos dados em tempo real; login do dono. Sugestão: **Supabase** (banco Postgres, login e tempo real prontos, plano grátis para começar). Já pensar em **funcionar sem internet** | próxima |
 | **3. Estoque** | Lista com situação e valor parado, editar produto e preço, ajuste por perda/consumo/contagem, histórico do produto | ✅ pronto (lote e validade ficam para depois) |
 | **4. Financeiro e relatórios** | Períodos, saldo, entradas e saídas, despesas da loja, recebido por forma, perdas; relatórios por dia, hora, produto, categoria e forma | ✅ pronto |
+| **4.1 Assistente com IA** | Conversa (Gemini) que consulta e registra tudo via servidor MCP: estoque, entradas, vendas, despesas, financeiro, relatórios e lembretes. O servidor MCP também roda no terminal para outros clientes (Gemini CLI etc.) | ✅ pronto (notificação dos lembretes e chave no servidor ficam para a etapa 2) |
 | **5. Caixa do dia** | **Abrir/fechar o caixa, sangria e reforço**, conferência do dinheiro da gaveta, taxa da maquininha | |
 | **6. Extras** | Leitor de código de barras pela câmera, desconto na venda, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, perfis dono/funcionário, publicar o app nas lojas | |
 

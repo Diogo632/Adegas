@@ -1,5 +1,5 @@
 import { formatarDiaExtenso } from '@adegas/core';
-import { Boxes, ChartColumn, LayoutDashboard, PackagePlus, ShoppingBag, Wallet, Wine } from 'lucide-react';
+import { Boxes, ChartColumn, LayoutDashboard, PackagePlus, ShoppingBag, Sparkles, Wallet, Wine } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { animarEntradaDaTela } from '../animacoes';
@@ -50,6 +50,10 @@ export function Layout() {
               <Icone size={18} strokeWidth={1.75} /> {rotulo}
             </NavLink>
           ))}
+          <span className="menu-rotulo">Inteligência</span>
+          <NavLink to="/assistente" className="menu-item menu-ia">
+            <Sparkles size={18} strokeWidth={1.75} /> Assistente
+          </NavLink>
         </nav>
         <p className="menu-nota">Dados de exemplo: ficam só neste navegador por enquanto.</p>
       </aside>

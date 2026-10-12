@@ -1,12 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { Acao, LojaAdega } from './estado';
 import { reducer } from './estado';
 import type { DadosAjuste, DadosEdicaoProduto, DadosEntrada } from './estoque';
 import { montarAjuste, montarEdicaoProduto, montarEntrada } from './estoque';
 import type { DadosLancamento } from './financeiro';
 import { montarLancamento } from './financeiro';
+import type { DadosLembrete } from './lembretes';
+import { montarLembrete } from './lembretes';
 import { estadoDeExemplo } from './exemplo';
-import type { AjusteEstoque, EntradaEstoque, Estado, Lancamento, Produto, Resultado, Venda } from './tipos';
+import type { AjusteEstoque, EntradaEstoque, Estado, Lancamento, Lembrete, Produto, Resultado, Venda } from './tipos';
 import type { DadosPagamento, ItemCarrinho } from './vendas';
 import { alterarQuantidade, montarVenda, quantidadeNoCarrinho } from './vendas';
 
@@ -23,6 +26,11 @@ interface ContextoAdega {
   registrarLancamento(dados: DadosLancamento): Resultado<Lancamento>;
   /** Só apaga lançamentos feitos à mão. */
   excluirLancamento(id: string): void;
+  criarLembrete(dados: DadosLembrete): Resultado<Lembrete>;
+  concluirLembrete(id: string): void;
+  excluirLembrete(id: string): void;
+  /** Acesso direto aos dados, para quem não é tela (o assistente, via MCP). */
+  loja: LojaAdega;
 }
 
 const Contexto = createContext<ContextoAdega | null>(null);
@@ -32,7 +40,7 @@ const Contexto = createContext<ContextoAdega | null>(null);
  * Próximo passo: trocar por um banco na nuvem para app e web verem os mesmos dados.
  */
 export function AdegaProvider({ children, estadoInicial }: { children: ReactNode; estadoInicial?: Estado }) {
-  const [estado, despachar] = useReducer(reducer, estadoInicial ?? null, (inicial) => inicial ?? estadoDeExemplo());
+  const [estado, despacharNoReact] = useReducer(reducer, estadoInicial ?? null, (inicial) => inicial ?? estadoDeExemplo());
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
 
   // As validações precisam do estado mais recente, mesmo dentro de callbacks antigos.
@@ -40,6 +48,15 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
   estadoAtual.current = estado;
   const carrinhoAtual = useRef(carrinho);
   carrinhoAtual.current = carrinho;
+
+  // A referência anda junto com cada ação, sem esperar a tela redesenhar: o assistente
+  // registra uma entrada e, logo em seguida, já consulta o estoque novo.
+  const despachar = useCallback((acao: Acao) => {
+    estadoAtual.current = reducer(estadoAtual.current, acao);
+    despacharNoReact(acao);
+  }, []);
+
+  const loja = useMemo<LojaAdega>(() => ({ estado: () => estadoAtual.current, despachar }), [despachar]);
 
   const definirQuantidade = useCallback((produtoId: string, quantidade: number) => {
     const produto = estadoAtual.current.produtos.find((p) => p.id === produtoId);
@@ -53,7 +70,7 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
     if (!resultado.ok) return resultado;
     despachar({ tipo: 'registrar-entrada', ...resultado.valor });
     return { ok: true, valor: resultado.valor.entrada };
-  }, []);
+  }, [despachar]);
 
   const finalizarVenda = useCallback((pagamento: DadosPagamento): Resultado<Venda> => {
     const resultado = montarVenda(estadoAtual.current, carrinhoAtual.current, pagamento);
@@ -61,13 +78,13 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
     despachar({ tipo: 'registrar-venda', venda: resultado.valor });
     setCarrinho([]);
     return resultado;
-  }, []);
+  }, [despachar]);
 
   const editarProduto = useCallback((produtoId: string, dados: DadosEdicaoProduto): Resultado<Produto> => {
     const resultado = montarEdicaoProduto(estadoAtual.current, produtoId, dados);
     if (resultado.ok) despachar({ tipo: 'editar-produto', produto: resultado.valor });
     return resultado;
-  }, []);
+  }, [despachar]);
 
   const ajustarEstoque = useCallback((dados: DadosAjuste): Resultado<AjusteEstoque> => {
     const resultado = montarAjuste(estadoAtual.current, dados);
@@ -80,15 +97,29 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
       }
     }
     return resultado;
-  }, []);
+  }, [despachar]);
 
   const registrarLancamento = useCallback((dados: DadosLancamento): Resultado<Lancamento> => {
     const resultado = montarLancamento(dados);
     if (resultado.ok) despachar({ tipo: 'registrar-lancamento', lancamento: resultado.valor });
     return resultado;
-  }, []);
+  }, [despachar]);
 
-  const excluirLancamento = useCallback((id: string) => despachar({ tipo: 'excluir-lancamento', id }), []);
+  const excluirLancamento = useCallback((id: string) => despachar({ tipo: 'excluir-lancamento', id }), [despachar]);
+
+  const criarLembrete = useCallback(
+    (dados: DadosLembrete): Resultado<Lembrete> => {
+      const resultado = montarLembrete(estadoAtual.current, dados);
+      if (resultado.ok) despachar({ tipo: 'criar-lembrete', lembrete: resultado.valor });
+      return resultado;
+    },
+    [despachar],
+  );
+  const concluirLembrete = useCallback(
+    (id: string) => despachar({ tipo: 'concluir-lembrete', id, data: new Date().toISOString() }),
+    [despachar],
+  );
+  const excluirLembrete = useCallback((id: string) => despachar({ tipo: 'excluir-lembrete', id }), [despachar]);
 
   const valor = useMemo(
     () => ({
@@ -102,6 +133,10 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
       ajustarEstoque,
       registrarLancamento,
       excluirLancamento,
+      criarLembrete,
+      concluirLembrete,
+      excluirLembrete,
+      loja,
     }),
     [
       estado,
@@ -114,6 +149,10 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
       ajustarEstoque,
       registrarLancamento,
       excluirLancamento,
+      criarLembrete,
+      concluirLembrete,
+      excluirLembrete,
+      loja,
     ],
   );
 

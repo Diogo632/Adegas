@@ -2,6 +2,7 @@
   "name": "@adegas/core",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Regras de negócio compartilhadas entre o app e o web: produtos, estoque, vendas e financeiro.",
   "main": "src/index.ts",
   "types": "src/index.ts",

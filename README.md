@@ -6,19 +6,23 @@ Sistema para adegas controlarem **estoque** (bebidas, cigarros, gelo...), **vend
 
 📊 **Comparativo com o Cplug e direção de design:** [`docs/ANALISE-CPLUG.md`](docs/ANALISE-CPLUG.md)
 
+🤖 **Assistente com IA (Gemini + MCP):** [`docs/ASSISTENTE.md`](docs/ASSISTENTE.md)
+
 ## Estrutura
 
 ```
 apps/
-  mobile/   App (Expo + React Native) — abas Início, Estoque, Financeiro, Relatórios;
-            Nova venda, Pagamento, Entrada de produto, Produto, Nova movimentação
+  mobile/   App (Expo + React Native) — abas Início, Estoque, Financeiro, Relatórios,
+            Assistente; Nova venda, Pagamento, Entrada de produto, Produto, Nova movimentação
   web/      Painel web (Vite + React) — Início, Vender, Entrada de produto, Estoque,
-            Financeiro, Relatórios
+            Financeiro, Relatórios, Assistente
 packages/
   core/     Regras compartilhadas: produtos, estoque, ajustes, custo médio, vendas, troco,
-            financeiro, relatórios
+            financeiro, relatórios, lembretes
+  ia/       Assistente: servidor MCP com tudo da plataforma + agente que usa o Gemini
 docs/
   FLUXO.md  Fluxo do sistema
+  ASSISTENTE.md  Assistente com IA
 ```
 
 > Os dados ainda ficam na memória e começam com produtos e 30 dias de vendas, compras e contas de exemplo. O banco na nuvem (para app e web verem os mesmos dados) é a próxima etapa.
@@ -68,12 +72,15 @@ Os dados ainda ficam só na memória: ao fechar ou recarregar, tudo volta para o
 - **Estoque:** abra o Gelo → Ajustar → Perda, 1 unidade → Salvar. O estoque cai 1 e a perda aparece no Financeiro.
 - **Financeiro:** Nova movimentação → Saída → Luz, água e internet → R$ 120,00. Ela entra no topo das movimentações e no "Para onde foi o dinheiro".
 - **Relatórios:** troque o período (Hoje, 7 dias, 30 dias) e passe o mouse (ou toque) nas colunas.
+- **Assistente:** cole sua chave do Gemini (grátis em https://aistudio.google.com/apikey) na tela **Assistente** → peça "Chegaram 2 fardos de Skol por R$ 33 cada". Ele registra a entrada; toque em **Ver estoque**: a Skol subiu 24. Depois peça "Me lembre de pagar a luz amanhã às 10h" e veja o lembrete no Início. Detalhes em [`docs/ASSISTENTE.md`](docs/ASSISTENTE.md).
 
 ### Testes automáticos
 
 ```bash
-npm test           # testes das regras (packages/core)
+npm test           # testes das regras (packages/core) e do assistente (packages/ia)
 npm run typecheck  # checagem de tipos de tudo
 ```
+
+`npm run mcp` sobe o servidor MCP da Adegas no terminal e `GEMINI_API_KEY=sua-chave npm run assistente` conversa com o assistente pelo terminal (veja [`docs/ASSISTENTE.md`](docs/ASSISTENTE.md)).
 
 `npm run previa` monta na pasta `site/` a mesma prévia publicada no GitHub (página inicial, painel e app).

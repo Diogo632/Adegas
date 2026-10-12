@@ -26,6 +26,11 @@ import {
   lancamentosDoPeriodo,
   montarLancamento,
   relatorioVendas,
+  montarLembrete,
+  lembretesPendentes,
+  situacaoLembrete,
+  formatarQuando,
+  criarLojaNaMemoria,
 } from './index';
 import type { Estado, Produto } from './index';
 
@@ -254,5 +259,41 @@ describe('financeiro e relatórios', () => {
     expect(Object.values(r.porForma).reduce((s, v) => s + v, 0)).toBe(r.faturamento);
     expect(r.picos).toHaveLength(3);
     expect(resumoFinanceiro(exemplo, intervalo).faturamento).toBe(r.faturamento);
+  });
+});
+
+describe('lembretes', () => {
+  const agora = new Date(2026, 9, 12, 14, 0);
+
+  it('cria, ordena e conclui', () => {
+    const loja = criarLojaNaMemoria(estadoBase());
+    const daqui = (horas: number) => new Date(agora.getTime() + horas * 3_600_000);
+    for (const [texto, horas] of [['Pagar boleto', 20], ['Pedir gelo', 2], ['Ligar fornecedor', -1]] as const) {
+      const r = montarLembrete(loja.estado(), { texto, quando: daqui(horas) }, agora);
+      if (!r.ok) throw new Error(r.erro);
+      loja.despachar({ tipo: 'criar-lembrete', lembrete: r.valor });
+    }
+    const pendentes = lembretesPendentes(loja.estado());
+    expect(pendentes.map((l) => l.texto)).toEqual(['Ligar fornecedor', 'Pedir gelo', 'Pagar boleto']);
+    expect(pendentes.map((l) => situacaoLembrete(l, agora))).toEqual(['atrasado', 'hoje', 'proximo']);
+    expect(formatarQuando(pendentes[1].quando, agora)).toBe('hoje, 16:00');
+    expect(formatarQuando(pendentes[2].quando, agora)).toBe('amanhã, 10:00');
+
+    loja.despachar({ tipo: 'concluir-lembrete', id: pendentes[0].id, data: agora.toISOString() });
+    expect(lembretesPendentes(loja.estado())).toHaveLength(2);
+    loja.despachar({ tipo: 'excluir-lembrete', id: pendentes[1].id });
+    expect(loja.estado().lembretes).toHaveLength(2);
+  });
+
+  it('valida texto, data e produto', () => {
+    expect(montarLembrete(estadoBase(), { texto: '  ', quando: agora }).ok).toBe(false);
+    expect(montarLembrete(estadoBase(), { texto: 'x', quando: new Date('nada') }).ok).toBe(false);
+    expect(montarLembrete(estadoBase(), { texto: 'x', quando: agora, produtoId: 'nao-existe' }).ok).toBe(false);
+    const r = montarLembrete(estadoBase(), { texto: 'Repor', quando: agora, produtoId: 'c1' });
+    expect(r.ok && r.valor.produtoNome).toBe('Cerveja Lata');
+  });
+
+  it('exemplo já vem com lembretes', () => {
+    expect(lembretesPendentes(estadoDeExemplo(agora)).length).toBeGreaterThan(0);
   });
 });

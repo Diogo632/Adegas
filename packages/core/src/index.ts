@@ -4,6 +4,7 @@ export * from './estado';
 export * from './estoque';
 export * from './exemplo';
 export * from './financeiro';
+export * from './lembretes';
 export * from './react';
 export * from './relatorios';
 export * from './tipos';

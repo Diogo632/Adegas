@@ -1,0 +1,270 @@
+import { describe, expect, it } from 'vitest';
+import { criarLojaNaMemoria, estadoDeExemplo, lembretesPendentes } from '@adegas/core';
+import { AgenteAdega } from './agente';
+import { blocosDeTexto, descreverPasso } from './apresentacao';
+import type { Buscar, ConteudoGemini, EsquemaGemini, PedidoGemini } from './gemini';
+import { paraEsquemaGemini } from './gemini';
+import { conectarNaMemoria } from './local';
+
+const agora = new Date(2026, 9, 12, 14, 0);
+const relogio = () => agora;
+
+async function preparar() {
+  const loja = criarLojaNaMemoria(estadoDeExemplo(agora));
+  const conexao = await conectarNaMemoria(loja, { agora: relogio });
+  const chamar = async (name: string, args: Record<string, unknown> = {}) => {
+    const r = await conexao.cliente.callTool({ name, arguments: args });
+    const texto = (r.content as { type: string; text: string }[])[0].text;
+    return { erro: r.isError === true, texto, dados: r.isError ? null : (JSON.parse(texto) as Record<string, any>) };
+  };
+  return { loja, conexao, chamar };
+}
+
+const estoqueDe = (loja: ReturnType<typeof criarLojaNaMemoria>, id: string) => loja.estado().produtos.find((p) => p.id === id)!.estoque;
+
+describe('servidor MCP', () => {
+  it('publica todas as ferramentas, com esquemas que o Gemini aceita', async () => {
+    const { conexao } = await preparar();
+    const { tools } = await conexao.cliente.listTools();
+    expect(tools.map((t) => t.name)).toEqual(
+      expect.arrayContaining([
+        'buscar_produtos',
+        'consultar_produto',
+        'registrar_entrada',
+        'registrar_venda',
+        'resumo_financeiro',
+        'relatorio_vendas',
+        'criar_lembrete',
+        'listar_lembretes',
+      ]),
+    );
+    const tiposValidos = new Set(['STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT']);
+    const conferir = (e: EsquemaGemini) => {
+      expect(tiposValidos.has(e.type)).toBe(true);
+      Object.values(e.properties ?? {}).forEach(conferir);
+      if (e.items) conferir(e.items);
+      expect(Object.keys(e)).not.toContain('additionalProperties');
+    };
+    for (const t of tools) {
+      expect(t.title).toBeTruthy();
+      conferir(paraEsquemaGemini(t.inputSchema));
+    }
+    const entrada = paraEsquemaGemini(tools.find((t) => t.name === 'registrar_entrada')!.inputSchema);
+    expect(entrada.required).toEqual(['produto', 'embalagem', 'quantidade']);
+    expect(entrada.properties?.embalagem.enum).toEqual(['unidade', 'fardo']);
+    expect(entrada.properties?.novo_produto.type).toBe('OBJECT');
+  });
+
+  it('consulta produto pelo nome', async () => {
+    const { chamar } = await preparar();
+    const r = await chamar('consultar_produto', { produto: 'heineken' });
+    expect(r.erro).toBe(false);
+    expect(r.dados).toMatchObject({ id: 'heineken-ln', preco_venda: 'R$ 8,00' });
+    expect(r.dados!.vendidos_ultimos_30_dias).toBeGreaterThan(0);
+  });
+
+  it('registra entrada em fardo usando o fardo da última compra', async () => {
+    const { loja, chamar } = await preparar();
+    const antes = estoqueDe(loja, 'brahma-lata');
+    const r = await chamar('registrar_entrada', { produto: 'brahma', embalagem: 'fardo', quantidade: 2, custo: 36 });
+    expect(r.erro).toBe(false);
+    expect(estoqueDe(loja, 'brahma-lata')).toBe(antes + 24);
+    expect(r.dados).toMatchObject({ entrou_unidades: 24, custo_total: 'R$ 72,00', estoque_agora: antes + 24 });
+    // A compra virou despesa no financeiro.
+    expect(loja.estado().lancamentos[0]).toMatchObject({ categoria: 'mercadoria', valor: 7200 });
+  });
+
+  it('não confunde produto parecido e cadastra produto novo só com os dados', async () => {
+    const { loja, chamar } = await preparar();
+    const parecido = await chamar('registrar_entrada', { produto: 'Heineken 600ml', embalagem: 'unidade', quantidade: 12, custo: 7 });
+    expect(parecido.erro).toBe(true);
+    expect(parecido.texto).toContain('Heineken Long Neck');
+
+    const novo = await chamar('registrar_entrada', {
+      produto: 'Heineken 600ml',
+      embalagem: 'unidade',
+      quantidade: 12,
+      custo: 7,
+      novo_produto: { categoria: 'cerveja', preco_venda: 12, estoque_minimo: 6 },
+    });
+    expect(novo.erro).toBe(false);
+    expect(loja.estado().produtos.find((p) => p.nome === 'Heineken 600ml')).toMatchObject({ estoque: 12, precoVenda: 1200, custoMedio: 700 });
+  });
+
+  it('pede para escolher quando o nome serve para mais de um produto', async () => {
+    const { chamar } = await preparar();
+    const r = await chamar('consultar_produto', { produto: 'lata' });
+    expect(r.erro).toBe(true);
+    expect(r.texto).toMatch(/Brahma.*Skol|Skol.*Brahma/);
+  });
+
+  it('registra venda e despesa', async () => {
+    const { loja, chamar } = await preparar();
+    const antes = estoqueDe(loja, 'red-bull');
+    const venda = await chamar('registrar_venda', {
+      itens: [{ produto: 'red bull', quantidade: 2 }],
+      forma_pagamento: 'dinheiro',
+      valor_recebido: 30,
+    });
+    expect(venda.dados).toMatchObject({ total: 'R$ 24,00', troco: 'R$ 6,00' });
+    expect(estoqueDe(loja, 'red-bull')).toBe(antes - 2);
+
+    const conta = await chamar('registrar_lancamento', { tipo: 'despesa', categoria: 'contas', valor: 289.9, descricao: 'Luz' });
+    expect(conta.dados).toMatchObject({ valor: 'R$ 289,90', categoria: 'Luz, água e internet' });
+    const lista = await chamar('listar_lancamentos', { periodo: 'hoje', busca: 'luz' });
+    expect(lista.dados!.encontradas).toBe(1);
+    expect(lista.dados!.movimentacoes[0].pode_excluir).toBe(true);
+  });
+
+  it('busca financeiro e relatório por período', async () => {
+    const { chamar } = await preparar();
+    const mes = await chamar('resumo_financeiro', { periodo: '30d' });
+    expect(mes.dados!.periodo).toBe('últimos 30 dias');
+    const rel = await chamar('relatorio_vendas', { inicio: '2026-10-05', fim: '2026-10-11' });
+    expect(rel.dados!.periodo).toBe('de 05/10/2026 a 11/10/2026');
+    expect(rel.dados!.produtos_mais_vendidos.length).toBeGreaterThan(0);
+    expect(rel.dados!.horarios_de_pico.length).toBeGreaterThan(0);
+    const ruim = await chamar('relatorio_vendas', { inicio: '05/10/2026' });
+    expect(ruim.erro).toBe(true);
+  });
+
+  it('cria, lista e conclui lembretes', async () => {
+    const { loja, chamar } = await preparar();
+    const r = await chamar('criar_lembrete', { texto: 'Pagar a conta de luz', quando: '2026-10-13T10:00' });
+    expect(r.dados).toMatchObject({ quando: 'amanhã, 10:00', situacao: 'próximo' });
+    const lista = await chamar('listar_lembretes');
+    expect(lista.dados!.pendentes.map((l: { texto: string }) => l.texto)).toContain('Pagar a conta de luz');
+    await chamar('concluir_lembrete', { lembrete: 'conta de luz' });
+    expect(lembretesPendentes(loja.estado()).some((l) => l.texto === 'Pagar a conta de luz')).toBe(false);
+  });
+
+  it('recusa argumentos inválidos sem mexer nos dados', async () => {
+    const { loja, chamar } = await preparar();
+    const antes = loja.estado();
+    const r = await chamar('registrar_entrada', { produto: 'skol', embalagem: 'caixa', quantidade: 0 });
+    expect(r.erro).toBe(true);
+    expect(loja.estado()).toBe(antes);
+  });
+});
+
+// ---------- Agente com um Gemini de mentira ----------
+
+function geminiFalso(respostas: ((pedido: PedidoGemini) => { status?: number; corpo: unknown })[]) {
+  const pedidos: { url: string; corpo?: PedidoGemini; chave?: string }[] = [];
+  const buscar: Buscar = async (url, init) => {
+    const corpo = init.body ? (JSON.parse(init.body) as PedidoGemini) : undefined;
+    pedidos.push({ url, corpo, chave: init.headers['x-goog-api-key'] });
+    const proxima = respostas.shift();
+    if (!proxima) throw new Error('pedido a mais');
+    const { status = 200, corpo: saida } = proxima(corpo as PedidoGemini);
+    return { ok: status < 400, status, json: async () => saida, text: async () => JSON.stringify(saida) };
+  };
+  return { buscar, pedidos };
+}
+
+const modelo = (...parts: object[]) => ({ corpo: { candidates: [{ content: { role: 'model', parts }, finishReason: 'STOP' }] } });
+
+describe('agente (Gemini + MCP)', () => {
+  it('chama a ferramenta pedida pelo Gemini e devolve a resposta final', async () => {
+    const { conexao } = await preparar();
+    const { buscar, pedidos } = geminiFalso([
+      () => modelo({ functionCall: { name: 'consultar_produto', args: { produto: 'skol' } }, thoughtSignature: 'assinatura-1' }),
+      () => modelo({ text: 'Você tem **12 latas** de Skol.' }),
+    ]);
+    const agente = new AgenteAdega({ cliente: conexao.cliente, chave: 'chave-teste', buscar, agora: relogio });
+    const passosVistos: string[] = [];
+    const r = await agente.enviar('quanto tem de skol?', { aoMudar: (p) => passosVistos.push(p.map((x) => x.situacao).join()) });
+
+    expect(r.texto).toBe('Você tem **12 latas** de Skol.');
+    expect(r.passos).toMatchObject([{ ferramenta: 'consultar_produto', titulo: 'Consultar produto', situacao: 'ok', alterouDados: false }]);
+    expect(passosVistos).toEqual(['rodando', 'ok']);
+
+    const [primeiro, segundo] = pedidos;
+    expect(primeiro.url).toContain('/models/gemini-3.8-flash:generateContent');
+    expect(primeiro.chave).toBe('chave-teste');
+    expect(primeiro.corpo!.systemInstruction!.parts[0].text).toContain('segunda-feira, 12/10/2026, 14:00');
+    const declaracoes = primeiro.corpo!.tools![0].functionDeclarations;
+    expect(declaracoes).toHaveLength(17);
+    // Ferramenta sem parâmetros vai sem "parameters" (o Gemini recusa objeto vazio).
+    expect(declaracoes.find((d) => d.name === 'resumo_estoque')!.parameters).toBeUndefined();
+
+    // A segunda chamada leva de volta a chamada (com a assinatura) e o resultado.
+    const historico = segundo.corpo!.contents as ConteudoGemini[];
+    expect(historico.map((c) => c.role)).toEqual(['user', 'model', 'user']);
+    expect(historico[1].parts[0].thoughtSignature).toBe('assinatura-1');
+    const resposta = historico[2].parts[0].functionResponse!;
+    expect(resposta.name).toBe('consultar_produto');
+    expect((resposta.response.resultado as { nome: string }).nome).toBe('Skol Lata 350ml');
+  });
+
+  it('marca o que alterou dados e devolve erros da ferramenta para o modelo', async () => {
+    const { loja, conexao } = await preparar();
+    const antes = estoqueDe(loja, 'gelo-5kg');
+    const { buscar, pedidos } = geminiFalso([
+      () =>
+        modelo(
+          { functionCall: { name: 'registrar_entrada', args: { produto: 'gelo', embalagem: 'unidade', quantidade: 10, custo: 7 } } },
+          { functionCall: { name: 'consultar_produto', args: { produto: 'xyz' } } },
+        ),
+      () => modelo({ text: 'Entrada registrada.' }),
+    ]);
+    const agente = new AgenteAdega({ cliente: conexao.cliente, chave: 'k', buscar, agora: relogio });
+    const r = await agente.enviar('chegaram 10 gelos a 7 reais');
+    expect(estoqueDe(loja, 'gelo-5kg')).toBe(antes + 10);
+    expect(r.passos.map((p) => [p.situacao, p.alterouDados])).toEqual([
+      ['ok', true],
+      ['erro', false],
+    ]);
+    const respostas = (pedidos[1].corpo!.contents as ConteudoGemini[])[2].parts;
+    expect(respostas).toHaveLength(2);
+    expect(String(respostas[1].functionResponse!.response.erro)).toContain('xyz');
+  });
+
+  it('troca para outro Flash quando o modelo não existe', async () => {
+    const { conexao } = await preparar();
+    const { buscar, pedidos } = geminiFalso([
+      () => ({ status: 404, corpo: { error: { message: 'models/gemini-3.8-flash is not found', status: 'NOT_FOUND' } } }),
+      () => ({
+        corpo: {
+          models: [
+            { name: 'models/gemini-3.6-flash', supportedGenerationMethods: ['generateContent'] },
+            { name: 'models/gemini-3.7-flash-lite', supportedGenerationMethods: ['generateContent'] },
+            { name: 'models/gemini-3.7-flash', supportedGenerationMethods: ['generateContent'] },
+            { name: 'models/gemini-3.7-flash-image', supportedGenerationMethods: ['generateContent'] },
+          ],
+        },
+      }),
+      () => modelo({ text: 'Oi!' }),
+    ]);
+    const agente = new AgenteAdega({ cliente: conexao.cliente, chave: 'k', buscar, agora: relogio });
+    const r = await agente.enviar('oi');
+    expect(r.texto).toBe('Oi!');
+    expect(agente.modeloEmUso).toBe('gemini-3.7-flash');
+    expect(pedidos[2].url).toContain('/models/gemini-3.7-flash:generateContent');
+  });
+
+  it('explica chave inválida e deixa reenviar a mesma mensagem', async () => {
+    const { conexao } = await preparar();
+    const { buscar, pedidos } = geminiFalso([
+      () => ({ status: 400, corpo: { error: { message: 'API key not valid. Please pass a valid API key.', status: 'INVALID_ARGUMENT' } } }),
+      () => modelo({ text: 'Agora foi.' }),
+    ]);
+    const agente = new AgenteAdega({ cliente: conexao.cliente, chave: 'errada', buscar, agora: relogio });
+    await expect(agente.enviar('oi')).rejects.toThrow('A chave do Gemini não é válida');
+    await agente.enviar('oi');
+    expect((pedidos[1].corpo!.contents as ConteudoGemini[]).map((c) => c.role)).toEqual(['user']);
+  });
+});
+
+describe('apresentação', () => {
+  it('descreve passos e lê negrito e listas', () => {
+    expect(
+      descreverPasso({ id: '1', ferramenta: 'resumo_financeiro', titulo: 'Resumo financeiro', argumentos: { periodo: '7d' }, situacao: 'ok', alterouDados: false }),
+    ).toBe('Resumo financeiro · 7 dias');
+    expect(blocosDeTexto('Saldo: **R$ 10,00**\n- Pix: R$ 5\n- Dinheiro')).toEqual([
+      { tipo: 'paragrafo', trechos: [{ texto: 'Saldo: ', negrito: false }, { texto: 'R$ 10,00', negrito: true }] },
+      { tipo: 'item', trechos: [{ texto: 'Pix: R$ 5', negrito: false }] },
+      { tipo: 'item', trechos: [{ texto: 'Dinheiro', negrito: false }] },
+    ]);
+  });
+});

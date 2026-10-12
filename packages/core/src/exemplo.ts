@@ -8,6 +8,7 @@ import type {
   FormaPagamento,
   ItemVenda,
   Lancamento,
+  Lembrete,
   Produto,
   Venda,
 } from './tipos';
@@ -44,7 +45,11 @@ const VENDAS_DE_HOJE: { horasAtras: number; itens: [string, number][]; forma: Fo
  * não começarem vazias. Some quando entrar o banco de dados.
  */
 export function estadoDeExemplo(agora: Date = new Date()): Estado {
-  let estado: Estado = { ...historicoDeExemplo(agora), produtos: PRODUTOS.map((p) => ({ ...p })) };
+  let estado: Estado = {
+    ...historicoDeExemplo(agora),
+    produtos: PRODUTOS.map((p) => ({ ...p })),
+    lembretes: lembretesDeExemplo(agora),
+  };
   const horasAtras = (h: number) => new Date(agora.getTime() - h * 3_600_000);
 
   const compra = montarEntrada(
@@ -68,6 +73,17 @@ export function estadoDeExemplo(agora: Date = new Date()): Estado {
     if (venda.ok) estado = reducer(estado, { tipo: 'registrar-venda', venda: venda.valor });
   }
   return estado;
+}
+
+function lembretesDeExemplo(agora: Date): Lembrete[] {
+  const dia = (dias: number, hora: number, minuto = 0) =>
+    new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + dias, hora, minuto).toISOString();
+  const criadoEm = dia(-1, 9);
+  return [
+    { id: 'l-1', texto: 'Pedir gelo para o fim de semana', quando: dia(0, 17), criadoEm, concluido: false, produtoId: 'gelo-5kg', produtoNome: 'Gelo 5kg' },
+    { id: 'l-2', texto: 'Pagar boleto da Distribuidora Central', quando: dia(1, 10), criadoEm, concluido: false },
+    { id: 'l-3', texto: 'Conferir validade dos vinhos', quando: dia(3, 15), criadoEm, concluido: false, produtoId: 'vinho-tinto', produtoNome: 'Vinho Tinto Suave 750ml' },
+  ];
 }
 
 // ---------- Histórico dos últimos 29 dias ----------
@@ -140,7 +156,7 @@ const CONTAS: [number, CategoriaLancamento, string, number, FormaPagamento][] = 
   [4, 'outras-despesas', 'Sacolas e copos descartáveis', 6800, 'dinheiro'],
 ];
 
-function historicoDeExemplo(agora: Date): Omit<Estado, 'produtos'> {
+function historicoDeExemplo(agora: Date): Omit<Estado, 'produtos' | 'lembretes'> {
   const sortear = sorteador(20261012);
   const produtos = new Map(PRODUTOS.map((p) => [p.id, p]));
   const vendas: Venda[] = [];

@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router';
 import { ativarAnimacoesDeToque } from './animacoes';
 import { Layout } from './componentes/Layout';
+import { AssistenteSobDemanda } from './paginas/AssistenteSobDemanda';
 import { Entrada } from './paginas/Entrada';
 import { Estoque } from './paginas/Estoque';
 import { Financeiro } from './paginas/Financeiro';
@@ -36,6 +37,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="estoque" element={<Estoque />} />
             <Route path="financeiro" element={<Financeiro />} />
             <Route path="relatorios" element={<Relatorios />} />
+            <Route path="assistente" element={<AssistenteSobDemanda />} />
           </Route>
         </Routes>
       </Roteador>

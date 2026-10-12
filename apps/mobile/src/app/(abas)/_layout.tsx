@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router/tabs';
-import { Boxes, ChartColumn, House, Wallet } from 'lucide-react-native';
+import { Boxes, ChartColumn, House, Sparkles, Wallet } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CORES, FONTE } from '../../tema';
 
@@ -9,6 +9,7 @@ export default function Abas() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: CORES.primariaClara,
         tabBarInactiveTintColor: CORES.textoFraco,
         tabBarStyle: {
@@ -39,6 +40,13 @@ export default function Abas() {
         options={{
           title: 'Relatórios',
           tabBarIcon: ({ color, size }) => <ChartColumn color={color} size={size} strokeWidth={1.75} />,
+        }}
+      />
+      <Tabs.Screen
+        name="assistente"
+        options={{
+          title: 'Assistente',
+          tabBarIcon: ({ color, size }) => <Sparkles color={color} size={size} strokeWidth={1.75} />,
         }}
       />
     </Tabs>

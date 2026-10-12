@@ -125,12 +125,27 @@ export interface AjusteEstoque {
   observacao?: string;
 }
 
+/** Algo para não esquecer: pagar boleto, pedir gelo, conferir validade... */
+export interface Lembrete {
+  id: string;
+  texto: string;
+  /** Quando avisar, em ISO 8601. */
+  quando: string;
+  criadoEm: string;
+  concluido: boolean;
+  concluidoEm?: string;
+  /** Lembrete ligado a um produto (ex.: "repor Skol"). */
+  produtoId?: string;
+  produtoNome?: string;
+}
+
 export interface Estado {
   produtos: Produto[];
   vendas: Venda[];
   entradas: EntradaEstoque[];
   lancamentos: Lancamento[];
   ajustes: AjusteEstoque[];
+  lembretes: Lembrete[];
 }
 
 export type Resultado<T> = { ok: true; valor: T } | { ok: false; erro: string };

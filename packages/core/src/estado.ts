@@ -1,5 +1,5 @@
 import { formaPagamento } from './catalogos';
-import type { AjusteEstoque, EntradaEstoque, Estado, Lancamento, Produto, Venda } from './tipos';
+import type { AjusteEstoque, EntradaEstoque, Estado, Lancamento, Lembrete, Produto, Venda } from './tipos';
 import { novoCustoMedio } from './estoque';
 
 export type Acao =
@@ -8,9 +8,35 @@ export type Acao =
   | { tipo: 'editar-produto'; produto: Produto }
   | { tipo: 'ajustar-estoque'; ajuste: AjusteEstoque }
   | { tipo: 'registrar-lancamento'; lancamento: Lancamento }
-  | { tipo: 'excluir-lancamento'; id: string };
+  | { tipo: 'excluir-lancamento'; id: string }
+  | { tipo: 'criar-lembrete'; lembrete: Lembrete }
+  | { tipo: 'concluir-lembrete'; id: string; data: string }
+  | { tipo: 'excluir-lembrete'; id: string };
 
-export const ESTADO_VAZIO: Estado = { produtos: [], vendas: [], entradas: [], lancamentos: [], ajustes: [] };
+export const ESTADO_VAZIO: Estado = { produtos: [], vendas: [], entradas: [], lancamentos: [], ajustes: [], lembretes: [] };
+
+/**
+ * Onde os dados da adega moram. Hoje é a memória do aparelho (React) ou um
+ * arquivo (servidor MCP no computador); depois será o banco na nuvem. Tudo que
+ * lê ou muda dados — telas e assistente — passa por aqui.
+ */
+export interface LojaAdega {
+  /** Sempre o estado mais recente, já com as ações despachadas. */
+  estado(): Estado;
+  despachar(acao: Acao): void;
+}
+
+/** Loja simples na memória, para testes e para o servidor MCP. */
+export function criarLojaNaMemoria(inicial: Estado, aoMudar?: (estado: Estado) => void): LojaAdega {
+  let atual = inicial;
+  return {
+    estado: () => atual,
+    despachar(acao) {
+      atual = reducer(atual, acao);
+      aoMudar?.(atual);
+    },
+  };
+}
 
 /**
  * Único lugar onde o estado muda. App e web usam o mesmo reducer, então
@@ -43,6 +69,15 @@ export function reducer(estado: Estado, acao: Acao): Estado {
         ...estado,
         lancamentos: estado.lancamentos.filter((l) => !(l.id === acao.id && l.origem === 'manual')),
       };
+    case 'criar-lembrete':
+      return { ...estado, lembretes: [...estado.lembretes, acao.lembrete] };
+    case 'concluir-lembrete':
+      return {
+        ...estado,
+        lembretes: estado.lembretes.map((l) => (l.id === acao.id ? { ...l, concluido: true, concluidoEm: acao.data } : l)),
+      };
+    case 'excluir-lembrete':
+      return { ...estado, lembretes: estado.lembretes.filter((l) => l.id !== acao.id) };
   }
 }
 
