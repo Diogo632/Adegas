@@ -11,6 +11,8 @@ import { useConfigAssistente } from '../../configAssistente';
 import { CORES, FONTE, RAIO, TEXTO } from '../../tema';
 
 const NATIVO = Platform.OS !== 'web';
+/** Prévias que rodam numa página sem acesso à internet avisam isso (ver docs/ASSISTENTE.md). */
+const SEM_INTERNET = Boolean((globalThis as { ADEGAS_PREVIA_SEM_INTERNET?: boolean }).ADEGAS_PREVIA_SEM_INTERNET);
 
 /** Depois que o assistente muda algo, um atalho para conferir na aba certa. */
 const ONDE_VER: Record<string, { rota: '/estoque' | '/financeiro' | '/'; rotulo: string }> = {
@@ -48,7 +50,10 @@ export default function Assistente() {
         style={{ flex: 1 }}
         contentContainerStyle={estilos.tela}
         keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() => lista.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() => {
+          // Acompanha a conversa; sem mensagens, a tela fica no topo (configuração e sugestões).
+          if (mensagens.length > 0) lista.current?.scrollToEnd({ animated: true });
+        }}
       >
         <View style={estilos.topo}>
           <TituloAba sobretitulo="Inteligência artificial" titulo="Assistente" topo={insets.top} />
@@ -68,6 +73,16 @@ export default function Assistente() {
             </Tocavel>
           </View>
         </View>
+
+        {SEM_INTERNET && (
+          <View style={estilos.avisoPrevia}>
+            <CircleAlert size={18} color={CORES.alerta} strokeWidth={2} />
+            <Text style={[TEXTO.legenda, { flex: 1, color: CORES.texto }]}>
+              Esta prévia não pode acessar a internet, então o assistente não alcança o Gemini aqui. Para conversar com ele, use a
+              prévia do GitHub Pages ou o app no celular.
+            </Text>
+          </View>
+        )}
 
         {mostrarConfig && (
           <Configuracao
@@ -445,6 +460,16 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   rotulo: { fontFamily: FONTE.media, fontSize: 13, color: CORES.textoSuave },
+  avisoPrevia: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    padding: 14,
+    borderRadius: RAIO.medio,
+    backgroundColor: CORES.alertaFundo,
+    borderWidth: 1,
+    borderColor: '#5C4716',
+  },
   campo: {
     borderWidth: 1,
     borderColor: CORES.borda,

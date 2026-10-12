@@ -35,6 +35,9 @@ const ONDE_VER: Record<string, { para: string; rotulo: string }> = {
   excluir_lembrete: { para: '/', rotulo: 'Ver lembretes' },
 };
 
+/** Prévias que rodam numa página sem acesso à internet avisam isso (ver docs/ASSISTENTE.md). */
+const SEM_INTERNET = Boolean((globalThis as { ADEGAS_PREVIA_SEM_INTERNET?: boolean }).ADEGAS_PREVIA_SEM_INTERNET);
+
 const CAPACIDADES = [
   'Consulta o estoque de qualquer produto',
   'Registra entrada de mercadoria e vendas',
@@ -112,6 +115,16 @@ export function Assistente() {
           }}
           aoFechar={config.chave ? () => setConfigurando(false) : undefined}
         />
+      )}
+
+      {SEM_INTERNET && (
+        <p className="aviso-previa" role="note">
+          <CircleAlert size={17} strokeWidth={2} />
+          <span>
+            Esta prévia não pode acessar a internet, então o assistente não alcança o Gemini aqui. Para conversar com ele, abra a
+            prévia do GitHub Pages ou rode o projeto no computador.
+          </span>
+        </p>
       )}
 
       <div className="assistente-grade">

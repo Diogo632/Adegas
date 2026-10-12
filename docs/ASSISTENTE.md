@@ -109,6 +109,7 @@ GEMINI_API_KEY=sua-chave npm run assistente
 - **Os dados ainda são de cada aparelho.** Até a etapa do banco na nuvem, o que o assistente registra no celular não aparece no painel de outro computador, e o servidor MCP do terminal usa o arquivo dele.
 - **A chave do Gemini fica no aparelho** e a conversa vai direto do aparelho para o Google. Para testar, isso é suficiente. Com o banco na nuvem e vários funcionários, o certo é a chamada ao Gemini passar por um servidor nosso, para a chave não ficar nos celulares, e cada um usar o assistente com o próprio login.
 - Lembretes aparecem no Início, mas **ainda não tocam notificação** no celular.
+- Nas prévias abertas dentro do Claude a página não tem acesso à internet, então lá o assistente mostra um aviso e não conversa. Ele funciona na prévia do GitHub Pages, no `npm run web` / `npm run app` e no Expo Go.
 
 ## Onde está no código
 
