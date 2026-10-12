@@ -46,7 +46,24 @@ flowchart TD
     EntradaOk -->|Voltar ao início| Inicio
 ```
 
-No **web**, "Nova venda" e "Pagamento" ficam numa tela só (produtos à esquerda, carrinho e pagamento à direita), porque a tela é grande. No **app** são duas telas, para cada uma ter pouca coisa.
+**Gestão** (abas no app; menu lateral no web):
+
+```mermaid
+flowchart TD
+    Estoque["📋 Estoque<br/>lista, situação, valor parado"]
+    Produto["Produto<br/>histórico · ajustar · editar"]
+    Financeiro["💰 Financeiro<br/>saldo, entradas, saídas"]
+    NovaMov["Nova movimentação<br/>aluguel, luz, salário..."]
+    Relatorios["📊 Relatórios<br/>por dia, hora, produto, categoria"]
+
+    Estoque -->|toca no produto| Produto
+    Produto -->|Registrar entrada| EntradaG["📦 Entrada de produto"]
+    Financeiro -->|Nova movimentação| NovaMov
+```
+
+No **app**, a barra de baixo tem 4 abas: **Início, Estoque, Financeiro e Relatórios**. Vender e dar entrada continuam nos botões grandes do Início.
+
+No **web**, "Nova venda" e "Pagamento" ficam numa tela só (produtos à esquerda, carrinho e pagamento à direita), porque a tela é grande. No **app** são duas telas, para cada uma ter pouca coisa. Na tela de Estoque do web, o produto escolhido abre num painel ao lado da tabela.
 
 ## 3. As telas
 
@@ -98,6 +115,36 @@ Enquanto preenche, o **resumo** mostra: quantas unidades entram, custo por unida
 - Entra uma **receita** no financeiro, na forma de pagamento escolhida.
 - A venda guarda o custo de cada item naquele momento, para o lucro ficar certo mesmo se o custo mudar depois.
 
+### 3.4 Estoque
+
+- **Resumo:** valor parado em estoque (pelo custo), quanto entraria vendendo tudo, unidades e quantos produtos precisam de reposição.
+- **Lista** com busca, filtros (**Todos / Precisa repor / Sem estoque**) e categoria. Cada produto mostra estoque, mínimo e a situação: **Em dia**, **Baixo** ou **Sem estoque**.
+- **Produto** (tocando na linha):
+  - **Histórico:** vendas, entradas e ajustes do produto, do mais recente para o mais antigo.
+  - **Ajustar:** corrige o estoque sem venda nem compra:
+    - **Perda ou quebra:** garrafa quebrada, vencido, gelo derretido;
+    - **Consumo próprio:** uso da casa ou brinde;
+    - **Contagem:** contou a prateleira e o número é outro (o estoque passa a ser o contado).
+  - **Editar:** nome, categoria, preço de venda e estoque mínimo, mostrando a margem nova. A quantidade só muda por venda, entrada ou ajuste.
+
+### 3.5 Financeiro
+
+- **Período:** Hoje, 7 dias, 30 dias ou Este mês.
+- **Saldo** do período (entrou menos saiu), **Entradas**, **Saídas** e **Lucro bruto** com a margem.
+- **Recebido por forma de pagamento**, para conferir maquininha, Pix e gaveta.
+- **Para onde foi o dinheiro:** saídas por categoria (mercadoria, aluguel, luz/água/internet, funcionários, impostos, manutenção, outras).
+- **Perdas** do período (quebras e consumo, pelo custo). Não é saída de caixa, mas é dinheiro que saiu do estoque.
+- **Movimentações** (Todas / Entradas / Saídas). As lançadas à mão podem ser excluídas; vendas e compras não, porque mexeram no estoque.
+- **Nova movimentação:** saída (aluguel, luz, salário...) ou entrada (outras receitas), com categoria, valor e forma de pagamento.
+
+### 3.6 Relatórios
+
+- **Faturamento, ticket médio, lucro bruto e margem** do período.
+- **Vendas por dia:** colunas com o faturamento de cada dia (passe o mouse ou toque para ver o valor e quantas vendas).
+- **Horários de pico:** as 3 horas com mais vendas e o gráfico por hora, com as de pico em destaque. Serve para decidir horário de funcionário e quando gelar mais cerveja.
+- **Mais vendidos:** quantidade, faturamento e lucro de cada produto.
+- **Por categoria** e **por forma de pagamento**, com a fatia de cada uma.
+
 ## 4. O que cada ação muda
 
 | Ação | Estoque | Financeiro |
@@ -105,6 +152,10 @@ Enquanto preenche, o **resumo** mostra: quantas unidades entram, custo por unida
 | Venda | − quantidade vendida de cada produto | + receita (na forma de pagamento) |
 | Entrada de produto | + unidades; recalcula o custo médio | − despesa (na forma de pagamento) |
 | Produto novo | cria o produto já com o estoque da 1ª entrada | − despesa da 1ª entrada |
+| Ajuste (perda, consumo) | − unidades | não mexe no caixa; aparece como **perda** (pelo custo) |
+| Ajuste (contagem) | estoque passa a ser o contado | nada |
+| Editar produto | nada (muda nome, preço, mínimo) | nada |
+| Nova movimentação | nada | + entrada ou − saída, na categoria escolhida |
 
 ## 5. Regras de negócio (já implementadas no núcleo)
 
@@ -113,7 +164,9 @@ Enquanto preenche, o **resumo** mostra: quantas unidades entram, custo por unida
 - **Custo médio ponderado.** Ex.: 10 latas a R$ 3,00 + chegam 10 a R$ 4,00 → 20 latas a R$ 3,50.
 - **Fardo × unidade.** Compra em fardo, vende em unidade: o estoque é sempre contado em unidades.
 - **Estoque baixo.** Cada produto tem um mínimo; ao chegar nele (ou abaixo), aparece no alerta.
-- **Lucro bruto** = vendas − custo dos produtos vendidos. **Saldo do dia** = vendas − compras.
+- **Lucro bruto** = vendas − custo dos produtos vendidos. **Saldo** = tudo que entrou − tudo que saiu no período.
+- **Situação do estoque:** zerado = sem estoque; no mínimo ou abaixo = baixo; acima = em dia.
+- **Perda** = unidades que saíram por ajuste × custo médio no momento do ajuste.
 
 ## 6. Dados guardados
 
@@ -124,6 +177,7 @@ erDiagram
     VENDA ||--|{ ITEM_VENDA : tem
     VENDA ||--|{ LANCAMENTO : "gera receita"
     ENTRADA ||--|| LANCAMENTO : "gera despesa"
+    PRODUTO ||--o{ AJUSTE : "corrigido por"
 
     PRODUTO {
         texto nome
@@ -156,8 +210,18 @@ erDiagram
     LANCAMENTO {
         data data
         texto tipo "receita ou despesa"
+        texto origem "venda, compra ou manual"
+        texto categoria "vendas, mercadoria, aluguel..."
         centavos valor
         forma formaPagamento
+    }
+    AJUSTE {
+        data data
+        texto motivo "perda, consumo ou contagem"
+        int quantidadeAntes
+        int quantidadeDepois
+        centavos custoUnitario
+        texto observacao
     }
 ```
 
@@ -171,9 +235,10 @@ Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, 
 | **1.1 Design** | Visual neutro e sofisticado, ícones de linha, "mais vendidos" na venda. Comparativo com o Cplug em [`ANALISE-CPLUG.md`](ANALISE-CPLUG.md) | ✅ pronto |
 | **1.2 Tema escuro e animações** | Preto com detalhes em roxo escuro; animações em JavaScript nos botões, na troca de telas e nos números (contam até o valor) | ✅ pronto |
 | **2. Banco na nuvem + login** | App e web passam a ver os mesmos dados em tempo real; login do dono. Sugestão: **Supabase** (banco Postgres, login e tempo real prontos, plano grátis para começar). Já pensar em **funcionar sem internet** | próxima |
-| **3. Estoque** | Lista completa, editar produto e preço, ajuste por perda/quebra/consumo, contagem (inventário) | |
-| **4. Caixa e financeiro** | **Abrir/fechar o caixa do dia, sangria e reforço**, despesas da loja (aluguel, luz, funcionário), taxa da maquininha, relatório por período | |
-| **5. Extras** | Leitor de código de barras pela câmera, desconto na venda, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, perfis dono/funcionário, publicar o app nas lojas | |
+| **3. Estoque** | Lista com situação e valor parado, editar produto e preço, ajuste por perda/consumo/contagem, histórico do produto | ✅ pronto (lote e validade ficam para depois) |
+| **4. Financeiro e relatórios** | Períodos, saldo, entradas e saídas, despesas da loja, recebido por forma, perdas; relatórios por dia, hora, produto, categoria e forma | ✅ pronto |
+| **5. Caixa do dia** | **Abrir/fechar o caixa, sangria e reforço**, conferência do dinheiro da gaveta, taxa da maquininha | |
+| **6. Extras** | Leitor de código de barras pela câmera, desconto na venda, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, perfis dono/funcionário, publicar o app nas lojas | |
 
 ## 8. Perguntas para decidir antes da etapa 2
 

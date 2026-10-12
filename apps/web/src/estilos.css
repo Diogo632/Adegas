@@ -91,6 +91,8 @@ button:disabled {
   display: grid;
   grid-template-columns: 248px 1fr;
   min-height: 100vh;
+  /* A faixa do menu acompanha páginas mais altas que a tela. */
+  background: linear-gradient(to right, var(--lateral) 247px, var(--borda) 247px, var(--borda) 248px, transparent 248px);
 }
 
 .menu {
@@ -819,6 +821,8 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 12px;
 }
 
 .caixa-topo h2 {
@@ -1075,6 +1079,500 @@ button:disabled {
   letter-spacing: -0.02em;
 }
 
+/* ---------- Estoque, financeiro e relatórios ---------- */
+
+.pagina.larga {
+  max-width: 1360px;
+}
+
+.positivo {
+  color: var(--receita);
+}
+
+.negativo {
+  color: var(--despesa);
+}
+
+.kpi strong.positivo {
+  color: var(--receita);
+}
+
+.kpi strong.negativo {
+  color: var(--despesa);
+}
+
+.kpi-botao {
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.kpi-botao:hover {
+  border-color: var(--destaqueBorda);
+}
+
+.kpi.atencao {
+  border-color: color-mix(in srgb, var(--alerta) 45%, transparent);
+  background: var(--alertaFundo);
+}
+
+.kpi.atencao strong {
+  color: var(--alerta);
+}
+
+.segmentado.compacto,
+.segmentado.periodo {
+  margin: 0;
+  max-width: none;
+}
+
+.segmentado.compacto button {
+  white-space: nowrap;
+  padding: 8px 14px;
+}
+
+.segmentado.periodo button {
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+
+.barra-ferramentas {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.barra-ferramentas .campo-icone {
+  flex: 1;
+  min-width: 220px;
+}
+
+.tabela-rolagem {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.vazio-tabela {
+  padding: 16px 8px;
+}
+
+.tabela tr.clicavel {
+  cursor: pointer;
+}
+
+.tabela tr.selecionada,
+.tabela tr.selecionada:hover {
+  background: var(--primariaSuave);
+}
+
+.tabela tr.selecionada td:first-child {
+  box-shadow: inset 3px 0 0 var(--primaria);
+}
+
+.celula-produto {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.celula-produto small {
+  display: block;
+  color: var(--textoFraco);
+  font-size: 12px;
+}
+
+.pilula {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pilula::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.pilula.ok {
+  color: var(--receita);
+  background: var(--receitaFundo);
+}
+
+.pilula.baixo {
+  color: var(--alerta);
+  background: var(--alertaFundo);
+}
+
+.pilula.zerado {
+  color: var(--despesa);
+  background: var(--despesaFundo);
+}
+
+.estoque-grade,
+.financeiro-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+  align-items: start;
+}
+
+.detalhe-produto,
+.novo-lancamento {
+  position: sticky;
+  top: 24px;
+}
+
+.detalhe-vazio h2 {
+  margin-bottom: 8px;
+}
+
+.detalhe {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detalhe .segmentado {
+  margin: 0;
+  max-width: none;
+}
+
+.detalhe-topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detalhe-topo > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.detalhe-topo h2 {
+  margin: 0;
+}
+
+.detalhe-numeros {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--borda);
+  border: 1px solid var(--borda);
+}
+
+.detalhe-numeros div {
+  background: var(--superficieAlta);
+  padding: 10px 12px;
+}
+
+.detalhe-numeros dt {
+  font-size: 12px;
+  color: var(--textoSuave);
+}
+
+.detalhe-numeros dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.detalhe .lista {
+  max-height: 340px;
+  overflow: auto;
+}
+
+.formulario-detalhe {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formulario-detalhe h2 {
+  margin: 0;
+}
+
+.formulario-detalhe .segmentado {
+  margin: 0;
+  max-width: none;
+}
+
+.formulario-detalhe .dica {
+  margin: 0;
+}
+
+.duas-colunas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.previa-ajuste {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--superficieAlta);
+  font-variant-numeric: tabular-nums;
+}
+
+.botao.largo {
+  width: 100%;
+}
+
+.link.discreto {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--textoFraco);
+}
+
+.link.discreto:hover {
+  color: var(--despesa);
+}
+
+.link.perigo {
+  color: var(--despesa);
+}
+
+.confirmar {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--textoSuave);
+}
+
+.nota {
+  margin: 16px 0 0;
+  font-size: 13px;
+}
+
+.barra-linha.larga {
+  grid-template-columns: 170px 1fr;
+}
+
+.barra-trilho.sem-eixo {
+  border-left: none;
+  min-height: 22px;
+}
+
+.barra-trilho.sem-eixo .barra {
+  height: 14px;
+  border-radius: 4px;
+}
+
+.barra-valor small {
+  margin-left: 4px;
+  font-weight: 500;
+}
+
+/* Gráfico de colunas: um eixo, uma cor, dica ao passar o mouse. */
+.grafico {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.grafico-eixo {
+  position: relative;
+  height: 200px;
+  min-width: 52px;
+  font-size: 12px;
+  color: var(--textoFraco);
+  font-variant-numeric: tabular-nums;
+}
+
+.grafico-eixo span {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.grafico-eixo span:nth-child(1) {
+  top: 0;
+}
+
+.grafico-eixo span:nth-child(2) {
+  top: 50%;
+}
+
+.grafico-eixo span:nth-child(3) {
+  top: 100%;
+}
+
+.grafico-area {
+  position: relative;
+  height: 200px;
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--bordaForte);
+}
+
+.grafico-grade i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--borda);
+}
+
+.grafico-grade i:nth-child(1) {
+  top: 0;
+}
+
+.grafico-grade i:nth-child(2) {
+  top: 50%;
+}
+
+.grafico-grade i:nth-child(3) {
+  display: none;
+}
+
+.col-grafico {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.col-grafico:focus-visible {
+  outline: 2px solid var(--primariaClara);
+  outline-offset: 0;
+}
+
+.col-grafico.ativa {
+  background: color-mix(in srgb, var(--primaria) 12%, transparent);
+}
+
+.col-barra {
+  position: relative;
+  width: min(24px, 70%);
+  background: var(--grafico);
+  border-radius: 4px 4px 0 0;
+  transform-origin: bottom;
+  transition: filter 0.15s;
+}
+
+.col-grafico.fraca .col-barra {
+  background: var(--bordaForte);
+}
+
+.col-grafico.ativa .col-barra {
+  filter: brightness(1.25);
+}
+
+.col-rotulo {
+  position: absolute;
+  top: calc(100% + 7px);
+  font-size: 11px;
+  color: var(--textoFraco);
+  white-space: nowrap;
+}
+
+.dica-grafico {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--superficieAlta);
+  border: 1px solid var(--bordaForte);
+  box-shadow: 0 10px 28px -12px rgb(0 0 0 / 0.8);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.dica-grafico.a-esquerda {
+  transform: translateX(-88%);
+}
+
+.dica-grafico.a-direita {
+  transform: translateX(-12%);
+}
+
+.dica-grafico strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dica-grafico span {
+  font-size: 12px;
+  color: var(--textoSuave);
+}
+
+.picos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.pico {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--borda);
+  background: var(--superficieAlta);
+}
+
+.pico span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--textoSuave);
+}
+
+.pico strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pico small {
+  font-size: 12px;
+  color: var(--textoFraco);
+}
+
+.pico.primeiro {
+  border-color: var(--grafico);
+  background: var(--primariaSuave);
+}
+
+.pico.primeiro span,
+.pico.primeiro strong {
+  color: var(--primariaClara);
+}
+
+@media (max-width: 1500px) {
+  .some-medio {
+    display: none;
+  }
+}
+
 /* ---------- Telas menores ---------- */
 
 @media (max-width: 1150px) {
@@ -1084,19 +1582,24 @@ button:disabled {
 
   .pdv,
   .grade-entrada,
-  .grade-2 {
-    grid-template-columns: 1fr;
+  .grade-2,
+  .estoque-grade,
+  .financeiro-grade {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .pdv-caixa,
-  .coluna {
+  .coluna,
+  .detalhe-produto,
+  .novo-lancamento {
     position: static;
   }
 }
 
 @media (max-width: 760px) {
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    background: none;
   }
 
   .menu {
@@ -1133,8 +1636,17 @@ button:disabled {
 
   .kpis,
   .campos,
-  .opcoes {
+  .opcoes,
+  .duas-colunas {
     grid-template-columns: 1fr;
+  }
+
+  .barra-linha.larga {
+    grid-template-columns: 120px 1fr;
+  }
+
+  .segmentado.periodo {
+    width: 100%;
   }
 
   .kpi .kpi-heroi {

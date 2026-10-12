@@ -1,4 +1,4 @@
-import type { CategoriaId, FormaPagamento } from './tipos';
+import type { CategoriaId, CategoriaLancamento, FormaPagamento, MotivoAjuste, TipoLancamento } from './tipos';
 
 export interface Categoria {
   id: CategoriaId;
@@ -37,6 +37,46 @@ export const FORMAS_PAGAMENTO: InfoFormaPagamento[] = [
 
 export function formaPagamento(id: FormaPagamento): InfoFormaPagamento {
   return FORMAS_PAGAMENTO.find((f) => f.id === id) ?? FORMAS_PAGAMENTO[0];
+}
+
+export interface InfoCategoriaLancamento {
+  id: CategoriaLancamento;
+  nome: string;
+  tipo: TipoLancamento;
+  /** Lançada sozinha pelo sistema (venda e compra de mercadoria); não aparece no formulário. */
+  automatica?: boolean;
+}
+
+export const CATEGORIAS_LANCAMENTO: InfoCategoriaLancamento[] = [
+  { id: 'vendas', nome: 'Vendas', tipo: 'receita', automatica: true },
+  { id: 'outras-receitas', nome: 'Outras entradas', tipo: 'receita' },
+  { id: 'mercadoria', nome: 'Compra de mercadoria', tipo: 'despesa', automatica: true },
+  { id: 'aluguel', nome: 'Aluguel', tipo: 'despesa' },
+  { id: 'contas', nome: 'Luz, água e internet', tipo: 'despesa' },
+  { id: 'salarios', nome: 'Funcionários', tipo: 'despesa' },
+  { id: 'impostos', nome: 'Impostos e taxas', tipo: 'despesa' },
+  { id: 'manutencao', nome: 'Manutenção', tipo: 'despesa' },
+  { id: 'outras-despesas', nome: 'Outras despesas', tipo: 'despesa' },
+];
+
+export function categoriaLancamento(id: CategoriaLancamento): InfoCategoriaLancamento {
+  return CATEGORIAS_LANCAMENTO.find((c) => c.id === id) ?? CATEGORIAS_LANCAMENTO[CATEGORIAS_LANCAMENTO.length - 1];
+}
+
+export interface InfoMotivoAjuste {
+  id: MotivoAjuste;
+  nome: string;
+  dica: string;
+}
+
+export const MOTIVOS_AJUSTE: InfoMotivoAjuste[] = [
+  { id: 'perda', nome: 'Perda ou quebra', dica: 'Garrafa quebrada, produto vencido ou estragado.' },
+  { id: 'consumo', nome: 'Consumo próprio', dica: 'Saiu do estoque sem venda (uso da casa, brinde).' },
+  { id: 'contagem', nome: 'Contagem', dica: 'Contou a prateleira e o número é diferente do sistema.' },
+];
+
+export function motivoAjuste(id: MotivoAjuste): InfoMotivoAjuste {
+  return MOTIVOS_AJUSTE.find((m) => m.id === id) ?? MOTIVOS_AJUSTE[0];
 }
 
 /**

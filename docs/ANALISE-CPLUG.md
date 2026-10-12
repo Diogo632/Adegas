@@ -19,17 +19,17 @@ Comparação com o **Cplug** (ConnectPlug), um dos sistemas mais usados hoje por
 | Favoritos / mais vendidos na tela de venda | ✅ favoritos manuais | ✅ **mais vendidos automático** (nesta versão) | — |
 | Pix, crédito, débito, dinheiro com troco | ✅ (+ voucher) | ✅ | — |
 | Entrada de mercadoria | ✅ importando o XML da nota | ✅ manual, em fardo ou unidade, com custo médio | XML: futuro |
-| Baixa de estoque automática e alerta de mínimo | ✅ | ✅ | — |
-| Lote e validade | ✅ | ❌ | etapa 3 |
+| Baixa de estoque automática e alerta de mínimo | ✅ | ✅ + ajuste por perda, consumo e contagem | — |
+| Lote e validade | ✅ | ❌ | depois |
 | Rótulo, safra e origem (vinhos) | ✅ | ❌ | só se fizer sentido |
-| Abrir/fechar caixa, sangria e reforço | ✅ | ❌ | **etapa 4 (prioridade)** |
+| Abrir/fechar caixa, sangria e reforço | ✅ | ❌ | **etapa 5 (prioridade)** |
 | Desconto e cupom na venda | ✅ | ❌ | etapa 5 |
 | Leitor de código de barras pela câmera | ✅ bipagem contínua | ❌ | etapa 5 |
 | TEF (valor vai sozinho para a maquininha) | ✅ pago à parte | ❌ | futuro |
 | NFC-e / NF-e | ✅ | ❌ | depende da resposta à pergunta 5 do fluxo |
 | Funciona sem internet | ✅ no PDV; no app está "previsto" | ❌ | decidir na etapa 2 |
 | Catálogo no WhatsApp, delivery | ✅ | ❌ | futuro |
-| Relatórios / BI | ✅ | resumo do dia | etapa 4 |
+| Relatórios / BI | ✅ | ✅ por dia, hora, produto, categoria e forma | — |
 | Várias lojas | ✅ | ❌ | pergunta 2 do fluxo |
 
 **Ações rápidas do app do Cplug (PDV Pro):** cliente, desconto, sangria, reforço, vendedor e cupom, acessíveis da tela de venda. É uma boa ideia de organização: as ações secundárias ficam num lugar só e não poluem a tela.

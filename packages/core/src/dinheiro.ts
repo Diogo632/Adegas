@@ -42,3 +42,13 @@ export function paraCentavos(texto: string): Centavos | null {
   if (!Number.isFinite(valor)) return null;
   return Math.round(valor * 100);
 }
+
+/** Para eixos e rótulos curtos: 123456 -> "R$ 1,2 mil", 80000 -> "R$ 800". */
+export function formatarDinheiroCurto(valor: Centavos): string {
+  const reais = Math.round(valor / 100);
+  if (Math.abs(reais) >= 1000) {
+    const mil = Math.round(reais / 100) / 10;
+    return `R$ ${String(mil).replace('.', ',')} mil`;
+  }
+  return `R$ ${reais}`;
+}

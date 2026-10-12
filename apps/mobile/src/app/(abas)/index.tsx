@@ -14,10 +14,10 @@ import { ArrowDownLeft, ArrowUpRight, ChevronRight, PackagePlus, ShoppingBag, Tr
 import { Fragment } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Entrar, NumeroAnimado, Tocavel } from '../components/animacoes';
-import { ICONE_FORMA } from '../components/icones';
-import { Botao, Cartao, Divisor, Secao } from '../components/ui';
-import { CORES, FONTE, RAIO, TEXTO } from '../tema';
+import { Entrar, NumeroAnimado, Tocavel } from '../../components/animacoes';
+import { ICONE_FORMA } from '../../components/icones';
+import { Botao, Cartao, Divisor, Secao } from '../../components/ui';
+import { CORES, FONTE, RAIO, TEXTO } from '../../tema';
 
 export default function Inicio() {
   const { estado } = useAdega();

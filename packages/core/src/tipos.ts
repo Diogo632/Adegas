@@ -78,17 +78,51 @@ export interface Venda {
   troco?: Centavos;
 }
 
-/** Linha do financeiro. Toda venda e toda entrada geram um lançamento. */
+export type TipoLancamento = 'receita' | 'despesa';
+
+export type CategoriaLancamento =
+  | 'vendas'
+  | 'outras-receitas'
+  | 'mercadoria'
+  | 'aluguel'
+  | 'contas'
+  | 'salarios'
+  | 'impostos'
+  | 'manutencao'
+  | 'outras-despesas';
+
+/**
+ * Linha do financeiro. Toda venda e toda entrada de mercadoria geram uma
+ * automaticamente; as demais (aluguel, luz, salário...) são lançadas à mão.
+ */
 export interface Lancamento {
   id: string;
   data: string;
-  tipo: 'receita' | 'despesa';
-  origem: 'venda' | 'compra';
+  tipo: TipoLancamento;
+  origem: 'venda' | 'compra' | 'manual';
+  categoria: CategoriaLancamento;
   descricao: string;
   valor: Centavos;
   formaPagamento: FormaPagamento;
-  /** id da venda ou da entrada que gerou o lançamento. */
-  referenciaId: string;
+  /** id da venda ou da entrada que gerou o lançamento (não existe nos manuais). */
+  referenciaId?: string;
+}
+
+/** Por que o estoque foi corrigido à mão. */
+export type MotivoAjuste = 'perda' | 'consumo' | 'contagem';
+
+/** Correção de estoque sem venda nem compra: quebra, consumo próprio ou contagem. */
+export interface AjusteEstoque {
+  id: string;
+  data: string;
+  produtoId: string;
+  produtoNome: string;
+  motivo: MotivoAjuste;
+  quantidadeAntes: number;
+  quantidadeDepois: number;
+  /** Custo médio na hora do ajuste, para saber quanto foi perdido. */
+  custoUnitario: Centavos;
+  observacao?: string;
 }
 
 export interface Estado {
@@ -96,6 +130,7 @@ export interface Estado {
   vendas: Venda[];
   entradas: EntradaEstoque[];
   lancamentos: Lancamento[];
+  ajustes: AjusteEstoque[];
 }
 
 export type Resultado<T> = { ok: true; valor: T } | { ok: false; erro: string };

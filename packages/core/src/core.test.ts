@@ -15,6 +15,17 @@ import {
   buscarProdutos,
   maisVendidos,
   saudacao,
+  montarAjuste,
+  montarEdicaoProduto,
+  movimentosDoProduto,
+  resumoEstoque,
+  filtrarEstoque,
+  statusEstoque,
+  intervaloDoPeriodo,
+  resumoFinanceiro,
+  lancamentosDoPeriodo,
+  montarLancamento,
+  relatorioVendas,
 } from './index';
 import type { Estado, Produto } from './index';
 
@@ -151,14 +162,97 @@ describe('resumo e alertas', () => {
     expect(estoqueBaixo(estadoBase().produtos).map((p) => p.id)).toEqual(['c1']);
     const exemplo = estadoDeExemplo(new Date(2026, 9, 12, 20, 0));
     expect(buscarProdutos(exemplo.produtos, 'agua').map((p) => p.nome)).toEqual(['Água Mineral 500ml']);
-    expect(exemplo.vendas.length).toBe(6);
+    expect(resumoDoDia(exemplo, new Date(2026, 9, 12, 20, 0)).quantidadeVendas).toBe(6);
   });
 
   it('mostra os mais vendidos e a saudação da hora', () => {
     const exemplo = estadoDeExemplo(new Date(2026, 9, 12, 20, 0));
-    expect(maisVendidos(exemplo, 2).map((p) => p.id)).toEqual(['skol-lata', 'brahma-lata']);
+    expect(maisVendidos(exemplo, 2).map((p) => p.id)).toEqual(['brahma-lata', 'skol-lata']);
     expect(saudacao(new Date(2026, 9, 12, 9))).toBe('Bom dia');
     expect(saudacao(new Date(2026, 9, 12, 15))).toBe('Boa tarde');
     expect(saudacao(new Date(2026, 9, 12, 23))).toBe('Boa noite');
+  });
+});
+
+describe('estoque', () => {
+  it('classifica, resume e filtra', () => {
+    const produtos: Produto[] = [
+      { ...cerveja, id: 'a', estoque: 0 },
+      { ...cerveja, id: 'b', nome: 'Gelo', estoque: 5, estoqueMinimo: 10 },
+      { ...cerveja, id: 'c', nome: 'Vinho', estoque: 20, estoqueMinimo: 2 },
+    ];
+    expect(produtos.map(statusEstoque)).toEqual(['zerado', 'baixo', 'ok']);
+    expect(resumoEstoque(produtos)).toMatchObject({ unidades: 25, valorCusto: 7500, valorVenda: 12500, baixo: 1, zerado: 1 });
+    expect(filtrarEstoque(produtos, '', 'baixo').map((p) => p.id).sort()).toEqual(['a', 'b']);
+    expect(filtrarEstoque(produtos, '', 'zerado').map((p) => p.id)).toEqual(['a']);
+  });
+
+  it('edita o produto sem mexer na quantidade', () => {
+    const r = montarEdicaoProduto(estadoBase(), 'c1', { nome: 'Cerveja Lata Gelada', categoria: 'cerveja', precoVenda: 550, estoqueMinimo: 6 });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const estado = reducer(estadoBase(), { tipo: 'editar-produto', produto: r.valor });
+    expect(estado.produtos[0]).toMatchObject({ nome: 'Cerveja Lata Gelada', precoVenda: 550, estoqueMinimo: 6, estoque: 10 });
+    expect(montarEdicaoProduto(estadoBase(), 'c1', { nome: '', categoria: 'cerveja', precoVenda: 550, estoqueMinimo: 6 }).ok).toBe(false);
+  });
+
+  it('ajusta por perda e por contagem, e guarda no histórico', () => {
+    const perda = montarAjuste(estadoBase(), { produtoId: 'c1', motivo: 'perda', quantidade: 2, observacao: 'quebrou' });
+    expect(perda.ok).toBe(true);
+    if (!perda.ok) return;
+    let estado = reducer(estadoBase(), { tipo: 'ajustar-estoque', ajuste: perda.valor });
+    expect(estado.produtos[0].estoque).toBe(8);
+
+    const contagem = montarAjuste(estado, { produtoId: 'c1', motivo: 'contagem', quantidade: 11 });
+    expect(contagem.ok).toBe(true);
+    if (!contagem.ok) return;
+    estado = reducer(estado, { tipo: 'ajustar-estoque', ajuste: contagem.valor });
+    expect(estado.produtos[0].estoque).toBe(11);
+    expect(movimentosDoProduto(estado, 'c1').map((m) => m.quantidade).sort()).toEqual([-2, 3]);
+
+    expect(montarAjuste(estado, { produtoId: 'c1', motivo: 'perda', quantidade: 50 }).ok).toBe(false);
+    expect(montarAjuste(estado, { produtoId: 'c1', motivo: 'contagem', quantidade: 11 }).ok).toBe(false);
+  });
+});
+
+describe('financeiro e relatórios', () => {
+  const agora = new Date(2026, 9, 12, 20, 0);
+
+  it('lança despesa à mão e soma no período', () => {
+    const r = montarLancamento(
+      { tipo: 'despesa', categoria: 'aluguel', descricao: '', valor: 180000, formaPagamento: 'pix' },
+      agora,
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.valor).toMatchObject({ origem: 'manual', descricao: 'Aluguel' });
+    const estado = reducer(estadoBase(), { tipo: 'registrar-lancamento', lancamento: r.valor });
+    const hoje = intervaloDoPeriodo('hoje', agora);
+    expect(resumoFinanceiro(estado, hoje)).toMatchObject({ despesas: 180000, saldo: -180000 });
+    expect(lancamentosDoPeriodo(estado, hoje, 'despesa')).toHaveLength(1);
+    expect(reducer(estado, { tipo: 'excluir-lancamento', id: r.valor.id }).lancamentos).toHaveLength(0);
+    expect(
+      montarLancamento({ tipo: 'despesa', categoria: 'mercadoria', descricao: 'x', valor: 100, formaPagamento: 'pix' }).ok,
+    ).toBe(false);
+  });
+
+  it('monta períodos com o dia de hoje no fim', () => {
+    const sete = intervaloDoPeriodo('7d', agora);
+    expect(sete.inicio).toEqual(new Date(2026, 9, 6));
+    expect(sete.fim).toEqual(new Date(2026, 9, 13));
+    expect(intervaloDoPeriodo('mes', agora).inicio).toEqual(new Date(2026, 9, 1));
+  });
+
+  it('relatório bate com as vendas do período', () => {
+    const exemplo = estadoDeExemplo(agora);
+    const intervalo = intervaloDoPeriodo('30d', agora);
+    const r = relatorioVendas(exemplo, intervalo);
+    expect(r.porDia).toHaveLength(30);
+    expect(r.porDia.reduce((s, d) => s + d.faturamento, 0)).toBe(r.faturamento);
+    expect(r.porHora.reduce((s, h) => s + h.vendas, 0)).toBe(r.quantidadeVendas);
+    expect(r.produtos.reduce((s, p) => s + p.faturamento, 0)).toBe(r.faturamento);
+    expect(Object.values(r.porForma).reduce((s, v) => s + v, 0)).toBe(r.faturamento);
+    expect(r.picos).toHaveLength(3);
+    expect(resumoFinanceiro(exemplo, intervalo).faturamento).toBe(r.faturamento);
   });
 });

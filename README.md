@@ -10,15 +10,18 @@ Sistema para adegas controlarem **estoque** (bebidas, cigarros, gelo...), **vend
 
 ```
 apps/
-  mobile/   App (Expo + React Native) — Início, Nova venda, Pagamento, Entrada de produto
-  web/      Painel web (Vite + React) — Início, Vender (frente de caixa), Entrada de produto
+  mobile/   App (Expo + React Native) — abas Início, Estoque, Financeiro, Relatórios;
+            Nova venda, Pagamento, Entrada de produto, Produto, Nova movimentação
+  web/      Painel web (Vite + React) — Início, Vender, Entrada de produto, Estoque,
+            Financeiro, Relatórios
 packages/
-  core/     Regras compartilhadas: produtos, estoque, custo médio, vendas, troco, financeiro
+  core/     Regras compartilhadas: produtos, estoque, ajustes, custo médio, vendas, troco,
+            financeiro, relatórios
 docs/
   FLUXO.md  Fluxo do sistema
 ```
 
-> Etapa atual: **esqueleto**. Os dados ficam na memória e começam com produtos e vendas de exemplo. O banco na nuvem (para app e web verem os mesmos dados) é a próxima etapa.
+> Os dados ainda ficam na memória e começam com produtos e 30 dias de vendas, compras e contas de exemplo. O banco na nuvem (para app e web verem os mesmos dados) é a próxima etapa.
 
 ## Como testar
 
@@ -60,6 +63,9 @@ Os dados ainda ficam só na memória: ao fechar ou recarregar, tudo volta para o
 - **Reposição:** no início, toque em **Repor** no Gelo → Unidade → 10 unidades a R$ 7,00 → Registrar. O estoque vai a 13 e o Gelo sai da lista de repor.
 - **Produto novo:** Entrada de produto → Produto novo → preencha nome, preço e custo. Ele aparece na tela de venda.
 - **Proteções:** tente vender mais do que tem em estoque, ou receber em dinheiro menos que o total. O sistema não deixa.
+- **Estoque:** abra o Gelo → Ajustar → Perda, 1 unidade → Salvar. O estoque cai 1 e a perda aparece no Financeiro.
+- **Financeiro:** Nova movimentação → Saída → Luz, água e internet → R$ 120,00. Ela entra no topo das movimentações e no "Para onde foi o dinheiro".
+- **Relatórios:** troque o período (Hoje, 7 dias, 30 dias) e passe o mouse (ou toque) nas colunas.
 
 ### Testes automáticos
 

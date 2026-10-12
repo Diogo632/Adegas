@@ -1,12 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { reducer } from './estado';
-import type { DadosEntrada } from './estoque';
-import { montarEntrada } from './estoque';
+import type { DadosAjuste, DadosEdicaoProduto, DadosEntrada } from './estoque';
+import { montarAjuste, montarEdicaoProduto, montarEntrada } from './estoque';
+import type { DadosLancamento } from './financeiro';
+import { montarLancamento } from './financeiro';
 import { estadoDeExemplo } from './exemplo';
-import type { EntradaEstoque, Estado, Resultado, Venda } from './tipos';
+import type { AjusteEstoque, EntradaEstoque, Estado, Lancamento, Produto, Resultado, Venda } from './tipos';
 import type { DadosPagamento, ItemCarrinho } from './vendas';
-import { alterarQuantidade, montarVenda } from './vendas';
+import { alterarQuantidade, montarVenda, quantidadeNoCarrinho } from './vendas';
 
 interface ContextoAdega {
   estado: Estado;
@@ -16,6 +18,11 @@ interface ContextoAdega {
   registrarEntrada(dados: DadosEntrada): Resultado<EntradaEstoque>;
   /** Fecha a venda com o que está no carrinho e esvazia o carrinho. */
   finalizarVenda(pagamento: DadosPagamento): Resultado<Venda>;
+  editarProduto(produtoId: string, dados: DadosEdicaoProduto): Resultado<Produto>;
+  ajustarEstoque(dados: DadosAjuste): Resultado<AjusteEstoque>;
+  registrarLancamento(dados: DadosLancamento): Resultado<Lancamento>;
+  /** Só apaga lançamentos feitos à mão. */
+  excluirLancamento(id: string): void;
 }
 
 const Contexto = createContext<ContextoAdega | null>(null);
@@ -56,9 +63,58 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
     return resultado;
   }, []);
 
+  const editarProduto = useCallback((produtoId: string, dados: DadosEdicaoProduto): Resultado<Produto> => {
+    const resultado = montarEdicaoProduto(estadoAtual.current, produtoId, dados);
+    if (resultado.ok) despachar({ tipo: 'editar-produto', produto: resultado.valor });
+    return resultado;
+  }, []);
+
+  const ajustarEstoque = useCallback((dados: DadosAjuste): Resultado<AjusteEstoque> => {
+    const resultado = montarAjuste(estadoAtual.current, dados);
+    if (resultado.ok) {
+      despachar({ tipo: 'ajustar-estoque', ajuste: resultado.valor });
+      // O carrinho não pode ficar com mais do que sobrou.
+      const produto = estadoAtual.current.produtos.find((p) => p.id === dados.produtoId);
+      if (produto) {
+        setCarrinho((c) => alterarQuantidade(c, { ...produto, estoque: resultado.valor.quantidadeDepois }, quantidadeNoCarrinho(c, produto.id)));
+      }
+    }
+    return resultado;
+  }, []);
+
+  const registrarLancamento = useCallback((dados: DadosLancamento): Resultado<Lancamento> => {
+    const resultado = montarLancamento(dados);
+    if (resultado.ok) despachar({ tipo: 'registrar-lancamento', lancamento: resultado.valor });
+    return resultado;
+  }, []);
+
+  const excluirLancamento = useCallback((id: string) => despachar({ tipo: 'excluir-lancamento', id }), []);
+
   const valor = useMemo(
-    () => ({ estado, carrinho, definirQuantidade, limparCarrinho, registrarEntrada, finalizarVenda }),
-    [estado, carrinho, definirQuantidade, limparCarrinho, registrarEntrada, finalizarVenda],
+    () => ({
+      estado,
+      carrinho,
+      definirQuantidade,
+      limparCarrinho,
+      registrarEntrada,
+      finalizarVenda,
+      editarProduto,
+      ajustarEstoque,
+      registrarLancamento,
+      excluirLancamento,
+    }),
+    [
+      estado,
+      carrinho,
+      definirQuantidade,
+      limparCarrinho,
+      registrarEntrada,
+      finalizarVenda,
+      editarProduto,
+      ajustarEstoque,
+      registrarLancamento,
+      excluirLancamento,
+    ],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

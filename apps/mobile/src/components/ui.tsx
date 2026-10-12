@@ -74,10 +74,12 @@ export function Segmentado<T extends string>({
   opcoes,
   valor,
   onChange,
+  compacto,
 }: {
   opcoes: { id: T; rotulo: string }[];
   valor: T;
   onChange: (id: T) => void;
+  compacto?: boolean;
 }) {
   const [largura, setLargura] = useState(0);
   const indice = Math.max(0, opcoes.findIndex((o) => o.id === valor));
@@ -122,9 +124,14 @@ export function Segmentado<T extends string>({
             accessibilityState={{ selected: ativo }}
             onPress={() => onChange(o.id)}
             escala={0.97}
-            style={estilos.segmento}
+            style={[estilos.segmento, compacto && { paddingVertical: 9 }]}
           >
-            <Text style={[estilos.segmentoTexto, ativo && { color: '#FFFFFF' }]}>{o.rotulo}</Text>
+            <Text
+              style={[estilos.segmentoTexto, compacto && { fontSize: 13 }, ativo && { color: '#FFFFFF' }]}
+              numberOfLines={1}
+            >
+              {o.rotulo}
+            </Text>
           </Tocavel>
         );
       })}
@@ -251,10 +258,36 @@ export function LinhaValor({
   );
 }
 
-export function Aviso({ texto }: { texto: string }) {
+export function Aviso({ texto, tipo = 'erro' }: { texto: string; tipo?: 'erro' | 'sucesso' }) {
+  const erro = tipo === 'erro';
   return (
-    <View style={estilos.aviso}>
-      <Text style={{ color: CORES.despesa, fontFamily: FONTE.media, fontSize: 15 }}>{texto}</Text>
+    <View style={[estilos.aviso, !erro && { backgroundColor: CORES.receitaFundo }]}>
+      <Text style={{ color: erro ? CORES.despesa : CORES.receita, fontFamily: FONTE.media, fontSize: 15 }}>{texto}</Text>
+    </View>
+  );
+}
+
+export type Situacao = 'ok' | 'baixo' | 'zerado';
+const NOME_SITUACAO: Record<Situacao, string> = { ok: 'Em dia', baixo: 'Baixo', zerado: 'Sem estoque' };
+
+/** Pílula colorida com a situação do estoque. */
+export function Pilula({ situacao }: { situacao: Situacao }) {
+  const cor = situacao === 'ok' ? CORES.receita : situacao === 'baixo' ? CORES.alerta : CORES.despesa;
+  const fundo = situacao === 'ok' ? CORES.receitaFundo : situacao === 'baixo' ? CORES.alertaFundo : CORES.despesaFundo;
+  return (
+    <View style={[estilos.pilula, { backgroundColor: fundo }]}>
+      <View style={[estilos.pilulaPonto, { backgroundColor: cor }]} />
+      <Text style={[estilos.pilulaTexto, { color: cor }]}>{NOME_SITUACAO[situacao]}</Text>
+    </View>
+  );
+}
+
+/** Título grande das abas (Início, Estoque, Financeiro, Relatórios). */
+export function TituloAba({ sobretitulo, titulo, topo }: { sobretitulo: string; titulo: string; topo: number }) {
+  return (
+    <View style={{ paddingTop: topo + 20, gap: 2 }}>
+      <Text style={[TEXTO.legenda, { color: CORES.primariaClara }]}>{sobretitulo}</Text>
+      <Text style={TEXTO.tituloTela}>{titulo}</Text>
     </View>
   );
 }
@@ -369,4 +402,14 @@ const estilos = StyleSheet.create({
     padding: 14,
     backgroundColor: CORES.despesaFundo,
   },
+  pilula: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  pilulaPonto: { width: 6, height: 6, borderRadius: 3 },
+  pilulaTexto: { fontFamily: FONTE.semi, fontSize: 12 },
 });

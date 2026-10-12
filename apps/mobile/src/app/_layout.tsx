@@ -31,10 +31,12 @@ export default function Layout() {
           animation: 'slide_from_right',
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false, title: 'Início' }} />
+        <Stack.Screen name="(abas)" options={{ headerShown: false, title: 'Início' }} />
         <Stack.Screen name="venda" options={{ title: 'Nova venda' }} />
         <Stack.Screen name="pagamento" options={{ title: 'Pagamento' }} />
         <Stack.Screen name="entrada" options={{ title: 'Entrada de produto' }} />
+        <Stack.Screen name="produto/[id]" options={{ title: 'Produto' }} />
+        <Stack.Screen name="lancamento" options={{ title: 'Nova movimentação' }} />
       </Stack>
     </AdegaProvider>
   );

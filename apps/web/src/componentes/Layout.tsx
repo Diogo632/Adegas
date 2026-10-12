@@ -4,16 +4,16 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { animarEntradaDaTela } from '../animacoes';
 
-const MENU = [
+const OPERACAO = [
   { para: '/', rotulo: 'Início', icone: LayoutDashboard },
   { para: '/venda', rotulo: 'Vender', icone: ShoppingBag },
   { para: '/entrada', rotulo: 'Entrada de produto', icone: PackagePlus },
 ];
 
-const EM_BREVE = [
-  { rotulo: 'Estoque', icone: Boxes },
-  { rotulo: 'Financeiro', icone: Wallet },
-  { rotulo: 'Relatórios', icone: ChartColumn },
+const GESTAO = [
+  { para: '/estoque', rotulo: 'Estoque', icone: Boxes },
+  { para: '/financeiro', rotulo: 'Financeiro', icone: Wallet },
+  { para: '/relatorios', rotulo: 'Relatórios', icone: ChartColumn },
 ];
 
 export function Layout() {
@@ -39,16 +39,16 @@ export function Layout() {
           </div>
         </div>
         <nav>
-          {MENU.map(({ para, rotulo, icone: Icone }) => (
+          {OPERACAO.map(({ para, rotulo, icone: Icone }) => (
             <NavLink key={para} to={para} end className="menu-item">
               <Icone size={18} strokeWidth={1.75} /> {rotulo}
             </NavLink>
           ))}
-          <span className="menu-rotulo">Em breve</span>
-          {EM_BREVE.map(({ rotulo, icone: Icone }) => (
-            <span key={rotulo} className="menu-item desabilitado" title="Próxima etapa">
+          <span className="menu-rotulo">Gestão</span>
+          {GESTAO.map(({ para, rotulo, icone: Icone }) => (
+            <NavLink key={para} to={para} className="menu-item">
               <Icone size={18} strokeWidth={1.75} /> {rotulo}
-            </span>
+            </NavLink>
           ))}
         </nav>
         <p className="menu-nota">Dados de exemplo: ficam só neste navegador por enquanto.</p>
