@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useReducer, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { reducer } from './estado';
 import type { DadosEntrada } from './estoque';
@@ -68,4 +68,41 @@ export function useAdega(): ContextoAdega {
   const contexto = useContext(Contexto);
   if (!contexto) throw new Error('useAdega precisa estar dentro de <AdegaProvider>.');
   return contexto;
+}
+
+// Existem no navegador e no React Native; o núcleo não depende de nenhum dos dois.
+declare function requestAnimationFrame(callback: () => void): number;
+declare function cancelAnimationFrame(id: number): void;
+
+/**
+ * Faz um número "contar" até o valor novo (ex.: R$ 0 → R$ 368,50), em JavaScript,
+ * quadro a quadro. Funciona igual no app e no web. Devolve o valor do momento,
+ * sem arredondar; quem mostra arredonda.
+ */
+export function useContagem(alvo: number, { duracao = 700, animar = true }: { duracao?: number; animar?: boolean } = {}): number {
+  const [valor, setValor] = useState(animar ? 0 : alvo);
+  const atual = useRef(valor);
+
+  useEffect(() => {
+    const inicio = atual.current;
+    const diferenca = alvo - inicio;
+    if (!animar || diferenca === 0) {
+      atual.current = alvo;
+      setValor(alvo);
+      return;
+    }
+    const t0 = Date.now();
+    let quadro = 0;
+    const passo = () => {
+      const progresso = Math.min(1, (Date.now() - t0) / duracao);
+      const suavizado = 1 - Math.pow(1 - progresso, 3);
+      atual.current = inicio + diferenca * suavizado;
+      setValor(atual.current);
+      if (progresso < 1) quadro = requestAnimationFrame(passo);
+    };
+    quadro = requestAnimationFrame(passo);
+    return () => cancelAnimationFrame(quadro);
+  }, [alvo, duracao, animar]);
+
+  return valor;
 }

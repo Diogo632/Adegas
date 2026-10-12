@@ -75,7 +75,11 @@ Os depoimentos positivos (no site do próprio Cplug) elogiam a facilidade do PDV
 - Mesas, comandas, KDS e outros módulos de restaurante no menu principal.
 - Contrato com multa e implantação: o produto precisa se explicar sozinho.
 
-## 7. Direção de design desta versão
+## 7. Direção de design
+
+> **Atualização:** a pedido, o visual passou para **tema escuro** (preto, com detalhes em roxo escuro) e ganhou **animações** em JavaScript: botões que afundam e soltam uma onda de luz ao toque, telas que entram em cascata e números que contam até o valor. A tabela abaixo registra a primeira versão clara.
+
+### Primeira versão (clara)
 
 O pedido foi **simples e sofisticado**. Na prática:
 

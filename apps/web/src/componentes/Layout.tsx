@@ -1,7 +1,8 @@
 import { formatarDiaExtenso } from '@adegas/core';
 import { Boxes, ChartColumn, LayoutDashboard, PackagePlus, ShoppingBag, Wallet, Wine } from 'lucide-react';
-import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router';
+import { animarEntradaDaTela } from '../animacoes';
 
 const MENU = [
   { para: '/', rotulo: 'Início', icone: LayoutDashboard },
@@ -17,6 +18,14 @@ const EM_BREVE = [
 
 export function Layout() {
   const [hoje] = useState(() => new Date());
+  const { pathname } = useLocation();
+  const tela = useRef<HTMLDivElement>(null);
+
+  // A cada troca de tela, a página nova entra animada.
+  useLayoutEffect(() => {
+    if (tela.current) animarEntradaDaTela(tela.current);
+  }, [pathname]);
+
   return (
     <div className="layout">
       <aside className="menu">
@@ -45,7 +54,9 @@ export function Layout() {
         <p className="menu-nota">Dados de exemplo: ficam só neste navegador por enquanto.</p>
       </aside>
       <main className="conteudo">
-        <Outlet />
+        <div key={pathname} ref={tela}>
+          <Outlet />
+        </div>
       </main>
     </div>
   );

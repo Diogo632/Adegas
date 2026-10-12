@@ -44,7 +44,7 @@ export const TEXTO = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    color: CORES.textoSuave,
+    color: CORES.primariaClara,
   },
   corpo: { fontFamily: FONTE.regular, fontSize: 16, color: CORES.texto },
   corpoForte: { fontFamily: FONTE.semi, fontSize: 16, color: CORES.texto },

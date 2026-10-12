@@ -4,6 +4,7 @@ import '@fontsource-variable/inter';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router';
+import { ativarAnimacoesDeToque } from './animacoes';
 import { Layout } from './componentes/Layout';
 import { Entrada } from './paginas/Entrada';
 import { Inicio } from './paginas/Inicio';
@@ -14,6 +15,8 @@ import './estilos.css';
 for (const [nome, cor] of Object.entries(CORES)) {
   document.documentElement.style.setProperty(`--${nome}`, cor);
 }
+
+ativarAnimacoesDeToque();
 
 // Na prévia (npm run build:demo) a página roda dentro de outro site, então a
 // navegação fica só na memória em vez de mexer no endereço do navegador.

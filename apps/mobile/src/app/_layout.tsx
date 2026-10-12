@@ -18,7 +18,7 @@ export default function Layout() {
 
   return (
     <AdegaProvider>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: CORES.fundo },
@@ -27,6 +27,8 @@ export default function Layout() {
           headerTitleStyle: { fontFamily: FONTE.titulo, fontSize: 20 },
           headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: CORES.fundo },
+          // Troca de tela deslizando (no celular); o conteúdo também entra em cascata.
+          animation: 'slide_from_right',
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false, title: 'Início' }} />

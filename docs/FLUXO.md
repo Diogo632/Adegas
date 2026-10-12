@@ -169,6 +169,7 @@ Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, 
 |---|---|---|
 | **1. Esqueleto** | Telas de Início, Entrada de produto e Venda/Pagamento no app e no web; regras de estoque, custo médio, troco e financeiro | ✅ pronto |
 | **1.1 Design** | Visual neutro e sofisticado, ícones de linha, "mais vendidos" na venda. Comparativo com o Cplug em [`ANALISE-CPLUG.md`](ANALISE-CPLUG.md) | ✅ pronto |
+| **1.2 Tema escuro e animações** | Preto com detalhes em roxo escuro; animações em JavaScript nos botões, na troca de telas e nos números (contam até o valor) | ✅ pronto |
 | **2. Banco na nuvem + login** | App e web passam a ver os mesmos dados em tempo real; login do dono. Sugestão: **Supabase** (banco Postgres, login e tempo real prontos, plano grátis para começar). Já pensar em **funcionar sem internet** | próxima |
 | **3. Estoque** | Lista completa, editar produto e preço, ajuste por perda/quebra/consumo, contagem (inventário) | |
 | **4. Caixa e financeiro** | **Abrir/fechar o caixa do dia, sangria e reforço**, despesas da loja (aluguel, luz, funcionário), taxa da maquininha, relatório por período | |

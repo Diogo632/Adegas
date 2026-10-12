@@ -11,6 +11,7 @@ import {
 } from '@adegas/core';
 import { ArrowDownLeft, ArrowUpRight, PackagePlus, ShoppingBag, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router';
+import { Barra, Numero } from '../componentes/Animados';
 import { ICONE_FORMA } from '../componentes/icones';
 
 export function Inicio() {
@@ -38,24 +39,32 @@ export function Inicio() {
       </header>
 
       <section className="kpis">
-        <div className="kpi escuro">
+        <div className="kpi escuro" data-entrada>
           <span>Vendido hoje</span>
-          <strong className="kpi-heroi">{formatarDinheiro(resumo.faturamento)}</strong>
+          <strong className="kpi-heroi">
+            <Numero valor={resumo.faturamento} />
+          </strong>
           <small>{resumo.quantidadeVendas} vendas</small>
         </div>
-        <div className="kpi">
+        <div className="kpi" data-entrada>
           <span>Lucro bruto</span>
-          <strong>{formatarDinheiro(resumo.lucroBruto)}</strong>
+          <strong>
+            <Numero valor={resumo.lucroBruto} />
+          </strong>
           <small>vendas menos o custo dos produtos</small>
         </div>
-        <div className="kpi">
+        <div className="kpi" data-entrada>
           <span>Ticket médio</span>
-          <strong>{formatarDinheiro(resumo.ticketMedio)}</strong>
+          <strong>
+            <Numero valor={resumo.ticketMedio} />
+          </strong>
           <small>por venda</small>
         </div>
-        <div className="kpi">
+        <div className="kpi" data-entrada>
           <span>Compras do dia</span>
-          <strong>{formatarDinheiro(resumo.despesas)}</strong>
+          <strong>
+            <Numero valor={resumo.despesas} />
+          </strong>
           <small>
             saldo {resumo.saldo < 0 ? '−' : ''}
             {formatarDinheiro(Math.abs(resumo.saldo))}
@@ -64,7 +73,7 @@ export function Inicio() {
       </section>
 
       <div className="grade-2">
-        <section className="cartao">
+        <section className="cartao" data-entrada>
           <h2>Recebido por forma de pagamento</h2>
           <div className="barras" role="table" aria-label="Recebido hoje por forma de pagamento">
             {FORMAS_PAGAMENTO.map((f) => {
@@ -83,8 +92,8 @@ export function Inicio() {
                     <Icone size={16} strokeWidth={1.75} /> {f.nome}
                   </span>
                   <div className="barra-trilho" role="cell">
-                    <div className="barra" style={{ width: `${(valor / maiorForma) * 100}%` }} />
-                    <span className="barra-valor">{formatarDinheiro(valor)}</span>
+                    <Barra fracao={valor / maiorForma} />
+                    <Numero valor={valor} className="barra-valor" />
                   </div>
                 </div>
               );
@@ -92,7 +101,7 @@ export function Inicio() {
           </div>
         </section>
 
-        <section className="cartao">
+        <section className="cartao" data-entrada>
           <h2>Repor estoque</h2>
           {alertas.length === 0 ? (
             <p className="suave">Tudo em ordem.</p>
@@ -119,7 +128,7 @@ export function Inicio() {
         </section>
       </div>
 
-      <section className="cartao">
+      <section className="cartao" data-entrada>
         <h2>Movimentações</h2>
         <table className="tabela">
           <thead>

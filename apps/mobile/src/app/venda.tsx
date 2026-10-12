@@ -12,8 +12,9 @@ import {
 import { router } from 'expo-router';
 import { Plus, Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Entrar, NumeroAnimado, Tocavel } from '../components/animacoes';
 import { ICONE_CATEGORIA } from '../components/icones';
 import { Botao, Campo, Chip, Contador, IconeQuadrado } from '../components/ui';
 import { CORES, FONTE, RAIO, TEXTO } from '../tema';
@@ -59,12 +60,14 @@ export default function Venda() {
         renderSectionHeader={({ section }) => <Text style={[TEXTO.secao, estilos.secao]}>{section.titulo}</Text>}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         ListEmptyComponent={<Text style={[TEXTO.legenda, { textAlign: 'center', marginTop: 40 }]}>Nenhum produto encontrado.</Text>}
-        renderItem={({ item }) => (
-          <LinhaProduto
-            produto={item}
-            quantidade={quantidadeNoCarrinho(carrinho, item.id)}
-            onQuantidade={(v) => definirQuantidade(item.id, v)}
-          />
+        renderItem={({ item, index }) => (
+          <Entrar atraso={Math.min(index, 8) * 45}>
+            <LinhaProduto
+              produto={item}
+              quantidade={quantidadeNoCarrinho(carrinho, item.id)}
+              onQuantidade={(v) => definirQuantidade(item.id, v)}
+            />
+          </Entrar>
         )}
       />
 
@@ -73,7 +76,7 @@ export default function Venda() {
           <Text style={TEXTO.legenda}>
             {itens} {itens === 1 ? 'item' : 'itens'}
           </Text>
-          <Text style={estilos.barraTotal}>{formatarDinheiro(total)}</Text>
+          <NumeroAnimado valor={total} formatar={formatarDinheiro} style={estilos.barraTotal} />
         </View>
         <Botao titulo="Pagamento" desabilitado={itens === 0} onPress={() => router.push('/pagamento')} style={{ paddingHorizontal: 28 }} />
       </View>
@@ -93,9 +96,10 @@ function LinhaProduto({
   const semEstoque = produto.estoque === 0;
   const noCarrinho = quantidade > 0;
   return (
-    <Pressable
+    <Tocavel
       onPress={() => onQuantidade(quantidade + 1)}
       disabled={semEstoque || quantidade >= produto.estoque}
+      escala={0.98}
       style={[estilos.produto, noCarrinho && estilos.produtoNoCarrinho]}
     >
       <IconeQuadrado icone={ICONE_CATEGORIA[produto.categoria]} />
@@ -116,10 +120,10 @@ function LinhaProduto({
         <Contador compacto valor={quantidade} maximo={produto.estoque} onChange={onQuantidade} />
       ) : (
         <View style={[estilos.mais, semEstoque && { opacity: 0.3 }]}>
-          <Plus size={18} color={CORES.texto} strokeWidth={2} />
+          <Plus size={18} color={CORES.primariaClara} strokeWidth={2} />
         </View>
       )}
-    </Pressable>
+    </Tocavel>
   );
 }
 
@@ -139,14 +143,14 @@ const estilos = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
   },
-  produtoNoCarrinho: { borderColor: CORES.tinta },
+  produtoNoCarrinho: { borderColor: CORES.primaria, backgroundColor: CORES.primariaSuave },
   preco: { fontFamily: FONTE.semi, color: CORES.texto },
   mais: {
     width: 38,
     height: 38,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: CORES.borda,
+    borderColor: CORES.bordaForte,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -157,8 +161,8 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     backgroundColor: CORES.superficie,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
     borderTopColor: CORES.borda,
   },
-  barraTotal: { fontFamily: FONTE.semi, fontSize: 24, color: CORES.texto, letterSpacing: -0.5 },
+  barraTotal: { fontFamily: FONTE.semi, fontSize: 24, color: CORES.texto, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
 });

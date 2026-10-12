@@ -13,10 +13,11 @@ import {
 import { router } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { Fragment, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Entrar, NumeroAnimado, Surgir, Tocavel } from '../components/animacoes';
 import { ICONE_FORMA } from '../components/icones';
-import { Aviso, Botao, Campo, Cartao, Chip, Divisor, LinhaValor, Secao } from '../components/ui';
+import { Aviso, Botao, Campo, Cartao, Chip, Divisor, LinhaValor, Secao, estiloValorDestaque } from '../components/ui';
 import { CORES, FONTE, RAIO, TEXTO } from '../tema';
 
 export default function Pagamento() {
@@ -53,11 +54,12 @@ export default function Pagamento() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={estilos.tela} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-        <View style={estilos.total}>
+        <Entrar style={estilos.total}>
           <Text style={TEXTO.legenda}>Total a receber</Text>
-          <Text style={estilos.totalValor}>{formatarDinheiro(total)}</Text>
-        </View>
+          <NumeroAnimado valor={total} formatar={formatarDinheiro} style={estilos.totalValor} />
+        </Entrar>
 
+        <Entrar atraso={80}>
         <Cartao style={{ gap: 12 }}>
           {itens.map((i, n) => (
             <Fragment key={i.produto.id}>
@@ -72,14 +74,16 @@ export default function Pagamento() {
             </Fragment>
           ))}
         </Cartao>
+        </Entrar>
 
+        <Entrar atraso={160} style={{ gap: 16 }}>
         <Secao>Forma de pagamento</Secao>
         <View style={estilos.grade}>
           {FORMAS_PAGAMENTO.map((f) => {
             const ativo = forma === f.id;
             const Icone = ICONE_FORMA[f.id];
             return (
-              <Pressable
+              <Tocavel
                 key={f.id}
                 accessibilityRole="button"
                 accessibilityState={{ selected: ativo }}
@@ -87,23 +91,26 @@ export default function Pagamento() {
                   setForma(f.id);
                   setErro(null);
                 }}
+                escala={0.95}
                 style={[estilos.forma, ativo && estilos.formaAtiva]}
               >
-                <Icone size={24} color={ativo ? '#FFFFFF' : CORES.texto} strokeWidth={1.6} />
+                <Icone size={24} color={ativo ? '#FFFFFF' : CORES.primariaClara} strokeWidth={1.6} />
                 <Text style={[estilos.formaNome, ativo && { color: '#FFFFFF' }]}>{f.nome}</Text>
                 {ativo && (
-                  <View style={estilos.formaCheck}>
-                    <Check size={12} color={CORES.tinta} strokeWidth={3} />
-                  </View>
+                  <Surgir style={estilos.formaCheck}>
+                    <Check size={12} color={CORES.primaria} strokeWidth={3} />
+                  </Surgir>
                 )}
-              </Pressable>
+              </Tocavel>
             );
           })}
         </View>
+        </Entrar>
 
         {forma && <Text style={[TEXTO.legenda, { textAlign: 'center' }]}>{formaPagamento(forma).dica}</Text>}
 
         {forma === 'dinheiro' && (
+          <Entrar>
           <Cartao>
             <Campo
               rotulo="Valor recebido"
@@ -127,9 +134,20 @@ export default function Pagamento() {
             {faltaDinheiro ? (
               <LinhaValor rotulo="Faltam" valor={formatarDinheiro(total - (recebido ?? 0))} destaque />
             ) : (
-              <LinhaValor rotulo="Troco" valor={formatarDinheiro(recebido === null ? 0 : recebido - total)} destaque />
+              <LinhaValor
+                rotulo="Troco"
+                valor={
+                  <NumeroAnimado
+                    valor={recebido === null ? 0 : recebido - total}
+                    formatar={formatarDinheiro}
+                    style={[estiloValorDestaque, { color: CORES.receita }]}
+                  />
+                }
+                destaque
+              />
             )}
           </Cartao>
+          </Entrar>
         )}
 
         {erro && <Aviso texto={erro} />}
@@ -152,24 +170,26 @@ function VendaConcluida({ venda }: { venda: Venda }) {
   return (
     <ScrollView contentContainerStyle={[estilos.tela, { paddingTop: 48 }]}>
       <View style={{ alignItems: 'center', gap: 10 }}>
-        <View style={estilos.selo}>
-          <Check size={30} color="#FFFFFF" strokeWidth={2.5} />
-        </View>
-        <Text style={[TEXTO.tituloTela, { fontSize: 26, marginTop: 8 }]}>Venda registrada</Text>
-        <Text style={TEXTO.legenda}>
-          {formatarDinheiro(venda.total)} no {forma.nome.toLowerCase()} · estoque e caixa atualizados
-        </Text>
+        <Surgir style={estilos.selo}>
+          <Check size={30} color={CORES.fundo} strokeWidth={3} />
+        </Surgir>
+        <Entrar atraso={120} style={{ alignItems: 'center', gap: 10 }}>
+          <Text style={[TEXTO.tituloTela, { fontSize: 26, marginTop: 8 }]}>Venda registrada</Text>
+          <Text style={TEXTO.legenda}>
+            {formatarDinheiro(venda.total)} no {forma.nome.toLowerCase()} · estoque e caixa atualizados
+          </Text>
+        </Entrar>
       </View>
       {temTroco && (
-        <View style={estilos.troco}>
+        <Entrar atraso={220} style={estilos.troco}>
           <Text style={estilos.trocoRotulo}>Devolver de troco</Text>
-          <Text style={estilos.trocoValor}>{formatarDinheiro(venda.troco ?? 0)}</Text>
-        </View>
+          <NumeroAnimado valor={venda.troco ?? 0} formatar={formatarDinheiro} style={estilos.trocoValor} />
+        </Entrar>
       )}
-      <View style={{ gap: 10, marginTop: 8 }}>
+      <Entrar atraso={300} style={{ gap: 10, marginTop: 8 }}>
         <Botao titulo="Nova venda" onPress={() => router.back()} />
         <Botao titulo="Voltar ao início" variante="contorno" onPress={() => router.dismissAll()} />
-      </View>
+      </Entrar>
     </ScrollView>
   );
 }
@@ -178,7 +198,7 @@ const estilos = StyleSheet.create({
   tela: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, gap: 16 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 },
   total: { alignItems: 'center', paddingVertical: 8, gap: 2 },
-  totalValor: { fontFamily: FONTE.semi, fontSize: 44, color: CORES.texto, letterSpacing: -1 },
+  totalValor: { fontFamily: FONTE.semi, fontSize: 44, color: CORES.texto, letterSpacing: -1, fontVariant: ['tabular-nums'] },
   item: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   itemQtd: { fontFamily: FONTE.semi, fontSize: 15, color: CORES.textoSuave, minWidth: 28 },
   grade: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -193,7 +213,7 @@ const estilos = StyleSheet.create({
     gap: 10,
     backgroundColor: CORES.superficie,
   },
-  formaAtiva: { backgroundColor: CORES.tinta, borderColor: CORES.tinta },
+  formaAtiva: { backgroundColor: CORES.primaria, borderColor: CORES.primariaClara },
   formaNome: { fontFamily: FONTE.semi, fontSize: 16, color: CORES.texto },
   formaCheck: {
     position: 'absolute',
@@ -211,7 +231,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     backgroundColor: CORES.superficie,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
     borderTopColor: CORES.borda,
   },
   selo: {
@@ -223,12 +243,14 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   troco: {
-    backgroundColor: CORES.tinta,
+    backgroundColor: CORES.destaqueFundo,
+    borderWidth: 1,
+    borderColor: CORES.destaqueBorda,
     borderRadius: RAIO.grande,
     paddingVertical: 22,
     alignItems: 'center',
     gap: 4,
   },
-  trocoRotulo: { fontFamily: FONTE.media, fontSize: 14, color: CORES.tintaTexto },
-  trocoValor: { fontFamily: FONTE.semi, fontSize: 40, color: '#FFFFFF', letterSpacing: -1 },
+  trocoRotulo: { fontFamily: FONTE.media, fontSize: 14, color: CORES.primariaClara },
+  trocoValor: { fontFamily: FONTE.semi, fontSize: 40, color: '#FFFFFF', letterSpacing: -1, fontVariant: ['tabular-nums'] },
 });

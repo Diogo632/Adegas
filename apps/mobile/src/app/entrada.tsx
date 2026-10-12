@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Check, Search } from 'lucide-react-native';
 import { Fragment, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Entrar, NumeroAnimado, Surgir, Tocavel } from '../components/animacoes';
 import { ICONE_CATEGORIA } from '../components/icones';
 import {
   Aviso,
@@ -126,7 +127,7 @@ export default function Entrada() {
 
       {modo === 'existente' &&
         (produto ? (
-          <Cartao style={{ borderColor: CORES.tinta, borderWidth: 1 }}>
+          <Cartao style={{ borderColor: CORES.primaria, backgroundColor: CORES.primariaSuave }}>
             <View style={estilos.linha}>
               <IconeQuadrado icone={ICONE_CATEGORIA[produto.categoria]} />
               <View style={{ flex: 1, gap: 2 }}>
@@ -148,13 +149,13 @@ export default function Entrada() {
                 .map((p, i) => (
                   <Fragment key={p.id}>
                     {i > 0 && <Divisor />}
-                    <Pressable onPress={() => setProdutoId(p.id)} style={({ pressed }) => [estilos.opcao, pressed && { opacity: 0.6 }]}>
+                    <Tocavel onPress={() => setProdutoId(p.id)} escala={0.98} style={estilos.opcao}>
                       <IconeQuadrado icone={ICONE_CATEGORIA[p.categoria]} tamanho={36} />
                       <Text style={[TEXTO.corpo, { flex: 1, fontSize: 15 }]} numberOfLines={1}>
                         {p.nome}
                       </Text>
                       <Text style={TEXTO.legenda}>{p.estoque} un</Text>
-                    </Pressable>
+                    </Tocavel>
                   </Fragment>
                 ))}
             </Cartao>
@@ -243,7 +244,7 @@ export default function Entrada() {
         </View>
       </Cartao>
 
-      <View style={estilos.resumo}>
+      <Entrar style={estilos.resumo}>
         <LinhaResumo
           rotulo="Entram no estoque"
           valor={`${previa.unidades} un${produto ? ` · fica ${produto.estoque + previa.unidades}` : ''}`}
@@ -253,9 +254,9 @@ export default function Entrada() {
         <View style={estilos.resumoDivisor} />
         <View style={estilos.linhaResumo}>
           <Text style={[estilos.resumoRotulo, { color: '#FFFFFF' }]}>Total da compra</Text>
-          <Text style={estilos.resumoTotal}>{formatarDinheiro(previa.custoTotal)}</Text>
+          <NumeroAnimado valor={previa.custoTotal} formatar={formatarDinheiro} style={estilos.resumoTotal} />
         </View>
-      </View>
+      </Entrar>
 
       {erro && <Aviso texto={erro} />}
       <Botao titulo="Registrar entrada" onPress={registrar} />
@@ -300,9 +301,9 @@ function EntradaConcluida({
   return (
     <ScrollView contentContainerStyle={[estilos.tela, { paddingTop: 48 }]}>
       <View style={{ alignItems: 'center', gap: 10 }}>
-        <View style={estilos.selo}>
-          <Check size={30} color="#FFFFFF" strokeWidth={2.5} />
-        </View>
+        <Surgir style={estilos.selo}>
+          <Check size={30} color={CORES.fundo} strokeWidth={3} />
+        </Surgir>
         <Text style={[TEXTO.tituloTela, { fontSize: 26, marginTop: 8 }]}>Entrada registrada</Text>
         <Text style={TEXTO.legenda}>{entrada.produtoNome}</Text>
       </View>
@@ -336,17 +337,25 @@ const estilos = StyleSheet.create({
     height: 26,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: CORES.texto,
+    borderColor: CORES.primariaClara,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  passoNumeroTexto: { fontFamily: FONTE.semi, fontSize: 13, color: CORES.texto },
-  resumo: { backgroundColor: CORES.tinta, borderRadius: RAIO.grande, padding: 20, gap: 10, marginTop: 8 },
+  passoNumeroTexto: { fontFamily: FONTE.semi, fontSize: 13, color: CORES.primariaClara },
+  resumo: {
+    backgroundColor: CORES.destaqueFundo,
+    borderWidth: 1,
+    borderColor: CORES.destaqueBorda,
+    borderRadius: RAIO.grande,
+    padding: 20,
+    gap: 10,
+    marginTop: 8,
+  },
   linhaResumo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  resumoRotulo: { fontFamily: FONTE.regular, fontSize: 15, color: CORES.tintaTexto },
+  resumoRotulo: { fontFamily: FONTE.regular, fontSize: 15, color: CORES.textoSuave },
   resumoValor: { fontFamily: FONTE.semi, fontSize: 15, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
-  resumoDivisor: { height: StyleSheet.hairlineWidth, backgroundColor: '#3A3431', marginVertical: 4 },
-  resumoTotal: { fontFamily: FONTE.semi, fontSize: 24, color: '#FFFFFF', letterSpacing: -0.5 },
+  resumoDivisor: { height: StyleSheet.hairlineWidth, backgroundColor: CORES.destaqueBorda, marginVertical: 4 },
+  resumoTotal: { fontFamily: FONTE.semi, fontSize: 24, color: '#FFFFFF', letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
   selo: {
     width: 64,
     height: 64,

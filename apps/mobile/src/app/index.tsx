@@ -12,8 +12,9 @@ import {
 import { router } from 'expo-router';
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, PackagePlus, ShoppingBag, TriangleAlert } from 'lucide-react-native';
 import { Fragment } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Entrar, NumeroAnimado, Tocavel } from '../components/animacoes';
 import { ICONE_FORMA } from '../components/icones';
 import { Botao, Cartao, Divisor, Secao } from '../components/ui';
 import { CORES, FONTE, RAIO, TEXTO } from '../tema';
@@ -28,14 +29,14 @@ export default function Inicio() {
 
   return (
     <ScrollView contentContainerStyle={[estilos.tela, { paddingTop: insets.top + 20 }]}>
-      <View style={{ gap: 2 }}>
+      <Entrar style={{ gap: 2 }}>
         <Text style={TEXTO.legenda}>{formatarDiaExtenso(hoje)}</Text>
         <Text style={TEXTO.tituloTela}>{saudacao(hoje)}</Text>
-      </View>
+      </Entrar>
 
-      <View style={estilos.resumo}>
+      <Entrar atraso={80} style={estilos.resumo}>
         <Text style={estilos.resumoRotulo}>Vendido hoje</Text>
-        <Text style={estilos.resumoValor}>{formatarDinheiro(resumo.faturamento)}</Text>
+        <NumeroAnimado valor={resumo.faturamento} formatar={formatarDinheiro} style={estilos.resumoValor} />
         <Text style={estilos.resumoDetalhe}>
           {resumo.quantidadeVendas} vendas · lucro bruto {formatarDinheiro(resumo.lucroBruto)}
         </Text>
@@ -46,32 +47,37 @@ export default function Inicio() {
             return (
               <View key={f.id} style={estilos.forma}>
                 <View style={estilos.formaTopo}>
-                  <Icone size={14} color={CORES.tintaTexto} strokeWidth={1.75} />
+                  <Icone size={14} color={CORES.primariaClara} strokeWidth={1.75} />
                   <Text style={estilos.formaNome}>{f.nome}</Text>
                 </View>
-                <Text style={estilos.formaValor}>{formatarDinheiro(resumo.porFormaPagamento[f.id])}</Text>
+                <NumeroAnimado
+                  valor={resumo.porFormaPagamento[f.id]}
+                  formatar={formatarDinheiro}
+                  style={estilos.formaValor}
+                />
               </View>
             );
           })}
         </View>
-      </View>
+      </Entrar>
 
-      <View style={{ gap: 10 }}>
+      <Entrar atraso={160} style={{ gap: 10 }}>
         <Botao titulo="Nova venda" icone={ShoppingBag} onPress={() => router.push('/venda')} />
         <Botao titulo="Entrada de produto" icone={PackagePlus} variante="contorno" onPress={() => router.push('/entrada')} />
-      </View>
+      </Entrar>
 
       {alertas.length > 0 && (
-        <>
+        <Entrar atraso={240} style={{ gap: 16 }}>
           <Secao>Repor estoque</Secao>
           <Cartao style={{ paddingVertical: 6, gap: 0 }}>
             {alertas.slice(0, 4).map((p, i) => (
               <Fragment key={p.id}>
                 {i > 0 && <Divisor />}
-                <Pressable
+                <Tocavel
                   accessibilityRole="button"
+                  escala={0.98}
                   onPress={() => router.push({ pathname: '/entrada', params: { produtoId: p.id } })}
-                  style={({ pressed }) => [estilos.linha, pressed && { opacity: 0.6 }]}
+                  style={estilos.linha}
                 >
                   <View style={[estilos.marcador, { backgroundColor: CORES.alertaFundo }]}>
                     <TriangleAlert size={16} color={CORES.alerta} strokeWidth={2} />
@@ -85,64 +91,75 @@ export default function Inicio() {
                     </Text>
                   </View>
                   <Text style={estilos.repor}>Repor</Text>
-                  <ChevronRight size={18} color={CORES.textoFraco} />
-                </Pressable>
+                  <ChevronRight size={18} color={CORES.primariaClara} />
+                </Tocavel>
               </Fragment>
             ))}
           </Cartao>
-        </>
+        </Entrar>
       )}
 
-      <Secao>Movimentações</Secao>
-      <Cartao style={{ paddingVertical: 6, gap: 0 }}>
-        {movimentos.length === 0 && <Text style={[TEXTO.legenda, { paddingVertical: 14 }]}>Nada registrado ainda.</Text>}
-        {movimentos.map((l, i) => {
-          const receita = l.tipo === 'receita';
-          const Seta = receita ? ArrowUpRight : ArrowDownLeft;
-          return (
-            <Fragment key={l.id}>
-              {i > 0 && <Divisor />}
-              <View style={estilos.linha}>
-                <View style={[estilos.marcador, { backgroundColor: receita ? CORES.receitaFundo : CORES.despesaFundo }]}>
-                  <Seta size={16} color={receita ? CORES.receita : CORES.despesa} strokeWidth={2} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[TEXTO.corpo, { fontSize: 15 }]} numberOfLines={1}>
-                    {l.descricao}
+      <Entrar atraso={320} style={{ gap: 16 }}>
+        <Secao>Movimentações</Secao>
+        <Cartao style={{ paddingVertical: 6, gap: 0 }}>
+          {movimentos.length === 0 && (
+            <Text style={[TEXTO.legenda, { paddingVertical: 14 }]}>Nada registrado ainda.</Text>
+          )}
+          {movimentos.map((l, i) => {
+            const receita = l.tipo === 'receita';
+            const Seta = receita ? ArrowUpRight : ArrowDownLeft;
+            return (
+              <Fragment key={l.id}>
+                {i > 0 && <Divisor />}
+                <View style={estilos.linha}>
+                  <View style={[estilos.marcador, { backgroundColor: receita ? CORES.receitaFundo : CORES.despesaFundo }]}>
+                    <Seta size={16} color={receita ? CORES.receita : CORES.despesa} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[TEXTO.corpo, { fontSize: 15 }]} numberOfLines={1}>
+                      {l.descricao}
+                    </Text>
+                    <Text style={TEXTO.legenda}>{formatarDataHora(l.data)}</Text>
+                  </View>
+                  <Text style={[TEXTO.valor, { fontSize: 15, color: receita ? CORES.receita : CORES.despesa }]}>
+                    {receita ? '+' : '−'} {formatarDinheiro(l.valor)}
                   </Text>
-                  <Text style={TEXTO.legenda}>{formatarDataHora(l.data)}</Text>
                 </View>
-                <Text style={[TEXTO.valor, { fontSize: 15 }]}>
-                  {receita ? '+' : '−'} {formatarDinheiro(l.valor)}
-                </Text>
-              </View>
-            </Fragment>
-          );
-        })}
-      </Cartao>
+              </Fragment>
+            );
+          })}
+        </Cartao>
+      </Entrar>
     </ScrollView>
   );
 }
 
 const estilos = StyleSheet.create({
   tela: { paddingHorizontal: 20, paddingBottom: 48, gap: 16 },
-  resumo: { backgroundColor: CORES.tinta, borderRadius: RAIO.grande, padding: 22 },
-  resumoRotulo: { fontFamily: FONTE.media, fontSize: 14, color: CORES.tintaTexto },
+  resumo: {
+    backgroundColor: CORES.destaqueFundo,
+    borderRadius: RAIO.grande,
+    borderWidth: 1,
+    borderColor: CORES.destaqueBorda,
+    padding: 22,
+  },
+  resumoRotulo: { fontFamily: FONTE.media, fontSize: 14, color: CORES.primariaClara },
   resumoValor: {
     fontFamily: FONTE.semi,
     fontSize: 44,
     color: '#FFFFFF',
     letterSpacing: -1,
     marginTop: 4,
+    fontVariant: ['tabular-nums'],
   },
-  resumoDetalhe: { fontFamily: FONTE.regular, fontSize: 14, color: CORES.tintaTexto, marginTop: 2 },
-  resumoDivisor: { height: StyleSheet.hairlineWidth, backgroundColor: '#3A3431', marginVertical: 18 },
+  resumoDetalhe: { fontFamily: FONTE.regular, fontSize: 14, color: CORES.textoSuave, marginTop: 2 },
+  resumoDivisor: { height: StyleSheet.hairlineWidth, backgroundColor: CORES.destaqueBorda, marginVertical: 18 },
   formas: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 },
   forma: { width: '50%', gap: 4 },
   formaTopo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  formaNome: { fontFamily: FONTE.regular, fontSize: 13, color: CORES.tintaTexto },
+  formaNome: { fontFamily: FONTE.regular, fontSize: 13, color: CORES.textoSuave },
   formaValor: { fontFamily: FONTE.semi, fontSize: 17, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
   linha: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   marcador: { width: 34, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  repor: { fontFamily: FONTE.semi, fontSize: 14, color: CORES.primaria },
+  repor: { fontFamily: FONTE.semi, fontSize: 14, color: CORES.primariaClara },
 });

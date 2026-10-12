@@ -16,7 +16,10 @@ import {
   useAdega,
 } from '@adegas/core';
 import { Check, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { surgir } from '../animacoes';
+import { Numero, SeloPulsante, Surgir } from '../componentes/Animados';
 import { Contador } from '../componentes/Contador';
 import { IconeQuadrado } from '../componentes/IconeQuadrado';
 import { ICONE_CATEGORIA, ICONE_FORMA } from '../componentes/icones';
@@ -61,6 +64,7 @@ export function Venda() {
     return (
       <button
         key={p.id}
+        data-entrada
         className={`produto ${qtd > 0 ? 'no-carrinho' : ''}`}
         disabled={p.estoque === 0 || qtd >= p.estoque}
         onClick={() => adicionar(p.id)}
@@ -73,7 +77,7 @@ export function Venda() {
             {p.estoque === 0 ? 'sem estoque' : `${p.estoque} un`}
           </span>
         </span>
-        {qtd > 0 && <span className="produto-qtd">{qtd}</span>}
+        {qtd > 0 && <SeloPulsante valor={qtd} className="produto-qtd" />}
       </button>
     );
   };
@@ -121,9 +125,9 @@ export function Venda() {
         </div>
       </section>
 
-      <aside className="pdv-caixa cartao">
+      <aside className="pdv-caixa cartao" data-entrada>
         {concluida && (
-          <div className="sucesso">
+          <Surgir className="sucesso" chave={concluida.id}>
             <span className="sucesso-selo">
               <Check size={16} strokeWidth={3} />
             </span>
@@ -133,10 +137,12 @@ export function Venda() {
                 {formaPagamento(concluida.pagamentos[0].forma).nome} · estoque e caixa atualizados
               </small>
               {concluida.troco !== undefined && concluida.troco > 0 && (
-                <span className="troco-grande">Troco {formatarDinheiro(concluida.troco)}</span>
+                <span className="troco-grande">
+                  Troco <Numero valor={concluida.troco} />
+                </span>
               )}
             </div>
-          </div>
+          </Surgir>
         )}
 
         <div className="caixa-topo">
@@ -153,7 +159,7 @@ export function Venda() {
         ) : (
           <ul className="carrinho">
             {itens.map((i) => (
-              <li key={i.produto.id}>
+              <LinhaCarrinho key={i.produto.id}>
                 <div className="carrinho-nome">
                   <span>{i.produto.nome}</span>
                   <small className="suave">{formatarDinheiro(i.produto.precoVenda)} cada</small>
@@ -163,8 +169,8 @@ export function Venda() {
                   maximo={i.produto.estoque}
                   onChange={(v) => definirQuantidade(i.produto.id, v)}
                 />
-                <strong className="num">{formatarDinheiro(i.subtotal)}</strong>
-              </li>
+                <Numero valor={i.subtotal} className="num forte" />
+              </LinhaCarrinho>
             ))}
           </ul>
         )}
@@ -173,7 +179,9 @@ export function Venda() {
           <span>
             Total · {totalItens(carrinho)} {totalItens(carrinho) === 1 ? 'item' : 'itens'}
           </span>
-          <strong>{formatarDinheiro(total)}</strong>
+          <strong>
+            <Numero valor={total} />
+          </strong>
         </div>
 
         <h3 className="secao">Forma de pagamento</h3>
@@ -226,7 +234,9 @@ export function Venda() {
             </div>
             <div className={`troco ${faltaDinheiro ? 'falta' : ''}`}>
               {faltaDinheiro ? 'Faltam' : 'Troco'}
-              <strong>{formatarDinheiro(recebido === null ? 0 : Math.abs(recebido - total))}</strong>
+              <strong>
+                <Numero valor={recebido === null ? 0 : Math.abs(recebido - total)} />
+              </strong>
             </div>
           </div>
         )}
@@ -239,4 +249,13 @@ export function Venda() {
       </aside>
     </div>
   );
+}
+
+/** Linha do carrinho que entra deslizando quando o produto é adicionado. */
+function LinhaCarrinho({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLLIElement>(null);
+  useLayoutEffect(() => {
+    if (ref.current) surgir(ref.current);
+  }, []);
+  return <li ref={ref}>{children}</li>;
 }

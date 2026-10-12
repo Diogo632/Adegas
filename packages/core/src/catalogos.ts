@@ -40,27 +40,35 @@ export function formaPagamento(id: FormaPagamento): InfoFormaPagamento {
 }
 
 /**
- * Cores da marca, iguais no app e no web. Base neutra (off-white e grafite);
- * o vinho fica reservado para a ação principal de cada tela.
+ * Cores da marca, iguais no app e no web. Tema escuro: base quase preta,
+ * cartões um tom acima e roxo escuro nos detalhes e na ação principal.
  */
 export const CORES = {
-  fundo: '#F7F5F2',
-  superficie: '#FFFFFF',
-  superficieSuave: '#F1EDE8',
-  borda: '#E8E2DB',
-  texto: '#1C1917',
-  textoSuave: '#6F6863',
-  textoFraco: '#A39B94',
-  /** Grafite: cartão de resumo e item selecionado. */
-  tinta: '#1C1917',
-  tintaTexto: '#C9C2BB',
-  primaria: '#6B1D33',
-  primariaEscura: '#541628',
-  primariaSuave: '#F4EAED',
-  receita: '#2F7D4F',
-  receitaFundo: '#EAF4EE',
-  despesa: '#B4362E',
-  despesaFundo: '#FBECEA',
-  alerta: '#9A5B0F',
-  alertaFundo: '#FAF3E6',
+  fundo: '#0B0A10',
+  /** Menu lateral do web. */
+  lateral: '#100E17',
+  superficie: '#15131D',
+  /** Campos, ícones e controles dentro dos cartões. */
+  superficieAlta: '#1D1A28',
+  /** Cartão de resumo (preto arroxeado). */
+  destaqueFundo: '#1B1330',
+  destaqueBorda: '#3A2766',
+  borda: '#26222F',
+  bordaForte: '#3B3548',
+  texto: '#F5F3FA',
+  textoSuave: '#A7A1B7',
+  textoFraco: '#7A748C',
+  /** Roxo escuro: ação principal e item selecionado. */
+  primaria: '#6D28D9',
+  primariaHover: '#7C3AED',
+  /** Roxo claro para texto e ícones sobre o preto. */
+  primariaClara: '#A78BFA',
+  primariaSuave: '#231A38',
+  grafico: '#8B5CF6',
+  receita: '#34D399',
+  receitaFundo: '#0E2A21',
+  despesa: '#F87171',
+  despesaFundo: '#2E1517',
+  alerta: '#FBBF24',
+  alertaFundo: '#2B2110',
 };

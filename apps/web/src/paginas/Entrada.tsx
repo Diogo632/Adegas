@@ -15,6 +15,7 @@ import { Check, Search } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { Numero, Surgir } from '../componentes/Animados';
 import { Contador } from '../componentes/Contador';
 import { IconeQuadrado } from '../componentes/IconeQuadrado';
 import { ICONE_CATEGORIA } from '../componentes/icones';
@@ -97,7 +98,7 @@ export function Entrada() {
       </header>
 
       {concluida && (
-        <div className="sucesso">
+        <Surgir className="sucesso" chave={concluida.id}>
           <span className="sucesso-selo">
             <Check size={16} strokeWidth={3} />
           </span>
@@ -110,11 +111,11 @@ export function Entrada() {
               lançado como despesa no financeiro
             </small>
           </div>
-        </div>
+        </Surgir>
       )}
 
       <div className="grade-entrada">
-        <form className="cartao formulario" onSubmit={registrar}>
+        <form className="cartao formulario" onSubmit={registrar} data-entrada>
           <Passo numero={1} titulo="Qual produto chegou?" />
           <div className="segmentado">
             <button type="button" className={modo === 'existente' ? 'ativo' : ''} onClick={() => setModo('existente')}>
@@ -278,7 +279,7 @@ export function Entrada() {
         </form>
 
         <div className="coluna">
-          <section className="cartao escuro resumo-entrada">
+          <section className="cartao escuro resumo-entrada" data-entrada>
             <h2>Resumo</h2>
             <dl>
               <dt>Entram no estoque</dt>
@@ -286,19 +287,25 @@ export function Entrada() {
                 {previa.unidades} un{produto ? ` · fica ${produto.estoque + previa.unidades}` : ''}
               </dd>
               <dt>Custo por unidade</dt>
-              <dd>{formatarDinheiro(previa.custoUnitario)}</dd>
+              <dd>
+                <Numero valor={previa.custoUnitario} />
+              </dd>
               {precoVenda ? (
                 <>
                   <dt>Margem na venda</dt>
-                  <dd>{margem(precoVenda, previa.custoUnitario)}%</dd>
+                  <dd>
+                    <Numero valor={margem(precoVenda, previa.custoUnitario)} formato="porcento" />
+                  </dd>
                 </>
               ) : null}
               <dt className="total-compra">Total da compra</dt>
-              <dd className="total-compra">{formatarDinheiro(previa.custoTotal)}</dd>
+              <dd className="total-compra">
+                <Numero valor={previa.custoTotal} />
+              </dd>
             </dl>
           </section>
 
-          <section className="cartao">
+          <section className="cartao" data-entrada>
             <h2>Entradas recentes</h2>
             {estado.entradas.length === 0 ? (
               <p className="suave">Nenhuma entrada ainda.</p>
