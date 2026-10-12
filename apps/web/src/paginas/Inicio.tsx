@@ -1,39 +1,44 @@
 import {
   FORMAS_PAGAMENTO,
-  categoria,
   estoqueBaixo,
   formatarDataHora,
   formatarDinheiro,
   formaPagamento,
   resumoDoDia,
+  saudacao,
   ultimosLancamentos,
   useAdega,
 } from '@adegas/core';
+import { ArrowDownLeft, ArrowUpRight, PackagePlus, ShoppingBag, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router';
+import { ICONE_FORMA } from '../componentes/icones';
 
 export function Inicio() {
   const { estado } = useAdega();
   const resumo = resumoDoDia(estado);
   const alertas = estoqueBaixo(estado.produtos);
-  const movimentos = ultimosLancamentos(estado, 10);
+  const movimentos = ultimosLancamentos(estado, 8);
   const maiorForma = Math.max(...Object.values(resumo.porFormaPagamento), 1);
 
   return (
     <div className="pagina">
-      <div className="cabecalho">
-        <h1>Resumo de hoje</h1>
+      <header className="cabecalho">
+        <div>
+          <p className="sobretitulo">Resumo de hoje</p>
+          <h1>{saudacao()}</h1>
+        </div>
         <div className="acoes">
           <Link to="/entrada" className="botao contorno">
-            📦 Entrada de produto
+            <PackagePlus size={18} strokeWidth={1.75} /> Entrada de produto
           </Link>
           <Link to="/venda" className="botao">
-            🛒 Nova venda
+            <ShoppingBag size={18} strokeWidth={1.75} /> Nova venda
           </Link>
         </div>
-      </div>
+      </header>
 
       <section className="kpis">
-        <div className="kpi destaque">
+        <div className="kpi escuro">
           <span>Vendido hoje</span>
           <strong className="kpi-heroi">{formatarDinheiro(resumo.faturamento)}</strong>
           <small>{resumo.quantidadeVendas} vendas</small>
@@ -65,10 +70,17 @@ export function Inicio() {
             {FORMAS_PAGAMENTO.map((f) => {
               const valor = resumo.porFormaPagamento[f.id];
               const parte = resumo.faturamento ? Math.round((valor / resumo.faturamento) * 100) : 0;
+              const Icone = ICONE_FORMA[f.id];
               return (
-                <div key={f.id} className="barra-linha" role="row" tabIndex={0} title={`${f.nome}: ${formatarDinheiro(valor)} (${parte}% do dia)`}>
+                <div
+                  key={f.id}
+                  className="barra-linha"
+                  role="row"
+                  tabIndex={0}
+                  title={`${f.nome}: ${formatarDinheiro(valor)} (${parte}% do dia)`}
+                >
                   <span className="barra-rotulo" role="rowheader">
-                    {f.nome}
+                    <Icone size={16} strokeWidth={1.75} /> {f.nome}
                   </span>
                   <div className="barra-trilho" role="cell">
                     <div className="barra" style={{ width: `${(valor / maiorForma) * 100}%` }} />
@@ -80,63 +92,65 @@ export function Inicio() {
           </div>
         </section>
 
-        <section className="cartao alerta">
-          <h2>⚠️ Estoque baixo ({alertas.length})</h2>
+        <section className="cartao">
+          <h2>Repor estoque</h2>
           {alertas.length === 0 ? (
             <p className="suave">Tudo em ordem.</p>
           ) : (
-            <table className="tabela">
-              <thead>
-                <tr>
-                  <th>Produto</th>
-                  <th className="num">Estoque</th>
-                  <th className="num">Mínimo</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {alertas.map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      {categoria(p.categoria).icone} {p.nome}
-                    </td>
-                    <td className="num">{p.estoque}</td>
-                    <td className="num">{p.estoqueMinimo}</td>
-                    <td className="num">
-                      <Link to={`/entrada?produto=${p.id}`} className="botao pequeno">
-                        Repor
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <ul className="lista">
+              {alertas.map((p) => (
+                <li key={p.id}>
+                  <span className="marcador alerta">
+                    <TriangleAlert size={15} strokeWidth={2} />
+                  </span>
+                  <div className="lista-texto">
+                    <strong>{p.nome}</strong>
+                    <small>
+                      {p.estoque} em estoque · mínimo {p.estoqueMinimo}
+                    </small>
+                  </div>
+                  <Link to={`/entrada?produto=${p.id}`} className="link">
+                    Repor
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
       </div>
 
       <section className="cartao">
-        <h2>Últimas movimentações</h2>
+        <h2>Movimentações</h2>
         <table className="tabela">
           <thead>
             <tr>
-              <th>Quando</th>
               <th>Descrição</th>
               <th className="some-celular">Pagamento</th>
+              <th className="num">Hora</th>
               <th className="num">Valor</th>
             </tr>
           </thead>
           <tbody>
-            {movimentos.map((l) => (
-              <tr key={l.id}>
-                <td className="suave">{formatarDataHora(l.data)}</td>
-                <td>{l.descricao}</td>
-                <td className="some-celular">{formaPagamento(l.formaPagamento).nome}</td>
-                <td className={`num ${l.tipo}`}>
-                  {l.tipo === 'receita' ? '+' : '−'} {formatarDinheiro(l.valor)}
-                </td>
-              </tr>
-            ))}
+            {movimentos.map((l) => {
+              const receita = l.tipo === 'receita';
+              return (
+                <tr key={l.id}>
+                  <td>
+                    <span className="celula-icone">
+                      <span className={`marcador ${receita ? 'receita' : 'despesa'}`}>
+                        {receita ? <ArrowUpRight size={15} strokeWidth={2} /> : <ArrowDownLeft size={15} strokeWidth={2} />}
+                      </span>
+                      {l.descricao}
+                    </span>
+                  </td>
+                  <td className="some-celular suave">{formaPagamento(l.formaPagamento).nome}</td>
+                  <td className="num suave">{formatarDataHora(l.data)}</td>
+                  <td className="num forte">
+                    {receita ? '+' : '−'} {formatarDinheiro(l.valor)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>

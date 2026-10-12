@@ -3,7 +3,6 @@ import {
   CATEGORIAS,
   FORMAS_PAGAMENTO,
   buscarProdutos,
-  categoria,
   formaPagamento,
   formatarDinheiro,
   margem,
@@ -12,20 +11,23 @@ import {
   useAdega,
 } from '@adegas/core';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { Check, Search } from 'lucide-react-native';
+import { Fragment, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ICONE_CATEGORIA } from '../components/icones';
 import {
   Aviso,
   Botao,
-  CORES,
   Campo,
   Cartao,
   Chip,
   Contador,
+  Divisor,
+  IconeQuadrado,
   LinhaValor,
   Segmentado,
-  TituloSecao,
 } from '../components/ui';
+import { CORES, FONTE, RAIO, TEXTO } from '../tema';
 
 const TAMANHOS_FARDO = [6, 12, 15, 24];
 
@@ -111,12 +113,8 @@ export default function Entrada() {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={estilos.tela}
-      keyboardShouldPersistTaps="handled"
-      automaticallyAdjustKeyboardInsets
-    >
-      <TituloSecao>1. Qual produto chegou?</TituloSecao>
+    <ScrollView contentContainerStyle={estilos.tela} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <Passo numero={1} titulo="Qual produto chegou?" />
       <Segmentado
         opcoes={[
           { id: 'existente', rotulo: 'Já cadastrado' },
@@ -128,31 +126,38 @@ export default function Entrada() {
 
       {modo === 'existente' &&
         (produto ? (
-          <Cartao style={{ borderColor: CORES.primaria, borderWidth: 2 }}>
+          <Cartao style={{ borderColor: CORES.tinta, borderWidth: 1 }}>
             <View style={estilos.linha}>
-              <Text style={{ fontSize: 28 }}>{categoria(produto.categoria).icone}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={estilos.produtoNome}>{produto.nome}</Text>
-                <Text style={estilos.sub}>
-                  Em estoque: {produto.estoque} · vende a {formatarDinheiro(produto.precoVenda)}
-                </Text>
-                <Text style={estilos.sub}>Custo médio atual: {formatarDinheiro(produto.custoMedio)}/un</Text>
+              <IconeQuadrado icone={ICONE_CATEGORIA[produto.categoria]} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={TEXTO.corpoForte}>{produto.nome}</Text>
+                <Text style={TEXTO.legenda}>{produto.estoque} em estoque</Text>
+                <Text style={TEXTO.legenda}>Vende a {formatarDinheiro(produto.precoVenda)}</Text>
               </View>
+              <Pressable onPress={() => setProdutoId(null)} hitSlop={8}>
+                <Text style={estilos.link}>Trocar</Text>
+              </Pressable>
             </View>
-            <Botao titulo="Trocar produto" variante="contorno" onPress={() => setProdutoId(null)} />
           </Cartao>
         ) : (
-          <View style={{ gap: 8 }}>
-            <Campo rotulo="Buscar" value={busca} onChangeText={setBusca} placeholder="Ex.: Brahma, gelo, Marlboro" />
-            {buscarProdutos(estado.produtos, busca)
-              .slice(0, 6)
-              .map((p) => (
-                <Pressable key={p.id} onPress={() => setProdutoId(p.id)} style={estilos.opcao}>
-                  <Text style={{ fontSize: 22 }}>{categoria(p.categoria).icone}</Text>
-                  <Text style={[estilos.produtoNome, { flex: 1 }]}>{p.nome}</Text>
-                  <Text style={estilos.sub}>{p.estoque} un</Text>
-                </Pressable>
-              ))}
+          <View style={{ gap: 10 }}>
+            <Campo icone={Search} value={busca} onChangeText={setBusca} placeholder="Buscar: Brahma, gelo, Marlboro…" />
+            <Cartao style={{ paddingVertical: 4, gap: 0 }}>
+              {buscarProdutos(estado.produtos, busca)
+                .slice(0, 6)
+                .map((p, i) => (
+                  <Fragment key={p.id}>
+                    {i > 0 && <Divisor />}
+                    <Pressable onPress={() => setProdutoId(p.id)} style={({ pressed }) => [estilos.opcao, pressed && { opacity: 0.6 }]}>
+                      <IconeQuadrado icone={ICONE_CATEGORIA[p.categoria]} tamanho={36} />
+                      <Text style={[TEXTO.corpo, { flex: 1, fontSize: 15 }]} numberOfLines={1}>
+                        {p.nome}
+                      </Text>
+                      <Text style={TEXTO.legenda}>{p.estoque} un</Text>
+                    </Pressable>
+                  </Fragment>
+                ))}
+            </Cartao>
           </View>
         ))}
 
@@ -162,18 +167,13 @@ export default function Entrada() {
           <Text style={estilos.rotulo}>Categoria</Text>
           <View style={estilos.chips}>
             {CATEGORIAS.map((c) => (
-              <Chip
-                key={c.id}
-                rotulo={`${c.icone} ${c.nome}`}
-                ativo={categoriaNova === c.id}
-                onPress={() => setCategoriaNova(c.id)}
-              />
+              <Chip key={c.id} rotulo={c.nome} ativo={categoriaNova === c.id} onPress={() => setCategoriaNova(c.id)} />
             ))}
           </View>
           <View style={estilos.duasColunas}>
             <View style={{ flex: 1 }}>
               <Campo
-                rotulo="Preço de venda (un)"
+                rotulo="Preço de venda"
                 prefixo="R$"
                 teclado="decimal-pad"
                 value={precoVendaTexto}
@@ -188,7 +188,7 @@ export default function Entrada() {
         </Cartao>
       )}
 
-      <TituloSecao>2. Como chegou?</TituloSecao>
+      <Passo numero={2} titulo="Como chegou?" />
       <Segmentado
         opcoes={[
           { id: 'fardo', rotulo: 'Fardo / caixa' },
@@ -200,64 +200,90 @@ export default function Entrada() {
       <Cartao>
         {embalagem === 'fardo' && (
           <>
-            <Text style={estilos.rotulo}>Unidades em cada fardo/caixa</Text>
+            <Text style={estilos.rotulo}>Unidades em cada fardo</Text>
             <View style={estilos.chips}>
               {TAMANHOS_FARDO.map((n) => (
                 <Chip key={n} rotulo={String(n)} ativo={porFardo === n} onPress={() => setPorFardoTexto(String(n))} />
               ))}
+              <View style={{ width: 84 }}>
+                <Campo
+                  teclado="number-pad"
+                  value={TAMANHOS_FARDO.includes(porFardo) ? '' : porFardoTexto}
+                  onChangeText={setPorFardoTexto}
+                  placeholder="Outro"
+                />
+              </View>
             </View>
-            <Campo rotulo="Outro tamanho" teclado="number-pad" value={porFardoTexto} onChangeText={setPorFardoTexto} />
+            <Divisor />
           </>
         )}
         <View style={estilos.linha}>
-          <Text style={[estilos.rotulo, { flex: 1 }]}>
-            Quantos {embalagem === 'fardo' ? 'fardos/caixas' : 'unidades'}?
-          </Text>
+          <Text style={[estilos.rotulo, { flex: 1 }]}>Quantos {embalagem === 'fardo' ? 'fardos' : 'unidades'}?</Text>
           <Contador valor={quantidade} minimo={1} onChange={setQuantidade} />
         </View>
+        <Divisor />
         <Campo
           rotulo={`Custo por ${nomeEmbalagem}`}
           prefixo="R$"
           teclado="decimal-pad"
           value={custoTexto}
           onChangeText={setCustoTexto}
-          placeholder={produto ? `último: ${formatarDinheiro(produto.custoMedio * previa.unidadesPorEmbalagem)}` : '0,00'}
+          placeholder={produto ? `último ${semMoeda(produto.custoMedio * previa.unidadesPorEmbalagem)}` : '0,00'}
         />
       </Cartao>
 
-      <TituloSecao>3. Compra</TituloSecao>
+      <Passo numero={3} titulo="Pagamento ao fornecedor" />
       <Cartao>
         <Campo rotulo="Fornecedor (opcional)" value={fornecedor} onChangeText={setFornecedor} placeholder="Ex.: Distribuidora Central" />
         <Text style={estilos.rotulo}>Pago com</Text>
         <View style={estilos.chips}>
           {FORMAS_PAGAMENTO.map((f) => (
-            <Chip
-              key={f.id}
-              rotulo={`${f.icone} ${f.nome}`}
-              ativo={formaPgto === f.id}
-              cor={f.cor}
-              onPress={() => setFormaPgto(f.id)}
-            />
+            <Chip key={f.id} rotulo={f.nome} ativo={formaPgto === f.id} onPress={() => setFormaPgto(f.id)} />
           ))}
         </View>
       </Cartao>
 
-      <Cartao style={{ backgroundColor: '#FBF7F2' }}>
-        <TituloSecao>Resumo</TituloSecao>
-        <LinhaValor
+      <View style={estilos.resumo}>
+        <LinhaResumo
           rotulo="Entram no estoque"
-          valor={`${previa.unidades} un${produto ? ` (fica ${produto.estoque + previa.unidades})` : ''}`}
+          valor={`${previa.unidades} un${produto ? ` · fica ${produto.estoque + previa.unidades}` : ''}`}
         />
-        <LinhaValor rotulo="Custo por unidade" valor={formatarDinheiro(previa.custoUnitario)} />
-        {precoVenda ? (
-          <LinhaValor rotulo="Margem na venda" valor={`${margem(precoVenda, previa.custoUnitario)}%`} />
-        ) : null}
-        <LinhaValor rotulo="Total da compra" valor={formatarDinheiro(previa.custoTotal)} destaque />
-      </Cartao>
+        <LinhaResumo rotulo="Custo por unidade" valor={formatarDinheiro(previa.custoUnitario)} />
+        {precoVenda ? <LinhaResumo rotulo="Margem na venda" valor={`${margem(precoVenda, previa.custoUnitario)}%`} /> : null}
+        <View style={estilos.resumoDivisor} />
+        <View style={estilos.linhaResumo}>
+          <Text style={[estilos.resumoRotulo, { color: '#FFFFFF' }]}>Total da compra</Text>
+          <Text style={estilos.resumoTotal}>{formatarDinheiro(previa.custoTotal)}</Text>
+        </View>
+      </View>
 
-      {erro && <Aviso tipo="erro" texto={erro} />}
+      {erro && <Aviso texto={erro} />}
       <Botao titulo="Registrar entrada" onPress={registrar} />
     </ScrollView>
+  );
+}
+
+function semMoeda(valor: number) {
+  return formatarDinheiro(valor).replace('R$ ', '');
+}
+
+function Passo({ numero, titulo }: { numero: number; titulo: string }) {
+  return (
+    <View style={estilos.passo}>
+      <View style={estilos.passoNumero}>
+        <Text style={estilos.passoNumeroTexto}>{numero}</Text>
+      </View>
+      <Text style={TEXTO.titulo}>{titulo}</Text>
+    </View>
+  );
+}
+
+function LinhaResumo({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <View style={estilos.linhaResumo}>
+      <Text style={estilos.resumoRotulo}>{rotulo}</Text>
+      <Text style={estilos.resumoValor}>{valor}</Text>
+    </View>
   );
 }
 
@@ -272,42 +298,61 @@ function EntradaConcluida({
 }) {
   const forma = formaPagamento(entrada.formaPagamento);
   return (
-    <ScrollView contentContainerStyle={[estilos.tela, { paddingTop: 40 }]}>
-      <View style={{ alignItems: 'center', gap: 6 }}>
-        <Text style={{ fontSize: 64 }}>📦</Text>
-        <Text style={estilos.sucessoTitulo}>Entrada registrada!</Text>
-        <Text style={[estilos.sub, { textAlign: 'center' }]}>{entrada.produtoNome}</Text>
+    <ScrollView contentContainerStyle={[estilos.tela, { paddingTop: 48 }]}>
+      <View style={{ alignItems: 'center', gap: 10 }}>
+        <View style={estilos.selo}>
+          <Check size={30} color="#FFFFFF" strokeWidth={2.5} />
+        </View>
+        <Text style={[TEXTO.tituloTela, { fontSize: 26, marginTop: 8 }]}>Entrada registrada</Text>
+        <Text style={TEXTO.legenda}>{entrada.produtoNome}</Text>
       </View>
       <Cartao>
         <LinhaValor rotulo="Entraram" valor={`+${entrada.unidades} un`} />
         <LinhaValor rotulo="Estoque agora" valor={`${estoqueAtual} un`} />
         <LinhaValor rotulo="Custo por unidade" valor={formatarDinheiro(entrada.custoUnitario)} />
-        <LinhaValor rotulo={`Pago com ${forma.nome}`} valor={formatarDinheiro(entrada.custoTotal)} destaque />
+        <Divisor />
+        <LinhaValor rotulo={`Pago no ${forma.nome.toLowerCase()}`} valor={formatarDinheiro(entrada.custoTotal)} destaque />
       </Cartao>
-      <Text style={[estilos.sub, { textAlign: 'center' }]}>A compra já foi lançada como despesa no financeiro.</Text>
-      <Botao titulo="Registrar outra entrada" onPress={onOutra} />
-      <Botao titulo="Voltar ao início" variante="contorno" onPress={() => router.back()} />
+      <Text style={[TEXTO.legenda, { textAlign: 'center' }]}>A compra já foi lançada como despesa no financeiro.</Text>
+      <View style={{ gap: 10 }}>
+        <Botao titulo="Registrar outra entrada" onPress={onOutra} />
+        <Botao titulo="Voltar ao início" variante="contorno" onPress={() => router.back()} />
+      </View>
     </ScrollView>
   );
 }
 
 const estilos = StyleSheet.create({
-  tela: { padding: 16, gap: 14, paddingBottom: 48 },
+  tela: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 48, gap: 14 },
   linha: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   duasColunas: { flexDirection: 'row', gap: 12 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  rotulo: { fontSize: 14, fontWeight: '600', color: CORES.textoSuave },
-  produtoNome: { fontSize: 16, fontWeight: '700', color: CORES.texto },
-  sub: { fontSize: 14, color: CORES.textoSuave },
-  opcao: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: CORES.superficie,
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  rotulo: { fontFamily: FONTE.media, fontSize: 14, color: CORES.textoSuave },
+  link: { fontFamily: FONTE.semi, fontSize: 15, color: CORES.primaria },
+  opcao: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  passo: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
+  passoNumero: {
+    width: 26,
+    height: 26,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: CORES.borda,
-    borderRadius: 12,
-    padding: 12,
+    borderColor: CORES.texto,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  sucessoTitulo: { fontSize: 24, fontWeight: '800', color: CORES.texto },
+  passoNumeroTexto: { fontFamily: FONTE.semi, fontSize: 13, color: CORES.texto },
+  resumo: { backgroundColor: CORES.tinta, borderRadius: RAIO.grande, padding: 20, gap: 10, marginTop: 8 },
+  linhaResumo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  resumoRotulo: { fontFamily: FONTE.regular, fontSize: 15, color: CORES.tintaTexto },
+  resumoValor: { fontFamily: FONTE.semi, fontSize: 15, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  resumoDivisor: { height: StyleSheet.hairlineWidth, backgroundColor: '#3A3431', marginVertical: 4 },
+  resumoTotal: { fontFamily: FONTE.semi, fontSize: 24, color: '#FFFFFF', letterSpacing: -0.5 },
+  selo: {
+    width: 64,
+    height: 64,
+    borderRadius: 999,
+    backgroundColor: CORES.receita,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

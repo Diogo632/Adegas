@@ -80,7 +80,7 @@ Enquanto preenche, o **resumo** mostra: quantas unidades entram, custo por unida
 
 ### 3.3 Nova venda → Pagamento
 
-**Nova venda:** busca por nome, filtro por categoria e botão **+** em cada produto. O carrinho não deixa passar do que tem em estoque. A barra de baixo mostra itens e total.
+**Nova venda:** os **mais vendidos** aparecem primeiro; depois busca por nome, filtro por categoria e botão **+** em cada produto. O carrinho não deixa passar do que tem em estoque. A barra de baixo mostra itens e total.
 
 **Pagamento:**
 
@@ -168,10 +168,11 @@ Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, 
 | Etapa | O que entra | Situação |
 |---|---|---|
 | **1. Esqueleto** | Telas de Início, Entrada de produto e Venda/Pagamento no app e no web; regras de estoque, custo médio, troco e financeiro | ✅ pronto |
-| **2. Banco na nuvem + login** | App e web passam a ver os mesmos dados em tempo real; login do dono. Sugestão: **Supabase** (banco Postgres, login e tempo real prontos, plano grátis para começar) | próxima |
+| **1.1 Design** | Visual neutro e sofisticado, ícones de linha, "mais vendidos" na venda. Comparativo com o Cplug em [`ANALISE-CPLUG.md`](ANALISE-CPLUG.md) | ✅ pronto |
+| **2. Banco na nuvem + login** | App e web passam a ver os mesmos dados em tempo real; login do dono. Sugestão: **Supabase** (banco Postgres, login e tempo real prontos, plano grátis para começar). Já pensar em **funcionar sem internet** | próxima |
 | **3. Estoque** | Lista completa, editar produto e preço, ajuste por perda/quebra/consumo, contagem (inventário) | |
-| **4. Financeiro** | Despesas da loja (aluguel, luz, funcionário), fechamento de caixa do dia, taxa da maquininha, relatório por período | |
-| **5. Extras** | Leitor de código de barras pela câmera, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, perfis dono/funcionário, publicar o app nas lojas | |
+| **4. Caixa e financeiro** | **Abrir/fechar o caixa do dia, sangria e reforço**, despesas da loja (aluguel, luz, funcionário), taxa da maquininha, relatório por período | |
+| **5. Extras** | Leitor de código de barras pela câmera, desconto na venda, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, perfis dono/funcionário, publicar o app nas lojas | |
 
 ## 8. Perguntas para decidir antes da etapa 2
 

@@ -50,6 +50,20 @@ export function alterarQuantidade(
   return carrinho.map((i) => (i.produtoId === produto.id ? item : i));
 }
 
+/** Produtos que mais saíram (em unidades), para ficarem no topo da tela de venda. */
+export function maisVendidos(estado: Estado, quantidade = 4): Produto[] {
+  const vendidos = new Map<string, number>();
+  for (const venda of estado.vendas) {
+    for (const item of venda.itens) {
+      vendidos.set(item.produtoId, (vendidos.get(item.produtoId) ?? 0) + item.quantidade);
+    }
+  }
+  return estado.produtos
+    .filter((p) => (vendidos.get(p.id) ?? 0) > 0)
+    .sort((a, b) => (vendidos.get(b.id) ?? 0) - (vendidos.get(a.id) ?? 0))
+    .slice(0, quantidade);
+}
+
 /** Notas que o cliente costuma entregar: valor exato e as próximas notas redondas. */
 export function sugestoesDeValorRecebido(total: Centavos): Centavos[] {
   if (total <= 0) return [];

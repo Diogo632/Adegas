@@ -3,19 +3,18 @@ import type { CategoriaId, FormaPagamento } from './tipos';
 export interface Categoria {
   id: CategoriaId;
   nome: string;
-  icone: string;
 }
 
 export const CATEGORIAS: Categoria[] = [
-  { id: 'cerveja', nome: 'Cervejas', icone: '🍺' },
-  { id: 'destilado', nome: 'Destilados', icone: '🥃' },
-  { id: 'vinho', nome: 'Vinhos', icone: '🍷' },
-  { id: 'refrigerante', nome: 'Refri e água', icone: '🥤' },
-  { id: 'energetico', nome: 'Energéticos', icone: '⚡' },
-  { id: 'cigarro', nome: 'Cigarros', icone: '🚬' },
-  { id: 'gelo', nome: 'Gelo e carvão', icone: '🧊' },
-  { id: 'petisco', nome: 'Petiscos', icone: '🥜' },
-  { id: 'outros', nome: 'Outros', icone: '📦' },
+  { id: 'cerveja', nome: 'Cervejas' },
+  { id: 'destilado', nome: 'Destilados' },
+  { id: 'vinho', nome: 'Vinhos' },
+  { id: 'refrigerante', nome: 'Refri e água' },
+  { id: 'energetico', nome: 'Energéticos' },
+  { id: 'cigarro', nome: 'Cigarros' },
+  { id: 'gelo', nome: 'Gelo e carvão' },
+  { id: 'petisco', nome: 'Petiscos' },
+  { id: 'outros', nome: 'Outros' },
 ];
 
 export function categoria(id: CategoriaId): Categoria {
@@ -25,59 +24,43 @@ export function categoria(id: CategoriaId): Categoria {
 export interface InfoFormaPagamento {
   id: FormaPagamento;
   nome: string;
-  icone: string;
-  cor: string;
   /** Lembrete mostrado na tela de pagamento. */
   dica: string;
 }
 
 export const FORMAS_PAGAMENTO: InfoFormaPagamento[] = [
-  {
-    id: 'pix',
-    nome: 'Pix',
-    icone: '⚡',
-    cor: '#0F9D8A',
-    dica: 'Confira o Pix no app do banco antes de confirmar.',
-  },
-  {
-    id: 'credito',
-    nome: 'Crédito',
-    icone: '💳',
-    cor: '#2F5BD3',
-    dica: 'Passe o cartão na maquininha e confirme quando aprovar.',
-  },
-  {
-    id: 'debito',
-    nome: 'Débito',
-    icone: '💳',
-    cor: '#7A3FC4',
-    dica: 'Passe o cartão na maquininha e confirme quando aprovar.',
-  },
-  {
-    id: 'dinheiro',
-    nome: 'Dinheiro',
-    icone: '💵',
-    cor: '#2E8B3E',
-    dica: 'Digite quanto o cliente entregou para calcular o troco.',
-  },
+  { id: 'pix', nome: 'Pix', dica: 'Confira o Pix no app do banco antes de confirmar.' },
+  { id: 'credito', nome: 'Crédito', dica: 'Passe o cartão na maquininha e confirme quando aprovar.' },
+  { id: 'debito', nome: 'Débito', dica: 'Passe o cartão na maquininha e confirme quando aprovar.' },
+  { id: 'dinheiro', nome: 'Dinheiro', dica: 'Digite quanto o cliente entregou para calcular o troco.' },
 ];
 
 export function formaPagamento(id: FormaPagamento): InfoFormaPagamento {
   return FORMAS_PAGAMENTO.find((f) => f.id === id) ?? FORMAS_PAGAMENTO[0];
 }
 
-/** Cores da marca, usadas igual no app e no web. */
+/**
+ * Cores da marca, iguais no app e no web. Base neutra (off-white e grafite);
+ * o vinho fica reservado para a ação principal de cada tela.
+ */
 export const CORES = {
-  primaria: '#7A1F3D',
-  primariaEscura: '#5C1530',
-  destaque: '#E8A33D',
-  fundo: '#F6F3EF',
+  fundo: '#F7F5F2',
   superficie: '#FFFFFF',
-  texto: '#1F1A17',
-  textoSuave: '#6B625C',
-  borda: '#E4DDD5',
-  receita: '#2E8B3E',
-  despesa: '#C0392B',
-  alerta: '#B7791F',
-  alertaFundo: '#FDF3E1',
+  superficieSuave: '#F1EDE8',
+  borda: '#E8E2DB',
+  texto: '#1C1917',
+  textoSuave: '#6F6863',
+  textoFraco: '#A39B94',
+  /** Grafite: cartão de resumo e item selecionado. */
+  tinta: '#1C1917',
+  tintaTexto: '#C9C2BB',
+  primaria: '#6B1D33',
+  primariaEscura: '#541628',
+  primariaSuave: '#F4EAED',
+  receita: '#2F7D4F',
+  receitaFundo: '#EAF4EE',
+  despesa: '#B4362E',
+  despesaFundo: '#FBECEA',
+  alerta: '#9A5B0F',
+  alertaFundo: '#FAF3E6',
 };

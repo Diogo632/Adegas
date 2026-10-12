@@ -1,17 +1,18 @@
 import { formatarDiaExtenso } from '@adegas/core';
+import { Boxes, ChartColumn, LayoutDashboard, PackagePlus, ShoppingBag, Wallet, Wine } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
 
 const MENU = [
-  { para: '/', rotulo: 'Início', icone: '🏠' },
-  { para: '/venda', rotulo: 'Vender', icone: '🛒' },
-  { para: '/entrada', rotulo: 'Entrada de produto', icone: '📦' },
+  { para: '/', rotulo: 'Início', icone: LayoutDashboard },
+  { para: '/venda', rotulo: 'Vender', icone: ShoppingBag },
+  { para: '/entrada', rotulo: 'Entrada de produto', icone: PackagePlus },
 ];
 
 const EM_BREVE = [
-  { rotulo: 'Estoque', icone: '📋' },
-  { rotulo: 'Financeiro', icone: '💰' },
-  { rotulo: 'Relatórios', icone: '📊' },
+  { rotulo: 'Estoque', icone: Boxes },
+  { rotulo: 'Financeiro', icone: Wallet },
+  { rotulo: 'Relatórios', icone: ChartColumn },
 ];
 
 export function Layout() {
@@ -20,36 +21,32 @@ export function Layout() {
     <div className="layout">
       <aside className="menu">
         <div className="marca">
-          <span className="marca-icone">🍷</span>
+          <span className="marca-simbolo">
+            <Wine size={18} strokeWidth={1.8} />
+          </span>
           <div>
             <strong>Minha Adega</strong>
-            <small>Painel</small>
+            <small>{formatarDiaExtenso(hoje)}</small>
           </div>
         </div>
         <nav>
-          {MENU.map((item) => (
-            <NavLink key={item.para} to={item.para} end className="menu-item">
-              <span aria-hidden>{item.icone}</span> {item.rotulo}
+          {MENU.map(({ para, rotulo, icone: Icone }) => (
+            <NavLink key={para} to={para} end className="menu-item">
+              <Icone size={18} strokeWidth={1.75} /> {rotulo}
             </NavLink>
           ))}
-          {EM_BREVE.map((item) => (
-            <span key={item.rotulo} className="menu-item desabilitado" title="Próxima etapa">
-              <span aria-hidden>{item.icone}</span> {item.rotulo} <em>em breve</em>
+          <span className="menu-rotulo">Em breve</span>
+          {EM_BREVE.map(({ rotulo, icone: Icone }) => (
+            <span key={rotulo} className="menu-item desabilitado" title="Próxima etapa">
+              <Icone size={18} strokeWidth={1.75} /> {rotulo}
             </span>
           ))}
         </nav>
+        <p className="menu-nota">Dados de exemplo: ficam só neste navegador por enquanto.</p>
       </aside>
-      <div className="conteudo">
-        <header className="topo">
-          <span>{formatarDiaExtenso(hoje)}</span>
-          <span className="selo" title="Por enquanto os dados ficam só neste navegador">
-            Dados de exemplo
-          </span>
-        </header>
-        <main>
-          <Outlet />
-        </main>
-      </div>
+      <main className="conteudo">
+        <Outlet />
+      </main>
     </div>
   );
 }

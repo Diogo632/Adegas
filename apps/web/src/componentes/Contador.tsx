@@ -1,3 +1,5 @@
+import { Minus, Plus } from 'lucide-react';
+
 export function Contador({
   valor,
   onChange,
@@ -12,7 +14,7 @@ export function Contador({
   return (
     <div className="contador">
       <button type="button" aria-label="Diminuir" disabled={valor <= minimo} onClick={() => onChange(valor - 1)}>
-        −
+        <Minus size={16} strokeWidth={2} />
       </button>
       <span>{valor}</span>
       <button
@@ -21,7 +23,7 @@ export function Contador({
         disabled={maximo !== undefined && valor >= maximo}
         onClick={() => onChange(valor + 1)}
       >
-        +
+        <Plus size={16} strokeWidth={2} />
       </button>
     </div>
   );

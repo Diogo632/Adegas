@@ -13,6 +13,8 @@ import {
   sugestoesDeValorRecebido,
   alterarQuantidade,
   buscarProdutos,
+  maisVendidos,
+  saudacao,
 } from './index';
 import type { Estado, Produto } from './index';
 
@@ -150,5 +152,13 @@ describe('resumo e alertas', () => {
     const exemplo = estadoDeExemplo(new Date(2026, 9, 12, 20, 0));
     expect(buscarProdutos(exemplo.produtos, 'agua').map((p) => p.nome)).toEqual(['Água Mineral 500ml']);
     expect(exemplo.vendas.length).toBe(6);
+  });
+
+  it('mostra os mais vendidos e a saudação da hora', () => {
+    const exemplo = estadoDeExemplo(new Date(2026, 9, 12, 20, 0));
+    expect(maisVendidos(exemplo, 2).map((p) => p.id)).toEqual(['skol-lata', 'brahma-lata']);
+    expect(saudacao(new Date(2026, 9, 12, 9))).toBe('Bom dia');
+    expect(saudacao(new Date(2026, 9, 12, 15))).toBe('Boa tarde');
+    expect(saudacao(new Date(2026, 9, 12, 23))).toBe('Boa noite');
   });
 });

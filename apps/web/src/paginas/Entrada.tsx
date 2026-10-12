@@ -3,7 +3,6 @@ import {
   CATEGORIAS,
   FORMAS_PAGAMENTO,
   buscarProdutos,
-  categoria,
   formaPagamento,
   formatarDataHora,
   formatarDinheiro,
@@ -12,10 +11,13 @@ import {
   previaEntrada,
   useAdega,
 } from '@adegas/core';
+import { Check, Search } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Contador } from '../componentes/Contador';
+import { IconeQuadrado } from '../componentes/IconeQuadrado';
+import { ICONE_CATEGORIA } from '../componentes/icones';
 
 const TAMANHOS_FARDO = [6, 12, 15, 24];
 
@@ -87,25 +89,33 @@ export function Entrada() {
 
   return (
     <div className="pagina">
-      <div className="cabecalho">
-        <h1>Entrada de produto</h1>
-      </div>
+      <header className="cabecalho">
+        <div>
+          <p className="sobretitulo">Chegou mercadoria</p>
+          <h1>Entrada de produto</h1>
+        </div>
+      </header>
 
       {concluida && (
         <div className="sucesso">
-          <strong>
-            ✅ Entrada registrada: +{concluida.unidades} un de {concluida.produtoNome}
-          </strong>
-          <span>
-            Total {formatarDinheiro(concluida.custoTotal)} no {formaPagamento(concluida.formaPagamento).nome} · já lançado
-            como despesa no financeiro
+          <span className="sucesso-selo">
+            <Check size={16} strokeWidth={3} />
           </span>
+          <div>
+            <strong>
+              Entrada registrada: +{concluida.unidades} un de {concluida.produtoNome}
+            </strong>
+            <small>
+              {formatarDinheiro(concluida.custoTotal)} no {formaPagamento(concluida.formaPagamento).nome.toLowerCase()} · já
+              lançado como despesa no financeiro
+            </small>
+          </div>
         </div>
       )}
 
       <div className="grade-entrada">
         <form className="cartao formulario" onSubmit={registrar}>
-          <h2>1. Qual produto chegou?</h2>
+          <Passo numero={1} titulo="Qual produto chegou?" />
           <div className="segmentado">
             <button type="button" className={modo === 'existente' ? 'ativo' : ''} onClick={() => setModo('existente')}>
               Já cadastrado
@@ -118,11 +128,11 @@ export function Entrada() {
           {modo === 'existente' &&
             (produto ? (
               <div className="produto-escolhido">
-                <span className="produto-icone">{categoria(produto.categoria).icone}</span>
+                <IconeQuadrado icone={ICONE_CATEGORIA[produto.categoria]} />
                 <div>
                   <strong>{produto.nome}</strong>
                   <small className="suave">
-                    Em estoque: {produto.estoque} · vende a {formatarDinheiro(produto.precoVenda)} · custo médio{' '}
+                    {produto.estoque} em estoque · vende a {formatarDinheiro(produto.precoVenda)} · custo médio{' '}
                     {formatarDinheiro(produto.custoMedio)}/un
                   </small>
                 </div>
@@ -132,18 +142,21 @@ export function Entrada() {
               </div>
             ) : (
               <div className="escolha-produto">
-                <input
-                  className="campo"
-                  placeholder="Buscar: Brahma, gelo, Marlboro..."
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                />
+                <label className="campo-icone">
+                  <Search size={18} strokeWidth={1.75} />
+                  <input
+                    className="campo"
+                    placeholder="Buscar: Brahma, gelo, Marlboro…"
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                  />
+                </label>
                 <div className="opcoes">
                   {buscarProdutos(estado.produtos, busca)
                     .slice(0, 8)
                     .map((p) => (
                       <button type="button" key={p.id} className="opcao" onClick={() => setProdutoId(p.id)}>
-                        <span>{categoria(p.categoria).icone}</span>
+                        <IconeQuadrado icone={ICONE_CATEGORIA[p.categoria]} tamanho={32} />
                         <span className="opcao-nome">{p.nome}</span>
                         <small className="suave">{p.estoque} un</small>
                       </button>
@@ -168,7 +181,7 @@ export function Entrada() {
                       className={`chip ${categoriaNova === c.id ? 'ativo' : ''}`}
                       onClick={() => setCategoriaNova(c.id)}
                     >
-                      {c.icone} {c.nome}
+                      {c.nome}
                     </button>
                   ))}
                 </div>
@@ -187,7 +200,7 @@ export function Entrada() {
             </div>
           )}
 
-          <h2>2. Como chegou?</h2>
+          <Passo numero={2} titulo="Como chegou?" />
           <div className="segmentado">
             <button type="button" className={embalagem === 'fardo' ? 'ativo' : ''} onClick={() => setEmbalagem('fardo')}>
               Fardo / caixa
@@ -198,20 +211,27 @@ export function Entrada() {
           </div>
           <div className="campos">
             {embalagem === 'fardo' && (
-              <label className="rotulo">
-                Unidades em cada fardo/caixa
-                <div className="linha">
-                  <input className="campo curto" inputMode="numeric" value={porFardoTexto} onChange={(e) => setPorFardoTexto(e.target.value)} />
+              <div className="rotulo largo">
+                Unidades em cada fardo
+                <div className="chips">
                   {TAMANHOS_FARDO.map((n) => (
                     <button type="button" key={n} className={`chip ${porFardo === n ? 'ativo' : ''}`} onClick={() => setPorFardoTexto(String(n))}>
                       {n}
                     </button>
                   ))}
+                  <input
+                    className="campo curto"
+                    inputMode="numeric"
+                    placeholder="Outro"
+                    aria-label="Outro tamanho de fardo"
+                    value={TAMANHOS_FARDO.includes(porFardo) ? '' : porFardoTexto}
+                    onChange={(e) => setPorFardoTexto(e.target.value)}
+                  />
                 </div>
-              </label>
+              </div>
             )}
             <div className="rotulo">
-              Quantos {embalagem === 'fardo' ? 'fardos/caixas' : 'unidades'}?
+              Quantos {embalagem === 'fardo' ? 'fardos' : 'unidades'}?
               <Contador valor={quantidade} minimo={1} onChange={setQuantidade} />
             </div>
             <label className="rotulo">
@@ -223,13 +243,17 @@ export function Entrada() {
                   inputMode="decimal"
                   value={custoTexto}
                   onChange={(e) => setCustoTexto(e.target.value)}
-                  placeholder={produto ? `último: ${formatarDinheiro(produto.custoMedio * previa.unidadesPorEmbalagem)}` : '0,00'}
+                  placeholder={
+                    produto
+                      ? `último ${formatarDinheiro(produto.custoMedio * previa.unidadesPorEmbalagem).replace('R$ ', '')}`
+                      : '0,00'
+                  }
                 />
               </div>
             </label>
           </div>
 
-          <h2>3. Compra</h2>
+          <Passo numero={3} titulo="Pagamento ao fornecedor" />
           <div className="campos">
             <label className="rotulo">
               Fornecedor (opcional)
@@ -240,7 +264,7 @@ export function Entrada() {
               <div className="chips">
                 {FORMAS_PAGAMENTO.map((f) => (
                   <button type="button" key={f.id} className={`chip ${formaPgto === f.id ? 'ativo' : ''}`} onClick={() => setFormaPgto(f.id)}>
-                    {f.icone} {f.nome}
+                    {f.nome}
                   </button>
                 ))}
               </div>
@@ -254,12 +278,12 @@ export function Entrada() {
         </form>
 
         <div className="coluna">
-          <section className="cartao resumo-entrada">
+          <section className="cartao escuro resumo-entrada">
             <h2>Resumo</h2>
             <dl>
               <dt>Entram no estoque</dt>
               <dd>
-                {previa.unidades} un{produto ? ` (fica ${produto.estoque + previa.unidades})` : ''}
+                {previa.unidades} un{produto ? ` · fica ${produto.estoque + previa.unidades}` : ''}
               </dd>
               <dt>Custo por unidade</dt>
               <dd>{formatarDinheiro(previa.custoUnitario)}</dd>
@@ -269,8 +293,8 @@ export function Entrada() {
                   <dd>{margem(precoVenda, previa.custoUnitario)}%</dd>
                 </>
               ) : null}
-              <dt className="forte">Total da compra</dt>
-              <dd className="forte">{formatarDinheiro(previa.custoTotal)}</dd>
+              <dt className="total-compra">Total da compra</dt>
+              <dd className="total-compra">{formatarDinheiro(previa.custoTotal)}</dd>
             </dl>
           </section>
 
@@ -279,33 +303,36 @@ export function Entrada() {
             {estado.entradas.length === 0 ? (
               <p className="suave">Nenhuma entrada ainda.</p>
             ) : (
-              <table className="tabela">
-                <thead>
-                  <tr>
-                    <th>Quando</th>
-                    <th>Produto</th>
-                    <th className="num">Qtd</th>
-                    <th className="num">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {estado.entradas.slice(0, 8).map((e) => (
-                    <tr key={e.id}>
-                      <td className="suave">{formatarDataHora(e.data)}</td>
-                      <td>
-                        {e.produtoNome}
-                        {e.fornecedor ? <small className="suave"> · {e.fornecedor}</small> : null}
-                      </td>
-                      <td className="num">+{e.unidades}</td>
-                      <td className="num">{formatarDinheiro(e.custoTotal)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <ul className="lista">
+                {estado.entradas.slice(0, 6).map((e) => (
+                  <li key={e.id}>
+                    <div className="lista-texto">
+                      <strong>{e.produtoNome}</strong>
+                      <small>
+                        {formatarDataHora(e.data)}
+                        {e.fornecedor ? ` · ${e.fornecedor}` : ''}
+                      </small>
+                    </div>
+                    <div className="lista-valor">
+                      <strong>+{e.unidades} un</strong>
+                      <small>{formatarDinheiro(e.custoTotal)}</small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
         </div>
       </div>
     </div>
+  );
+}
+
+function Passo({ numero, titulo }: { numero: number; titulo: string }) {
+  return (
+    <h2 className="passo">
+      <span>{numero}</span>
+      {titulo}
+    </h2>
   );
 }

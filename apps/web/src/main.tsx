@@ -1,4 +1,6 @@
 import { AdegaProvider, CORES } from '@adegas/core';
+import '@fontsource-variable/fraunces';
+import '@fontsource-variable/inter';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router';

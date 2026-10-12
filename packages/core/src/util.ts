@@ -40,6 +40,14 @@ export function formatarDataHora(iso: string, agora: Date = new Date()): string 
   return `${data.getDate()} ${MESES[data.getMonth()]}, ${hora}`;
 }
 
+/** "Bom dia", "Boa tarde" ou "Boa noite". */
+export function saudacao(data: Date = new Date()): string {
+  const hora = data.getHours();
+  if (hora >= 5 && hora < 12) return 'Bom dia';
+  if (hora >= 12 && hora < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
 export function mesmoDia(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()

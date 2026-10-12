@@ -5,153 +5,144 @@ import {
   formatarDiaExtenso,
   formatarDinheiro,
   resumoDoDia,
+  saudacao,
   ultimosLancamentos,
   useAdega,
 } from '@adegas/core';
 import { router } from 'expo-router';
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, PackagePlus, ShoppingBag, TriangleAlert } from 'lucide-react-native';
+import { Fragment } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CORES, Cartao, TituloSecao } from '../components/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ICONE_FORMA } from '../components/icones';
+import { Botao, Cartao, Divisor, Secao } from '../components/ui';
+import { CORES, FONTE, RAIO, TEXTO } from '../tema';
 
 export default function Inicio() {
   const { estado } = useAdega();
+  const insets = useSafeAreaInsets();
   const hoje = new Date();
   const resumo = resumoDoDia(estado, hoje);
   const alertas = estoqueBaixo(estado.produtos);
-  const movimentos = ultimosLancamentos(estado, 6);
+  const movimentos = ultimosLancamentos(estado, 5);
 
   return (
-    <ScrollView contentContainerStyle={estilos.tela}>
+    <ScrollView contentContainerStyle={[estilos.tela, { paddingTop: insets.top + 20 }]}>
+      <View style={{ gap: 2 }}>
+        <Text style={TEXTO.legenda}>{formatarDiaExtenso(hoje)}</Text>
+        <Text style={TEXTO.tituloTela}>{saudacao(hoje)}</Text>
+      </View>
+
       <View style={estilos.resumo}>
-        <Text style={estilos.resumoData}>{formatarDiaExtenso(hoje)}</Text>
         <Text style={estilos.resumoRotulo}>Vendido hoje</Text>
         <Text style={estilos.resumoValor}>{formatarDinheiro(resumo.faturamento)}</Text>
         <Text style={estilos.resumoDetalhe}>
           {resumo.quantidadeVendas} vendas · lucro bruto {formatarDinheiro(resumo.lucroBruto)}
         </Text>
+        <View style={estilos.resumoDivisor} />
         <View style={estilos.formas}>
-          {FORMAS_PAGAMENTO.map((f) => (
-            <View key={f.id} style={estilos.forma}>
-              <Text style={estilos.formaNome}>{f.nome}</Text>
-              <Text style={estilos.formaValor}>{formatarDinheiro(resumo.porFormaPagamento[f.id])}</Text>
-            </View>
-          ))}
+          {FORMAS_PAGAMENTO.map((f) => {
+            const Icone = ICONE_FORMA[f.id];
+            return (
+              <View key={f.id} style={estilos.forma}>
+                <View style={estilos.formaTopo}>
+                  <Icone size={14} color={CORES.tintaTexto} strokeWidth={1.75} />
+                  <Text style={estilos.formaNome}>{f.nome}</Text>
+                </View>
+                <Text style={estilos.formaValor}>{formatarDinheiro(resumo.porFormaPagamento[f.id])}</Text>
+              </View>
+            );
+          })}
         </View>
       </View>
 
-      <View style={estilos.acoes}>
-        <BotaoAcao icone="🛒" titulo="Vender" subtitulo="Registrar venda" primario onPress={() => router.push('/venda')} />
-        <BotaoAcao icone="📦" titulo="Entrada" subtitulo="Chegou mercadoria" onPress={() => router.push('/entrada')} />
+      <View style={{ gap: 10 }}>
+        <Botao titulo="Nova venda" icone={ShoppingBag} onPress={() => router.push('/venda')} />
+        <Botao titulo="Entrada de produto" icone={PackagePlus} variante="contorno" onPress={() => router.push('/entrada')} />
       </View>
 
       {alertas.length > 0 && (
-        <Cartao style={{ backgroundColor: CORES.alertaFundo, borderColor: '#F1D9AE' }}>
-          <TituloSecao>⚠️ Estoque baixo ({alertas.length})</TituloSecao>
-          {alertas.slice(0, 5).map((p) => (
-            <View key={p.id} style={estilos.linha}>
-              <View style={{ flex: 1 }}>
-                <Text style={estilos.linhaTitulo}>{p.nome}</Text>
-                <Text style={estilos.linhaSub}>
-                  restam {p.estoque} · mínimo {p.estoqueMinimo}
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push({ pathname: '/entrada', params: { produtoId: p.id } })}
-                style={estilos.repor}
-              >
-                <Text style={estilos.reporTexto}>Repor</Text>
-              </Pressable>
-            </View>
-          ))}
-        </Cartao>
+        <>
+          <Secao>Repor estoque</Secao>
+          <Cartao style={{ paddingVertical: 6, gap: 0 }}>
+            {alertas.slice(0, 4).map((p, i) => (
+              <Fragment key={p.id}>
+                {i > 0 && <Divisor />}
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push({ pathname: '/entrada', params: { produtoId: p.id } })}
+                  style={({ pressed }) => [estilos.linha, pressed && { opacity: 0.6 }]}
+                >
+                  <View style={[estilos.marcador, { backgroundColor: CORES.alertaFundo }]}>
+                    <TriangleAlert size={16} color={CORES.alerta} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={TEXTO.corpoForte} numberOfLines={1}>
+                      {p.nome}
+                    </Text>
+                    <Text style={TEXTO.legenda}>
+                      {p.estoque} em estoque · mínimo {p.estoqueMinimo}
+                    </Text>
+                  </View>
+                  <Text style={estilos.repor}>Repor</Text>
+                  <ChevronRight size={18} color={CORES.textoFraco} />
+                </Pressable>
+              </Fragment>
+            ))}
+          </Cartao>
+        </>
       )}
 
-      <Cartao>
-        <TituloSecao>Últimas movimentações</TituloSecao>
-        {movimentos.length === 0 && <Text style={estilos.linhaSub}>Nada registrado ainda.</Text>}
-        {movimentos.map((l) => (
-          <View key={l.id} style={estilos.linha}>
-            <View style={{ flex: 1 }}>
-              <Text style={estilos.linhaTitulo} numberOfLines={1}>
-                {l.descricao}
-              </Text>
-              <Text style={estilos.linhaSub}>{formatarDataHora(l.data)}</Text>
-            </View>
-            <Text style={[estilos.valor, { color: l.tipo === 'receita' ? CORES.receita : CORES.despesa }]}>
-              {l.tipo === 'receita' ? '+' : '−'} {formatarDinheiro(l.valor)}
-            </Text>
-          </View>
-        ))}
+      <Secao>Movimentações</Secao>
+      <Cartao style={{ paddingVertical: 6, gap: 0 }}>
+        {movimentos.length === 0 && <Text style={[TEXTO.legenda, { paddingVertical: 14 }]}>Nada registrado ainda.</Text>}
+        {movimentos.map((l, i) => {
+          const receita = l.tipo === 'receita';
+          const Seta = receita ? ArrowUpRight : ArrowDownLeft;
+          return (
+            <Fragment key={l.id}>
+              {i > 0 && <Divisor />}
+              <View style={estilos.linha}>
+                <View style={[estilos.marcador, { backgroundColor: receita ? CORES.receitaFundo : CORES.despesaFundo }]}>
+                  <Seta size={16} color={receita ? CORES.receita : CORES.despesa} strokeWidth={2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[TEXTO.corpo, { fontSize: 15 }]} numberOfLines={1}>
+                    {l.descricao}
+                  </Text>
+                  <Text style={TEXTO.legenda}>{formatarDataHora(l.data)}</Text>
+                </View>
+                <Text style={[TEXTO.valor, { fontSize: 15 }]}>
+                  {receita ? '+' : '−'} {formatarDinheiro(l.valor)}
+                </Text>
+              </View>
+            </Fragment>
+          );
+        })}
       </Cartao>
     </ScrollView>
   );
 }
 
-function BotaoAcao({
-  icone,
-  titulo,
-  subtitulo,
-  primario,
-  onPress,
-}: {
-  icone: string;
-  titulo: string;
-  subtitulo: string;
-  primario?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        estilos.acao,
-        primario ? { backgroundColor: CORES.destaque, borderColor: CORES.destaque } : null,
-        pressed && { opacity: 0.85 },
-      ]}
-    >
-      <Text style={estilos.acaoIcone}>{icone}</Text>
-      <Text style={estilos.acaoTitulo}>{titulo}</Text>
-      <Text style={estilos.acaoSub}>{subtitulo}</Text>
-    </Pressable>
-  );
-}
-
 const estilos = StyleSheet.create({
-  tela: { padding: 16, gap: 16, paddingBottom: 40 },
-  resumo: { backgroundColor: CORES.primaria, borderRadius: 20, padding: 20, gap: 4 },
-  resumoData: { color: '#F3D9E1', fontSize: 14 },
-  resumoRotulo: { color: '#F3D9E1', fontSize: 15, marginTop: 8 },
-  resumoValor: { color: '#fff', fontSize: 36, fontWeight: '800' },
-  resumoDetalhe: { color: '#F3D9E1', fontSize: 14 },
-  formas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
-  forma: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    backgroundColor: CORES.primariaEscura,
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  tela: { paddingHorizontal: 20, paddingBottom: 48, gap: 16 },
+  resumo: { backgroundColor: CORES.tinta, borderRadius: RAIO.grande, padding: 22 },
+  resumoRotulo: { fontFamily: FONTE.media, fontSize: 14, color: CORES.tintaTexto },
+  resumoValor: {
+    fontFamily: FONTE.semi,
+    fontSize: 44,
+    color: '#FFFFFF',
+    letterSpacing: -1,
+    marginTop: 4,
   },
-  formaNome: { color: '#F3D9E1', fontSize: 13 },
-  formaValor: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  acoes: { flexDirection: 'row', gap: 12 },
-  acao: {
-    flex: 1,
-    backgroundColor: CORES.superficie,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: CORES.borda,
-    padding: 18,
-    gap: 2,
-  },
-  acaoIcone: { fontSize: 30 },
-  acaoTitulo: { fontSize: 20, fontWeight: '800', color: CORES.texto, marginTop: 6 },
-  acaoSub: { fontSize: 14, color: CORES.texto, opacity: 0.75 },
-  linha: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  linhaTitulo: { fontSize: 15, fontWeight: '600', color: CORES.texto },
-  linhaSub: { fontSize: 13, color: CORES.textoSuave },
-  valor: { fontSize: 15, fontWeight: '700' },
-  repor: { backgroundColor: CORES.primaria, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
-  reporTexto: { color: '#fff', fontWeight: '700' },
+  resumoDetalhe: { fontFamily: FONTE.regular, fontSize: 14, color: CORES.tintaTexto, marginTop: 2 },
+  resumoDivisor: { height: StyleSheet.hairlineWidth, backgroundColor: '#3A3431', marginVertical: 18 },
+  formas: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 },
+  forma: { width: '50%', gap: 4 },
+  formaTopo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  formaNome: { fontFamily: FONTE.regular, fontSize: 13, color: CORES.tintaTexto },
+  formaValor: { fontFamily: FONTE.semi, fontSize: 17, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  linha: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  marcador: { width: 34, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  repor: { fontFamily: FONTE.semi, fontSize: 14, color: CORES.primaria },
 });

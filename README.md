@@ -4,6 +4,8 @@ Sistema para adegas controlarem **estoque** (bebidas, cigarros, gelo...), **vend
 
 📄 **Fluxo completo das telas, regras e próximas etapas:** [`docs/FLUXO.md`](docs/FLUXO.md)
 
+📊 **Comparativo com o Cplug e direção de design:** [`docs/ANALISE-CPLUG.md`](docs/ANALISE-CPLUG.md)
+
 ## Estrutura
 
 ```
