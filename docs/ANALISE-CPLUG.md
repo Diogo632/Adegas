@@ -77,7 +77,7 @@ Os depoimentos positivos (no site do próprio Cplug) elogiam a facilidade do PDV
 
 ## 7. Direção de design
 
-> **Atualização:** a pedido, o visual passou para **tema escuro** (preto, com detalhes em roxo escuro) e ganhou **animações** em JavaScript: botões que afundam e soltam uma onda de luz ao toque, telas que entram em cascata e números que contam até o valor. A tabela abaixo registra a primeira versão clara.
+> **Atualização:** a pedido, o visual passou para **tema escuro** (preto, com detalhes em roxo escuro) e ganhou **animações** em JavaScript: botões que afundam e soltam uma onda de luz ao toque, telas que entram em cascata e números que contam até o valor. Depois, os **títulos passaram a usar a mesma fonte do texto (Inter)**, sem a serifa. A tabela abaixo registra a primeira versão clara.
 
 ### Primeira versão (clara)
 

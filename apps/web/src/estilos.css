@@ -2,7 +2,6 @@
    Tema escuro: base quase preta, cartões um tom acima, roxo escuro nos detalhes. */
 :root {
   --sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --serif: 'Fraunces Variable', Georgia, serif;
   --raio: 14px;
   --raio-grande: 20px;
   --brilho: 0 8px 28px -10px color-mix(in srgb, var(--primaria) 75%, transparent);
@@ -27,13 +26,14 @@ body {
 }
 
 h1 {
-  font: 600 34px/1.15 var(--serif);
-  letter-spacing: -0.02em;
+  font: 700 32px/1.15 var(--sans);
+  letter-spacing: -0.025em;
   margin: 0;
 }
 
 h2 {
-  font: 600 19px/1.3 var(--serif);
+  font: 600 18px/1.3 var(--sans);
+  letter-spacing: -0.01em;
   margin: 0 0 16px;
 }
 
@@ -126,7 +126,7 @@ button:disabled {
 
 .marca strong {
   display: block;
-  font: 600 18px/1.2 var(--serif);
+  font: 700 17px/1.2 var(--sans);
 }
 
 .marca small {
@@ -1133,7 +1133,12 @@ button:disabled {
   padding: 8px 14px;
 }
 
+.segmentado.periodo {
+  flex-shrink: 0;
+}
+
 .segmentado.periodo button {
+  flex: 0 0 auto;
   padding: 8px 14px;
   white-space: nowrap;
 }
@@ -1647,6 +1652,11 @@ button:disabled {
 
   .segmentado.periodo {
     width: 100%;
+  }
+
+  .segmentado.periodo button {
+    flex: 1 1 0;
+    padding: 8px 6px;
   }
 
   .kpi .kpi-heroi {

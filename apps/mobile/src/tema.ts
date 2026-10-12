@@ -1,9 +1,5 @@
 import { CORES } from '@adegas/core';
 import {
-  Fraunces_500Medium,
-  Fraunces_600SemiBold,
-} from '@expo-google-fonts/fraunces';
-import {
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
@@ -13,14 +9,12 @@ import { StyleSheet } from 'react-native';
 
 export { CORES };
 
-/** Fontes carregadas no _layout. Fraunces nos títulos, Inter no resto. */
+/** Fontes carregadas no _layout. Inter em tudo, títulos incluídos. */
 export const ARQUIVOS_FONTE = {
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
-  Fraunces_500Medium,
-  Fraunces_600SemiBold,
 };
 
 export const FONTE = {
@@ -28,16 +22,16 @@ export const FONTE = {
   media: 'Inter_500Medium',
   semi: 'Inter_600SemiBold',
   negrito: 'Inter_700Bold',
-  titulo: 'Fraunces_600SemiBold',
-  tituloLeve: 'Fraunces_500Medium',
+  /** Títulos usam a mesma fonte dos textos, só mais pesada. */
+  titulo: 'Inter_700Bold',
 };
 
 export const RAIO = { pequeno: 10, medio: 14, grande: 20 };
 
 /** Estilos de texto prontos, para todas as telas falarem a mesma língua visual. */
 export const TEXTO = StyleSheet.create({
-  tituloTela: { fontFamily: FONTE.titulo, fontSize: 30, color: CORES.texto, letterSpacing: -0.4 },
-  titulo: { fontFamily: FONTE.titulo, fontSize: 20, color: CORES.texto },
+  tituloTela: { fontFamily: FONTE.titulo, fontSize: 30, color: CORES.texto, letterSpacing: -0.6 },
+  titulo: { fontFamily: FONTE.titulo, fontSize: 19, color: CORES.texto, letterSpacing: -0.2 },
   /** Rótulo de seção: pequeno, maiúsculo e espaçado. */
   secao: {
     fontFamily: FONTE.semi,

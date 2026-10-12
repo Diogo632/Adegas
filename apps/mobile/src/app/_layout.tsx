@@ -24,7 +24,7 @@ export default function Layout() {
           headerStyle: { backgroundColor: CORES.fundo },
           headerShadowVisible: false,
           headerTintColor: CORES.texto,
-          headerTitleStyle: { fontFamily: FONTE.titulo, fontSize: 20 },
+          headerTitleStyle: { fontFamily: FONTE.titulo, fontSize: 18 },
           headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: CORES.fundo },
           // Troca de tela deslizando (no celular); o conteúdo também entra em cascata.
