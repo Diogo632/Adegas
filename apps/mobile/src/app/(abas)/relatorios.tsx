@@ -165,11 +165,11 @@ const estilos = StyleSheet.create({
     padding: 20,
   },
   resumoRotulo: { fontFamily: FONTE.media, fontSize: 14, color: CORES.primariaClara },
-  resumoValor: { fontFamily: FONTE.semi, fontSize: 38, color: '#FFFFFF', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  resumoValor: { fontFamily: FONTE.semi, fontSize: 38, color: CORES.texto, letterSpacing: -1, fontVariant: ['tabular-nums'] },
   resumoDetalhe: { fontFamily: FONTE.regular, fontSize: 13, color: CORES.textoSuave },
   resumoDivisor: { height: StyleSheet.hairlineWidth, backgroundColor: CORES.destaqueBorda, marginVertical: 14 },
   resumoLinha: { flexDirection: 'row', gap: 10 },
-  resumoParte: { fontFamily: FONTE.semi, fontSize: 16, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  resumoParte: { fontFamily: FONTE.semi, fontSize: 16, color: CORES.texto, fontVariant: ['tabular-nums'] },
   picos: { flexDirection: 'row', gap: 10 },
   pico: {
     flex: 1,

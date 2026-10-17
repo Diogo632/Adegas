@@ -1,6 +1,7 @@
-import { lancamentoDaEntrada, lancamentosDaVenda, reducer } from './estado';
+import { comOperador, lancamentoDaEntrada, lancamentosDaVenda, reducer } from './estado';
 import { montarComanda, montarItensComanda } from './comandas';
 import { montarEntrada } from './estoque';
+import { usuarioInicial } from './usuarios';
 import type {
   AjusteEstoque,
   CategoriaLancamento,
@@ -51,6 +52,7 @@ export function estadoDeExemplo(agora: Date = new Date()): Estado {
     produtos: PRODUTOS.map((p) => ({ ...p })),
     lembretes: lembretesDeExemplo(agora),
     comandas: [],
+    usuarios: USUARIOS_DE_EXEMPLO.map((u) => ({ ...u })),
   };
   const horasAtras = (h: number) => new Date(agora.getTime() - h * 3_600_000);
 
@@ -79,7 +81,7 @@ export function estadoDeExemplo(agora: Date = new Date()): Estado {
   for (const m of MESAS_ABERTAS) {
     const conta = montarComanda(estado, { mesa: m.mesa }, horasAtras(m.abertaHaHoras));
     if (!conta.ok) continue;
-    estado = reducer(estado, { tipo: 'abrir-comanda', comanda: conta.valor });
+    estado = reducer(estado, comOperador({ tipo: 'abrir-comanda', comanda: conta.valor }, 'Ana'));
     for (const pedido of m.pedidos) {
       const itens = montarItensComanda(
         estado,
@@ -87,11 +89,26 @@ export function estadoDeExemplo(agora: Date = new Date()): Estado {
         pedido.itens.map(([produtoId, quantidade]) => ({ produtoId, quantidade })),
         horasAtras(pedido.horasAtras),
       );
-      if (itens.ok) estado = reducer(estado, { tipo: 'lancar-na-comanda', comandaId: conta.valor.id, itens: itens.valor });
+      if (itens.ok) estado = reducer(estado, comOperador({ tipo: 'lancar-na-comanda', comandaId: conta.valor.id, itens: itens.valor }, 'Ana'));
     }
   }
   return estado;
 }
+
+/** Quem usa o exemplo. Os PINs aparecem na tela de entrada enquanto os dados forem de exemplo. */
+export const PINS_DE_EXEMPLO = [
+  { nome: 'Dono', pin: '1234' },
+  { nome: 'Ana', pin: '1111' },
+  { nome: 'Bruno', pin: '2222' },
+];
+
+const USUARIOS_DE_EXEMPLO = [
+  usuarioInicial('u-dono', 'Dono', 'admin', '1234'),
+  // Atende o balcão e as mesas.
+  usuarioInicial('u-ana', 'Ana', 'funcionario', '1111', ['vender', 'mesas', 'estoque', 'assistente']),
+  // Gerente da noite: também recebe mercadoria e corrige mesas.
+  usuarioInicial('u-bruno', 'Bruno', 'funcionario', '2222', ['vender', 'mesas', 'corrigir_mesas', 'estoque', 'entrada', 'assistente']),
+];
 
 const MESAS_ABERTAS: { mesa: string; abertaHaHoras: number; pedidos: { horasAtras: number; itens: [string, number][] }[] }[] = [
   {
@@ -193,7 +210,7 @@ const CONTAS: [number, CategoriaLancamento, string, number, FormaPagamento][] = 
   [4, 'outras-despesas', 'Sacolas e copos descartáveis', 6800, 'dinheiro'],
 ];
 
-function historicoDeExemplo(agora: Date): Omit<Estado, 'produtos' | 'lembretes' | 'comandas'> {
+function historicoDeExemplo(agora: Date): Omit<Estado, 'produtos' | 'lembretes' | 'comandas' | 'usuarios'> {
   const sortear = sorteador(20261012);
   const produtos = new Map(PRODUTOS.map((p) => [p.id, p]));
   const vendas: Venda[] = [];

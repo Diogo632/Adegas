@@ -1,4 +1,4 @@
-import type { CategoriaId, Comanda, FormaPagamento, Venda } from '@adegas/core';
+import type { CategoriaId, Comanda, FormaPagamento, Produto, Venda } from '@adegas/core';
 import {
   CATEGORIAS,
   buscarProdutos,
@@ -19,7 +19,8 @@ import {
   useAdega,
   valorPorPessoa,
 } from '@adegas/core';
-import { Check, Search, Users } from 'lucide-react';
+import { Check, Minus, Search, Send, Users } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Numero, SeloPulsante, Surgir } from '../componentes/Animados';
@@ -32,12 +33,21 @@ import { Pagamento } from '../componentes/Pagamento';
 /** Quantas mesas numeradas aparecem na grade (cresce se uma mesa maior for aberta). */
 const MESAS_NA_GRADE = 12;
 
+/** Pedido ainda não lançado de cada mesa: id da conta → produto → quantidade. */
+type Pedidos = Record<string, Record<string, number>>;
+
 /**
  * Contas por mesa: a grade mostra as mesas livres e ocupadas; a mesa escolhida
  * abre à direita com os pedidos, a divisão e o fechamento.
+ *
+ * Clicar no produto só monta o pedido (com o nome da mesa bem à vista); ele entra
+ * na conta quando a pessoa aperta "Lançar na Mesa X". Assim não vai nada para a
+ * mesa errada sem querer.
  */
 export function Mesas() {
   const { estado, abrirComanda, lancarNaComanda } = useAdega();
+  const [pedidos, setPedidos] = useState<Pedidos>({});
+  const [lancado, setLancado] = useState<{ id: number; texto: string } | null>(null);
   const [parametros] = useSearchParams();
   const [selecionadaId, setSelecionadaId] = useState<string | null>(parametros.get('mesa'));
   const [outra, setOutra] = useState('');
@@ -58,9 +68,55 @@ export function Mesas() {
 
   const produtos = buscarProdutos(estado.produtos, busca, filtro);
   const destaques = !busca && !filtro ? maisVendidos(estado, 4) : [];
+  const pedido = (selecionada && pedidos[selecionada.id]) || {};
+  const linhasPedido = Object.entries(pedido).flatMap(([produtoId, quantidade]) => {
+    const produto = estado.produtos.find((p) => p.id === produtoId);
+    return produto ? [{ produto, quantidade }] : [];
+  });
+  const itensPedido = linhasPedido.reduce((s, l) => s + l.quantidade, 0);
+  const totalPedido = linhasPedido.reduce((s, l) => s + l.quantidade * l.produto.precoVenda, 0);
+  const nomeSelecionada = selecionada ? nomeDaMesa(selecionada.mesa) : '';
+  const temPedido = (c: Comanda) => Object.keys(pedidos[c.id] ?? {}).length > 0;
+
+  function mudarPedido(produtoId: string, quantidade: number) {
+    if (!selecionada) return;
+    setPedidos((todos) => {
+      const daMesa = { ...todos[selecionada.id] };
+      if (quantidade > 0) daMesa[produtoId] = quantidade;
+      else delete daMesa[produtoId];
+      return { ...todos, [selecionada.id]: daMesa };
+    });
+  }
+
+  function porNoPedido(p: Produto) {
+    if (!selecionada) return;
+    const atual = pedido[p.id] ?? 0;
+    if (atual >= p.estoque) return setErro(`Só tem ${p.estoque} ${p.nome} em estoque.`);
+    setErro(null);
+    setLancado(null);
+    mudarPedido(p.id, atual + 1);
+  }
+
+  function descartarPedido() {
+    if (selecionada) setPedidos((todos) => ({ ...todos, [selecionada.id]: {} }));
+  }
+
+  function lancarPedido() {
+    if (!selecionada || linhasPedido.length === 0) return;
+    const r = lancarNaComanda(
+      selecionada.id,
+      linhasPedido.map((l) => ({ produtoId: l.produto.id, quantidade: l.quantidade })),
+    );
+    if (!r.ok) return setErro(r.erro);
+    setErro(null);
+    descartarPedido();
+    const lista = linhasPedido.map((l) => `${l.quantidade} ${l.produto.nome}`).join(', ');
+    setLancado((anterior) => ({ id: (anterior?.id ?? 0) + 1, texto: `Lançado na ${nomeSelecionada}: ${lista}` }));
+  }
 
   function escolher(mesa: string) {
     setFechada(null);
+    setLancado(null);
     const existente = porMesa.get(mesa);
     if (existente) {
       setSelecionadaId(existente.id);
@@ -74,21 +130,15 @@ export function Mesas() {
     setErro(null);
   }
 
-  function lancar(produtoId: string) {
-    if (!selecionada) return;
-    const r = lancarNaComanda(selecionada.id, [{ produtoId, quantidade: 1 }]);
-    setErro(r.ok ? null : r.erro);
-  }
-
-  const cartaoProduto = (p: (typeof estado.produtos)[number]) => {
-    const naMesa = selecionada ? quantidadeNaComanda(selecionada, p.id) : 0;
+  const cartaoProduto = (p: Produto) => {
+    const noPedido = pedido[p.id] ?? 0;
     return (
       <button
         key={p.id}
-        className={`produto ${naMesa > 0 ? 'no-carrinho' : ''}`}
+        className={`produto ${noPedido > 0 ? 'no-carrinho' : ''}`}
         disabled={p.estoque <= 0}
-        onClick={() => lancar(p.id)}
-        title={`Lançar 1 ${p.nome} na ${selecionada ? nomeDaMesa(selecionada.mesa) : 'mesa'}`}
+        onClick={() => porNoPedido(p)}
+        title={`Pôr 1 ${p.nome} no pedido da ${nomeSelecionada}`}
       >
         <IconeQuadrado icone={ICONE_CATEGORIA[p.categoria]} />
         <span className="produto-nome">{p.nome}</span>
@@ -98,13 +148,13 @@ export function Mesas() {
             {p.estoque <= 0 ? 'sem estoque' : `${p.estoque} un`}
           </span>
         </span>
-        {naMesa > 0 && <SeloPulsante valor={naMesa} className="produto-qtd" />}
+        {noPedido > 0 && <SeloPulsante valor={noPedido} className="produto-qtd" />}
       </button>
     );
   };
 
   return (
-    <div className="pdv mesas-pagina">
+    <div className={`pdv mesas-pagina ${itensPedido > 0 ? 'com-barra' : ''}`}>
       <section className="pdv-produtos mesas-topo">
         <header className="cabecalho">
           <div>
@@ -133,6 +183,7 @@ export function Mesas() {
                 aria-label={conta ? `Mesa ${n}, ${formatarDinheiro(totalComanda(conta))}` : `Abrir mesa ${n}`}
                 aria-pressed={ativa}
               >
+                {conta && temPedido(conta) && <span className="mesa-pendente" title="Pedido ainda não lançado" />}
                 <strong>{n}</strong>
                 <small>{conta ? formatarDinheiro(totalComanda(conta)) : 'livre'}</small>
               </button>
@@ -145,6 +196,7 @@ export function Mesas() {
               onClick={() => escolher(c.mesa)}
               aria-pressed={c.id === selecionada?.id}
             >
+              {temPedido(c) && <span className="mesa-pendente" title="Pedido ainda não lançado" />}
               <strong>{c.mesa}</strong>
               <small>{formatarDinheiro(totalComanda(c))}</small>
             </button>
@@ -158,7 +210,12 @@ export function Mesas() {
             if (outra.trim()) escolher(outra);
           }}
         >
-          <input className="campo" placeholder="Outra mesa ou nome (15, Balcão, João...)" value={outra} onChange={(e) => setOutra(e.target.value)} />
+          <input
+            className="campo"
+            placeholder="Outra mesa ou nome (15, Balcão, João...)"
+            value={outra}
+            onChange={(e) => setOutra(e.target.value)}
+          />
           <button type="submit" className="botao contorno" disabled={!outra.trim()}>
             Abrir conta
           </button>
@@ -169,7 +226,9 @@ export function Mesas() {
       <section className="pdv-produtos mesas-produtos">
         {selecionada ? (
           <>
-            <h3 className="secao">Lançar na {nomeDaMesa(selecionada.mesa)} · clique no produto</h3>
+            <p className="pedido-para">
+              Pedido para a <strong>{nomeSelecionada}</strong> · clique nos produtos e depois em “Lançar na {nomeSelecionada}”
+            </p>
             <label className="campo-icone">
               <Search size={18} strokeWidth={1.75} />
               <input className="campo" placeholder="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -252,12 +311,54 @@ export function Mesas() {
             key={selecionada.id}
             comanda={selecionada}
             agora={agora}
+            pedidoPendente={itensPedido > 0}
             aoFechar={(venda) => {
               setFechada({ venda, mesa: selecionada.mesa });
               setSelecionadaId(null);
             }}
-            aoCancelar={() => setSelecionadaId(null)}
-          />
+            aoCancelar={() => {
+              descartarPedido();
+              setSelecionadaId(null);
+            }}
+          >
+            {lancado && (
+              <Surgir className="sucesso" chave={lancado.id}>
+                <span className="sucesso-selo">
+                  <Check size={16} strokeWidth={3} />
+                </span>
+                <div>
+                  <strong>{lancado.texto}</strong>
+                  <small>Já está na conta e saiu do estoque.</small>
+                </div>
+              </Surgir>
+            )}
+            {itensPedido > 0 && (
+              <div className="pedido-novo">
+                <div className="pedido-novo-topo">
+                  <strong>Pedido novo · {nomeSelecionada}</strong>
+                  <small>ainda não lançado</small>
+                </div>
+                <ul className="carrinho">
+                  {linhasPedido.map((l) => (
+                    <li key={l.produto.id}>
+                      <div className="carrinho-nome">
+                        <span>{l.produto.nome}</span>
+                        <small className="suave">{formatarDinheiro(l.produto.precoVenda)} cada</small>
+                      </div>
+                      <Contador valor={l.quantidade} maximo={l.produto.estoque} onChange={(v) => mudarPedido(l.produto.id, v)} />
+                      <Numero valor={l.quantidade * l.produto.precoVenda} className="num forte" />
+                    </li>
+                  ))}
+                </ul>
+                <button type="button" className="botao grande" onClick={lancarPedido}>
+                  <Send size={18} strokeWidth={1.9} /> Lançar na {nomeSelecionada} · {formatarDinheiro(totalPedido)}
+                </button>
+                <button type="button" className="link" onClick={descartarPedido}>
+                  Descartar pedido
+                </button>
+              </div>
+            )}
+          </ContaDaMesa>
         ) : (
           <>
             <div className="caixa-topo">
@@ -286,6 +387,20 @@ export function Mesas() {
           </>
         )}
       </aside>
+
+      {selecionada && itensPedido > 0 && (
+        <div className="pedido-barra" role="region" aria-label={`Pedido da ${nomeSelecionada}`}>
+          <div className="pedido-barra-texto">
+            <small>
+              {nomeSelecionada} · {itensPedido} {itensPedido === 1 ? 'item' : 'itens'}
+            </small>
+            <strong>{formatarDinheiro(totalPedido)}</strong>
+          </div>
+          <button type="button" className="botao" onClick={lancarPedido}>
+            <Send size={17} strokeWidth={1.9} /> Lançar na {nomeSelecionada}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -293,15 +408,21 @@ export function Mesas() {
 function ContaDaMesa({
   comanda,
   agora,
+  pedidoPendente,
   aoFechar,
   aoCancelar,
+  children,
 }: {
   comanda: Comanda;
   agora: Date;
+  /** Tem pedido montado e não lançado: não deixa fechar a conta sem ele. */
+  pedidoPendente: boolean;
   aoFechar: (venda: Venda) => void;
   aoCancelar: () => void;
+  children?: ReactNode;
 }) {
-  const { estado, lancarNaComanda, removerDaComanda, fecharComanda, cancelarComanda } = useAdega();
+  const { removerDaComanda, fecharComanda, cancelarComanda, pode } = useAdega();
+  const podeCorrigir = pode('corrigir_mesas');
   const [forma, setForma] = useState<FormaPagamento | null>(null);
   const [recebidoTexto, setRecebidoTexto] = useState('');
   const [pessoas, setPessoas] = useState(1);
@@ -314,11 +435,9 @@ function ContaDaMesa({
   const itens = quantidadeNaComanda(comanda);
   const falta = faltaDinheiro(forma, paraCentavos(recebidoTexto), total);
 
-  function mudar(produtoId: string, linhaAtual: number, nova: number) {
-    const r =
-      nova > linhaAtual
-        ? lancarNaComanda(comanda.id, [{ produtoId, quantidade: nova - linhaAtual }])
-        : removerDaComanda(comanda.id, produtoId, linhaAtual - nova);
+  // Pedido novo só pelo botão "Lançar na Mesa X". Aqui dá só para tirar, e só quem pode corrigir mesas.
+  function tirarUm(produtoId: string) {
+    const r = removerDaComanda(comanda.id, produtoId, 1);
     setErro(r.ok ? null : r.erro);
   }
 
@@ -338,7 +457,7 @@ function ContaDaMesa({
             {itens} {itens === 1 ? 'item' : 'itens'} · aberta {tempoAberta(comanda, agora)}
           </small>
         </div>
-        {!confirmandoCancelar && (
+        {podeCorrigir && !confirmandoCancelar && (
           <button className="link perigo" onClick={() => setConfirmandoCancelar(true)}>
             Cancelar mesa
           </button>
@@ -368,27 +487,36 @@ function ContaDaMesa({
         </div>
       )}
 
+      {children}
+
+      <h3 className="secao conta-titulo">Na conta</h3>
       {linhas.length === 0 ? (
-        <p className="suave vazio">Nenhum pedido ainda. Clique nos produtos ao lado para lançar.</p>
+        <p className="suave vazio">Nenhum pedido lançado ainda. Clique nos produtos e depois em “Lançar na {nome}”.</p>
       ) : (
         <ul className="carrinho">
-          {linhas.map((l) => {
-            const produto = estado.produtos.find((p) => p.id === l.produtoId);
-            return (
-              <li key={`${l.produtoId}-${l.precoUnitario}`}>
-                <div className="carrinho-nome">
-                  <span>{l.produtoNome}</span>
-                  <small className="suave">{formatarDinheiro(l.precoUnitario)} cada</small>
-                </div>
-                <Contador
-                  valor={l.quantidade}
-                  maximo={l.quantidade + Math.max(produto?.estoque ?? 0, 0)}
-                  onChange={(v) => mudar(l.produtoId, l.quantidade, v)}
-                />
-                <Numero valor={l.subtotal} className="num forte" />
-              </li>
-            );
-          })}
+          {linhas.map((l) => (
+            <li key={`${l.produtoId}-${l.precoUnitario}`}>
+              <div className="carrinho-nome">
+                <span>{l.produtoNome}</span>
+                <small className="suave">{formatarDinheiro(l.precoUnitario)} cada</small>
+              </div>
+              <span className="conta-qtd">
+                {podeCorrigir && (
+                  <button
+                    type="button"
+                    className="tirar"
+                    aria-label={`Tirar 1 ${l.produtoNome}`}
+                    title="Tirar 1"
+                    onClick={() => tirarUm(l.produtoId)}
+                  >
+                    <Minus size={15} strokeWidth={2} />
+                  </button>
+                )}
+                {l.quantidade}×
+              </span>
+              <Numero valor={l.subtotal} className="num forte" />
+            </li>
+          ))}
         </ul>
       )}
 
@@ -403,7 +531,9 @@ function ContaDaMesa({
         <Users size={18} strokeWidth={1.75} />
         <div className="dividir-texto">
           <strong>Dividir a conta</strong>
-          <small className="suave">{pessoas > 1 ? `${formatarDinheiro(valorPorPessoa(total, pessoas))} por pessoa` : 'Uma pessoa paga tudo'}</small>
+          <small className="suave">
+            {pessoas > 1 ? `${formatarDinheiro(valorPorPessoa(total, pessoas))} por pessoa` : 'Uma pessoa paga tudo'}
+          </small>
         </div>
         <Contador valor={pessoas} minimo={1} maximo={30} onChange={setPessoas} />
       </div>
@@ -422,8 +552,14 @@ function ContaDaMesa({
 
       {erro && <p className="erro">{erro}</p>}
 
-      <button className="botao grande" disabled={!forma || itens === 0 || falta} onClick={fechar}>
-        {itens === 0 ? 'Lance pedidos para fechar' : forma ? `Fechar conta · ${formatarDinheiro(total)}` : 'Escolha a forma de pagamento'}
+      <button className="botao grande" disabled={!forma || itens === 0 || falta || pedidoPendente} onClick={fechar}>
+        {pedidoPendente
+          ? 'Lance ou descarte o pedido novo'
+          : itens === 0
+            ? 'Lance pedidos para fechar'
+            : forma
+              ? `Fechar conta · ${formatarDinheiro(total)}`
+              : 'Escolha a forma de pagamento'}
       </button>
     </>
   );

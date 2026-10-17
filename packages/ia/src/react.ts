@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAdega } from '@adegas/core';
+import { PERMISSOES, permissoesDe, useAdega } from '@adegas/core';
 import type { PassoAgente } from './agente';
 import { AgenteAdega } from './agente';
 import type { ConexaoMcp } from './local';
@@ -29,7 +29,10 @@ const novoId = () => `m${Date.now().toString(36)}${(contador++).toString(36)}`;
  * (via MCP, na memória): uma entrada registrada pelo assistente já aparece no estoque.
  */
 export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
-  const { loja } = useAdega();
+  const { loja, usuario } = useAdega();
+  // O assistente age como quem está logado: só as ferramentas que a pessoa pode usar.
+  const permissoes = usuario?.papel === 'admin' ? undefined : permissoesDe(usuario);
+  const chaveDoUsuario = usuario ? `${usuario.id}:${usuario.papel}:${permissoesDe(usuario).join(',')}` : '';
   const [mensagens, setMensagens] = useState<MensagemAssistente[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [modeloEmUso, setModeloEmUso] = useState<string | null>(null);
@@ -46,7 +49,7 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
       conexao.current = null;
       agente.current = null;
     },
-    [loja],
+    [loja, chaveDoUsuario],
   );
 
   const atualizar = (id: string, mudanca: Partial<MensagemAssistente>) =>
@@ -72,10 +75,17 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
       const controle = new AbortController();
       cancelar.current = controle;
       try {
-        conexao.current ??= conectarNaMemoria(loja);
+        conexao.current ??= conectarNaMemoria(loja, { permissoes });
         const { cliente } = await conexao.current;
         if (!agente.current || agente.current.chave !== chave || agente.current.modelo !== modelo) {
-          agente.current = { chave, modelo, agente: new AgenteAdega({ cliente, chave: chave.trim(), modelo }) };
+          const quemUsa = usuario
+            ? {
+                nome: usuario.nome,
+                papel: usuario.papel,
+                permissoes: PERMISSOES.filter((p) => permissoesDe(usuario).includes(p.id)).map((p) => p.nome),
+              }
+            : undefined;
+          agente.current = { chave, modelo, agente: new AgenteAdega({ cliente, chave: chave.trim(), modelo, quemUsa }) };
         }
         const resposta = await agente.current.agente.enviar(pergunta, {
           sinal: controle.signal,
@@ -98,7 +108,7 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
         }
       }
     },
-    [chave, modelo, loja],
+    [chave, modelo, loja, permissoes?.join(','), usuario],
   );
 
   const novaConversa = useCallback(() => {

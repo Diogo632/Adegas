@@ -191,7 +191,7 @@ const estilos = StyleSheet.create({
     padding: 20,
   },
   resumoRotulo: { fontFamily: FONTE.media, fontSize: 14, color: CORES.primariaClara },
-  resumoValor: { fontFamily: FONTE.semi, fontSize: 38, color: '#FFFFFF', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  resumoValor: { fontFamily: FONTE.semi, fontSize: 38, color: CORES.texto, letterSpacing: -1, fontVariant: ['tabular-nums'] },
   resumoDetalhe: { fontFamily: FONTE.regular, fontSize: 13, color: CORES.textoSuave },
   resumoDivisor: { height: StyleSheet.hairlineWidth, backgroundColor: CORES.destaqueBorda, marginVertical: 14 },
   resumoLinha: { flexDirection: 'row', gap: 12 },

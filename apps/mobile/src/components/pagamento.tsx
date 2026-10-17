@@ -25,8 +25,8 @@ export function EscolhaForma({ forma, onEscolher }: { forma: FormaPagamento | nu
               escala={0.95}
               style={[estilos.forma, ativo && estilos.formaAtiva]}
             >
-              <Icone size={24} color={ativo ? '#FFFFFF' : CORES.primariaClara} strokeWidth={1.6} />
-              <Text style={[estilos.formaNome, ativo && { color: '#FFFFFF' }]}>{f.nome}</Text>
+              <Icone size={24} color={ativo ? CORES.sobrePrimaria : CORES.primariaClara} strokeWidth={1.6} />
+              <Text style={[estilos.formaNome, ativo && { color: CORES.sobrePrimaria }]}>{f.nome}</Text>
               {ativo && (
                 <Surgir style={estilos.formaCheck}>
                   <Check size={12} color={CORES.primaria} strokeWidth={3} />
@@ -140,7 +140,7 @@ const estilos = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 999,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: CORES.sobrePrimaria,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -163,5 +163,5 @@ const estilos = StyleSheet.create({
     gap: 4,
   },
   trocoRotulo: { fontFamily: FONTE.media, fontSize: 14, color: CORES.primariaClara },
-  trocoValor: { fontFamily: FONTE.semi, fontSize: 40, color: '#FFFFFF', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  trocoValor: { fontFamily: FONTE.semi, fontSize: 40, color: CORES.texto, letterSpacing: -1, fontVariant: ['tabular-nums'] },
 });

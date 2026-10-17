@@ -48,6 +48,8 @@ export interface EntradaEstoque {
   custoTotal: Centavos;
   fornecedor?: string;
   formaPagamento: FormaPagamento;
+  /** Quem registrou. */
+  operador?: string;
 }
 
 export interface ItemVenda {
@@ -79,6 +81,8 @@ export interface Venda {
   /** Venda que veio do fechamento da conta de uma mesa. */
   comandaId?: string;
   mesa?: string;
+  /** Quem registrou a venda (ou fechou a conta). */
+  operador?: string;
 }
 
 export type TipoLancamento = 'receita' | 'despesa';
@@ -109,6 +113,7 @@ export interface Lancamento {
   formaPagamento: FormaPagamento;
   /** id da venda ou da entrada que gerou o lançamento (não existe nos manuais). */
   referenciaId?: string;
+  operador?: string;
 }
 
 /** Por que o estoque foi corrigido à mão. */
@@ -126,6 +131,7 @@ export interface AjusteEstoque {
   /** Custo médio na hora do ajuste, para saber quanto foi perdido. */
   custoUnitario: Centavos;
   observacao?: string;
+  operador?: string;
 }
 
 /** Algo para não esquecer: pagar boleto, pedir gelo, conferir validade... */
@@ -152,6 +158,8 @@ export interface ItemComanda {
   precoUnitario: Centavos;
   custoUnitario: Centavos;
   lancadoEm: string;
+  /** Quem lançou o pedido. */
+  operador?: string;
 }
 
 /**
@@ -168,6 +176,35 @@ export interface Comanda {
   fechadaEm?: string;
   /** Venda gerada ao fechar. */
   vendaId?: string;
+  abertaPor?: string;
+  /** Quem fechou ou cancelou. */
+  fechadaPor?: string;
+}
+
+/** O que cada pessoa pode fazer. O administrador pode tudo. */
+export type Permissao =
+  | 'vender'
+  | 'mesas'
+  | 'corrigir_mesas'
+  | 'estoque'
+  | 'entrada'
+  | 'ajustar_estoque'
+  | 'financeiro'
+  | 'assistente';
+
+export type Papel = 'admin' | 'funcionario';
+
+/** Quem usa o sistema. O PIN não é guardado: só a "impressão digital" dele. */
+export interface Usuario {
+  id: string;
+  nome: string;
+  papel: Papel;
+  /** Só vale para funcionário; o administrador pode tudo. */
+  permissoes: Permissao[];
+  pinSal: string;
+  pinHash: string;
+  ativo: boolean;
+  criadoEm: string;
 }
 
 export interface Estado {
@@ -178,6 +215,7 @@ export interface Estado {
   ajustes: AjusteEstoque[];
   lembretes: Lembrete[];
   comandas: Comanda[];
+  usuarios: Usuario[];
 }
 
 export type Resultado<T> = { ok: true; valor: T } | { ok: false; erro: string };

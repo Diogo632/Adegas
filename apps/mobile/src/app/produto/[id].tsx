@@ -38,8 +38,9 @@ type Aba = 'historico' | 'ajustar' | 'editar';
 
 export default function TelaProduto() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { estado } = useAdega();
+  const { estado, pode } = useAdega();
   const produto = estado.produtos.find((p) => p.id === id);
+  const podeAjustar = pode('ajustar_estoque');
   const [aba, setAba] = useState<Aba>('historico');
   const [aviso, setAviso] = useState<{ chave: number; texto: string } | null>(null);
   const rolagem = useRef<ScrollView>(null);
@@ -75,8 +76,14 @@ export default function TelaProduto() {
       <Entrar atraso={60} style={estilos.numeros}>
         <Numero rotulo="Em estoque" valor={<NumeroAnimado valor={produto.estoque} formatar={(v) => `${v} un`} style={estilos.numeroValor} />} />
         <Numero rotulo="Mínimo" valor={`${produto.estoqueMinimo} un`} />
-        <Numero rotulo="Custo médio" valor={formatarDinheiro(produto.custoMedio)} />
-        <Numero rotulo="Preço · margem" valor={`${formatarDinheiro(produto.precoVenda)} · ${margem(produto.precoVenda, produto.custoMedio)}%`} />
+        {pode('financeiro') ? (
+          <>
+            <Numero rotulo="Custo médio" valor={formatarDinheiro(produto.custoMedio)} />
+            <Numero rotulo="Preço · margem" valor={`${formatarDinheiro(produto.precoVenda)} · ${margem(produto.precoVenda, produto.custoMedio)}%`} />
+          </>
+        ) : (
+          <Numero rotulo="Preço de venda" valor={formatarDinheiro(produto.precoVenda)} />
+        )}
       </Entrar>
 
       {aviso && (
@@ -85,26 +92,31 @@ export default function TelaProduto() {
         </Entrar>
       )}
 
-      <Segmentado
-        opcoes={[
-          { id: 'historico', rotulo: 'Histórico' },
-          { id: 'ajustar', rotulo: 'Ajustar' },
-          { id: 'editar', rotulo: 'Editar' },
-        ]}
-        valor={aba}
-        onChange={setAba}
-      />
+      {/* Ajustar e editar só para quem tem permissão; os outros veem o histórico. */}
+      {podeAjustar && (
+        <Segmentado
+          opcoes={[
+            { id: 'historico', rotulo: 'Histórico' },
+            { id: 'ajustar', rotulo: 'Ajustar' },
+            { id: 'editar', rotulo: 'Editar' },
+          ]}
+          valor={aba}
+          onChange={setAba}
+        />
+      )}
 
-      {aba === 'historico' && <Historico produtoId={produto.id} />}
-      {aba === 'ajustar' && <FormAjuste key={`a-${produto.estoque}`} produto={produto} onFeito={avisar} />}
-      {aba === 'editar' && <FormEdicao produto={produto} onFeito={avisar} />}
+      {(aba === 'historico' || !podeAjustar) && <Historico produtoId={produto.id} />}
+      {podeAjustar && aba === 'ajustar' && <FormAjuste key={`a-${produto.estoque}`} produto={produto} onFeito={avisar} />}
+      {podeAjustar && aba === 'editar' && <FormEdicao produto={produto} onFeito={avisar} />}
 
-      <Botao
-        titulo="Registrar entrada deste produto"
-        icone={PackagePlus}
-        variante="contorno"
-        onPress={() => router.push({ pathname: '/entrada', params: { produtoId: produto.id } })}
-      />
+      {pode('entrada') && (
+        <Botao
+          titulo="Registrar entrada deste produto"
+          icone={PackagePlus}
+          variante="contorno"
+          onPress={() => router.push({ pathname: '/entrada', params: { produtoId: produto.id } })}
+        />
+      )}
     </ScrollView>
   );
 }

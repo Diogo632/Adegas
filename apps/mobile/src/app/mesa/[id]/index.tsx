@@ -8,19 +8,20 @@ import {
   useAdega,
 } from '@adegas/core';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { Plus, ReceiptText } from 'lucide-react-native';
+import { Minus, Plus, ReceiptText } from 'lucide-react-native';
 import { Fragment, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Entrar, NumeroAnimado, Tocavel } from '../../../components/animacoes';
 import { SeloMesa } from '../../../components/mesas';
 import { estiloBarraRodape } from '../../../components/produtos';
-import { Aviso, Botao, Cartao, Contador, Divisor, Secao } from '../../../components/ui';
+import { Aviso, Botao, Cartao, Divisor, Secao } from '../../../components/ui';
 import { CORES, FONTE, RAIO, TEXTO } from '../../../tema';
 
 export default function ContaDaMesa() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { estado, lancarNaComanda, removerDaComanda, cancelarComanda } = useAdega();
+  const { estado, removerDaComanda, cancelarComanda, pode } = useAdega();
+  const podeCorrigir = pode('corrigir_mesas');
   const [erro, setErro] = useState<string | null>(null);
   const [confirmandoCancelar, setConfirmandoCancelar] = useState(false);
   const insets = useSafeAreaInsets();
@@ -41,8 +42,10 @@ export default function ContaDaMesa() {
   const total = totalComanda(comanda);
   const itens = quantidadeNaComanda(comanda);
 
-  function mudarQuantidade(produtoId: string, atual: number, nova: number) {
-    const r = nova > atual ? lancarNaComanda(comanda!.id, [{ produtoId, quantidade: nova - atual }]) : removerDaComanda(comanda!.id, produtoId, atual - nova);
+  // Pedido novo só pelo botão "Adicionar pedido" (com a mesa escrita nele), para não lançar na mesa errada.
+  // Aqui dá só para tirar, e só quem pode corrigir mesas.
+  function tirarUm(produtoId: string) {
+    const r = removerDaComanda(comanda!.id, produtoId, 1);
     setErro(r.ok ? null : r.erro);
   }
 
@@ -75,8 +78,6 @@ export default function ContaDaMesa() {
           ) : (
             <Cartao style={{ paddingVertical: 6, gap: 0 }}>
               {linhas.map((l, i) => {
-                const produto = estado.produtos.find((p) => p.id === l.produtoId);
-                const naConta = quantidadeNaComanda(comanda, l.produtoId);
                 return (
                   <Fragment key={`${l.produtoId}-${l.precoUnitario}`}>
                     {i > 0 && <Divisor />}
@@ -89,44 +90,52 @@ export default function ContaDaMesa() {
                           {formatarDinheiro(l.precoUnitario)} cada · <Text style={estilos.subtotal}>{formatarDinheiro(l.subtotal)}</Text>
                         </Text>
                       </View>
-                      <Contador
-                        compacto
-                        valor={l.quantidade}
-                        maximo={l.quantidade + Math.max(produto?.estoque ?? 0, 0)}
-                        onChange={(v) => mudarQuantidade(l.produtoId, naConta, naConta - l.quantidade + v)}
-                      />
+                      {podeCorrigir && (
+                        <Tocavel
+                          accessibilityRole="button"
+                          accessibilityLabel={`Tirar 1 ${l.produtoNome}`}
+                          onPress={() => tirarUm(l.produtoId)}
+                          escala={0.85}
+                          style={estilos.tirar}
+                        >
+                          <Minus size={16} color={CORES.texto} strokeWidth={2} />
+                        </Tocavel>
+                      )}
+                      <Text style={estilos.quantidade}>{l.quantidade}×</Text>
                     </View>
                   </Fragment>
                 );
               })}
             </Cartao>
           )}
-          <Botao titulo="Adicionar pedido" icone={Plus} variante="contorno" onPress={() => router.push(`/mesa/${comanda.id}/adicionar`)} />
+          <Botao titulo={`Adicionar pedido na ${nome}`} icone={Plus} variante="contorno" onPress={() => router.push(`/mesa/${comanda.id}/adicionar`)} />
           {erro && <Aviso texto={erro} />}
         </Entrar>
 
-        <Entrar atraso={160} style={{ gap: 12, marginTop: 8 }}>
-          {confirmandoCancelar ? (
-            <Cartao style={{ borderColor: CORES.despesa, gap: 12 }}>
-              <Text style={TEXTO.corpoForte}>Cancelar a {nome}?</Text>
-              <Text style={TEXTO.legenda}>
-                {itens > 0 ? `Os ${itens} itens voltam para o estoque e nada entra no caixa.` : 'A mesa fica livre de novo.'}
+        {podeCorrigir && (
+          <Entrar atraso={160} style={{ gap: 12, marginTop: 8 }}>
+            {confirmandoCancelar ? (
+              <Cartao style={{ borderColor: CORES.despesa, gap: 12 }}>
+                <Text style={TEXTO.corpoForte}>Cancelar a {nome}?</Text>
+                <Text style={TEXTO.legenda}>
+                  {itens > 0 ? `Os ${itens} itens voltam para o estoque e nada entra no caixa.` : 'A mesa fica livre de novo.'}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Tocavel accessibilityRole="button" onPress={cancelar} style={[estilos.acaoPequena, { borderColor: CORES.despesa }]}>
+                    <Text style={[estilos.acaoTexto, { color: CORES.despesa }]}>Cancelar mesa</Text>
+                  </Tocavel>
+                  <Tocavel accessibilityRole="button" onPress={() => setConfirmandoCancelar(false)} style={estilos.acaoPequena}>
+                    <Text style={estilos.acaoTexto}>Voltar</Text>
+                  </Tocavel>
+                </View>
+              </Cartao>
+            ) : (
+              <Text style={estilos.linkCancelar} onPress={() => setConfirmandoCancelar(true)}>
+                Cancelar mesa
               </Text>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <Tocavel accessibilityRole="button" onPress={cancelar} style={[estilos.acaoPequena, { borderColor: CORES.despesa }]}>
-                  <Text style={[estilos.acaoTexto, { color: CORES.despesa }]}>Cancelar mesa</Text>
-                </Tocavel>
-                <Tocavel accessibilityRole="button" onPress={() => setConfirmandoCancelar(false)} style={estilos.acaoPequena}>
-                  <Text style={estilos.acaoTexto}>Voltar</Text>
-                </Tocavel>
-              </View>
-            </Cartao>
-          ) : (
-            <Text style={estilos.linkCancelar} onPress={() => setConfirmandoCancelar(true)}>
-              Cancelar mesa
-            </Text>
-          )}
-        </Entrar>
+            )}
+          </Entrar>
+        )}
       </ScrollView>
 
       <View style={[estiloBarraRodape.barra, { paddingBottom: insets.bottom + 12 }]}>
@@ -152,6 +161,17 @@ const estilos = StyleSheet.create({
   topo: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   linha: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   subtotal: { fontFamily: FONTE.semi, color: CORES.texto },
+  quantidade: { fontFamily: FONTE.semi, fontSize: 18, color: CORES.texto, minWidth: 34, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  tirar: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: CORES.bordaForte,
+    backgroundColor: CORES.superficieAlta,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   linkCancelar: { fontFamily: FONTE.media, fontSize: 15, color: CORES.despesa, textAlign: 'center', paddingVertical: 8 },
   acaoPequena: {
     flex: 1,

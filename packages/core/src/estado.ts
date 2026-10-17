@@ -1,6 +1,6 @@
 import { formaPagamento } from './catalogos';
 import { nomeDaMesa } from './comandas';
-import type { AjusteEstoque, Comanda, EntradaEstoque, Estado, ItemComanda, Lancamento, Lembrete, Produto, Venda } from './tipos';
+import type { AjusteEstoque, Comanda, EntradaEstoque, Estado, ItemComanda, Lancamento, Lembrete, Produto, Usuario, Venda } from './tipos';
 import { novoCustoMedio } from './estoque';
 
 export type Acao =
@@ -17,7 +17,8 @@ export type Acao =
   | { tipo: 'lancar-na-comanda'; comandaId: string; itens: ItemComanda[] }
   | { tipo: 'remover-da-comanda'; comandaId: string; produtoId: string; quantidade: number }
   | { tipo: 'fechar-comanda'; comandaId: string; venda: Venda }
-  | { tipo: 'cancelar-comanda'; comandaId: string; data: string };
+  | { tipo: 'cancelar-comanda'; comandaId: string; data: string; operador?: string }
+  | { tipo: 'salvar-usuario'; usuario: Usuario };
 
 export const ESTADO_VAZIO: Estado = {
   produtos: [],
@@ -27,6 +28,7 @@ export const ESTADO_VAZIO: Estado = {
   ajustes: [],
   lembretes: [],
   comandas: [],
+  usuarios: [],
 };
 
 /**
@@ -114,7 +116,9 @@ export function reducer(estado: Estado, acao: Acao): Estado {
         vendas: [acao.venda, ...estado.vendas],
         lancamentos: [...lancamentosDaVenda(acao.venda), ...estado.lancamentos],
         comandas: estado.comandas.map((c) =>
-          c.id === acao.comandaId ? { ...c, situacao: 'fechada', fechadaEm: acao.venda.data, vendaId: acao.venda.id } : c,
+          c.id === acao.comandaId
+            ? { ...c, situacao: 'fechada', fechadaEm: acao.venda.data, vendaId: acao.venda.id, fechadaPor: acao.venda.operador }
+            : c,
         ),
       };
     case 'cancelar-comanda': {
@@ -122,7 +126,16 @@ export function reducer(estado: Estado, acao: Acao): Estado {
       if (!comanda) return estado;
       return {
         ...mudarEstoque(estado, comanda.itens.map((i) => [i.produtoId, i.quantidade])),
-        comandas: estado.comandas.map((c) => (c.id === comanda.id ? { ...c, situacao: 'cancelada', fechadaEm: acao.data } : c)),
+        comandas: estado.comandas.map((c) =>
+          c.id === comanda.id ? { ...c, situacao: 'cancelada', fechadaEm: acao.data, fechadaPor: acao.operador } : c,
+        ),
+      };
+    }
+    case 'salvar-usuario': {
+      const existe = estado.usuarios.some((u) => u.id === acao.usuario.id);
+      return {
+        ...estado,
+        usuarios: existe ? estado.usuarios.map((u) => (u.id === acao.usuario.id ? acao.usuario : u)) : [...estado.usuarios, acao.usuario],
       };
     }
   }
@@ -179,6 +192,7 @@ export function lancamentosDaVenda(venda: Venda): Lancamento[] {
     valor: pagamento.valor,
     formaPagamento: pagamento.forma,
     referenciaId: venda.id,
+    operador: venda.operador,
   }));
 }
 
@@ -193,7 +207,36 @@ export function lancamentoDaEntrada(entrada: EntradaEstoque): Lancamento {
     valor: entrada.custoTotal,
     formaPagamento: entrada.formaPagamento,
     referenciaId: entrada.id,
+    operador: entrada.operador,
   };
+}
+
+/**
+ * Marca quem fez a ação (vendas, entradas, pedidos de mesa, ajustes...). As telas e
+ * o assistente despacham sem se preocupar com isso; o provedor carimba o nome.
+ */
+export function comOperador(acao: Acao, operador: string | undefined): Acao {
+  if (!operador) return acao;
+  switch (acao.tipo) {
+    case 'registrar-venda':
+      return { ...acao, venda: { ...acao.venda, operador } };
+    case 'registrar-entrada':
+      return { ...acao, entrada: { ...acao.entrada, operador } };
+    case 'ajustar-estoque':
+      return { ...acao, ajuste: { ...acao.ajuste, operador } };
+    case 'registrar-lancamento':
+      return { ...acao, lancamento: { ...acao.lancamento, operador } };
+    case 'abrir-comanda':
+      return { ...acao, comanda: { ...acao.comanda, abertaPor: operador } };
+    case 'lancar-na-comanda':
+      return { ...acao, itens: acao.itens.map((i) => ({ ...i, operador })) };
+    case 'fechar-comanda':
+      return { ...acao, venda: { ...acao.venda, operador } };
+    case 'cancelar-comanda':
+      return { ...acao, operador };
+    default:
+      return acao;
+  }
 }
 
 function aplicarEntrada(estado: Estado, entrada: EntradaEstoque, produtoNovo?: Produto): Estado {

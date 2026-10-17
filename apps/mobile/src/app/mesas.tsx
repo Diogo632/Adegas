@@ -71,7 +71,7 @@ export default function Mesas() {
                 escala={0.94}
                 style={[estilos.mesa, conta && estilos.mesaOcupada]}
               >
-                <Text style={[estilos.mesaNumero, conta && { color: '#FFFFFF' }]}>{n}</Text>
+                <Text style={[estilos.mesaNumero, conta && { color: CORES.texto }]}>{n}</Text>
                 <Text style={[estilos.mesaInfo, conta && { color: CORES.primariaClara }]} numberOfLines={1}>
                   {conta ? formatarDinheiro(totalComanda(conta)) : 'livre'}
                 </Text>
@@ -144,7 +144,7 @@ const estilos = StyleSheet.create({
     padding: 20,
   },
   resumoRotulo: { fontFamily: FONTE.media, fontSize: 14, color: CORES.primariaClara },
-  resumoValor: { fontFamily: FONTE.semi, fontSize: 34, color: '#FFFFFF', letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
+  resumoValor: { fontFamily: FONTE.semi, fontSize: 34, color: CORES.texto, letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
   grade: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   mesa: {
     width: '22.6%',

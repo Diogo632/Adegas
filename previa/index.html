@@ -7,14 +7,14 @@
     <style>
       /* Mesmas cores do app (packages/core/src/catalogos.ts). */
       :root {
-        --fundo: #0b0a10;
-        --superficie: #15131d;
-        --borda: #26222f;
-        --destaque: #3a2766;
-        --texto: #f5f3fa;
-        --suave: #a7a1b7;
-        --roxo: #6d28d9;
-        --roxo-claro: #a78bfa;
+        --fundo: #0b0b0a;
+        --superficie: #171714;
+        --borda: #2a2924;
+        --destaque: #4d3d10;
+        --texto: #fafaf7;
+        --suave: #b6b3a8;
+        --amarelo: #f5b700;
+        --amarelo-claro: #ffd45c;
         color-scheme: dark;
       }
       * {
@@ -39,7 +39,7 @@
       }
       .rotulo {
         margin: 0;
-        color: var(--roxo-claro);
+        color: var(--amarelo-claro);
         font-size: 13px;
         font-weight: 600;
         letter-spacing: 0.08em;
@@ -68,7 +68,7 @@
         transform: translateY(-2px);
       }
       a.opcao.principal {
-        background: linear-gradient(140deg, #2b1857, #1b1330 65%);
+        background: linear-gradient(140deg, #3a2d08, #1d1808 65%);
         border-color: var(--destaque);
       }
       a.opcao strong {
@@ -84,11 +84,11 @@
       }
       p.versao {
         margin: 0;
-        color: #7a748c;
+        color: #86837a;
         font-size: 13px;
       }
       :focus-visible {
-        outline: 2px solid var(--roxo-claro);
+        outline: 2px solid var(--amarelo-claro);
         outline-offset: 3px;
       }
     </style>

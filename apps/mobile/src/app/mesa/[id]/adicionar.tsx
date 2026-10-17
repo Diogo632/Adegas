@@ -2,12 +2,13 @@ import type { ItemCarrinho } from '@adegas/core';
 import { alterarQuantidade, formatarDinheiro, nomeDaMesa, quantidadeNoCarrinho, totalCarrinho, totalItens, useAdega } from '@adegas/core';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NumeroAnimado } from '../../../components/animacoes';
+import { SeloMesa } from '../../../components/mesas';
 import { ListaDeProdutos, estiloBarraRodape } from '../../../components/produtos';
 import { Aviso, Botao } from '../../../components/ui';
-import { TEXTO } from '../../../tema';
+import { CORES, FONTE, TEXTO } from '../../../tema';
 
 /** Escolhe o que a mesa pediu e lança tudo de uma vez na conta. */
 export default function AdicionarPedido() {
@@ -31,6 +32,15 @@ export default function AdicionarPedido() {
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen options={{ title: `Pedido · ${nome}` }} />
+      {/* A mesa fica escrita em destaque o tempo todo: difícil lançar na mesa errada. */}
+      <View style={estilos.faixa}>
+        <SeloMesa mesa={comanda?.mesa ?? '?'} />
+        <View style={{ flex: 1 }}>
+          <Text style={estilos.faixaRotulo}>Pedido para a</Text>
+          <Text style={estilos.faixaMesa}>{nome}</Text>
+        </View>
+        <Text style={TEXTO.legenda}>Escolha e toque em Lançar</Text>
+      </View>
       <ListaDeProdutos
         quantidade={(produtoId) => quantidadeNoCarrinho(pedido, produtoId)}
         onQuantidade={(produto, v) => {
@@ -55,3 +65,20 @@ export default function AdicionarPedido() {
     </View>
   );
 }
+
+const estilos = StyleSheet.create({
+  faixa: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 20,
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: CORES.primaria,
+    backgroundColor: CORES.primariaSuave,
+  },
+  faixaRotulo: { fontFamily: FONTE.media, fontSize: 12, color: CORES.primariaClara },
+  faixaMesa: { fontFamily: FONTE.negrito, fontSize: 20, color: CORES.texto },
+});

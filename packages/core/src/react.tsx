@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import type { ReactNode } from 'react';
 import { montarComanda, montarFechamento, montarItensComanda, montarRemocaoComanda } from './comandas';
 import type { Acao, LojaAdega } from './estado';
-import { reducer } from './estado';
+import { comOperador, reducer } from './estado';
 import type { DadosAjuste, DadosEdicaoProduto, DadosEntrada } from './estoque';
 import { montarAjuste, montarEdicaoProduto, montarEntrada } from './estoque';
 import type { DadosLancamento } from './financeiro';
@@ -10,12 +10,35 @@ import { montarLancamento } from './financeiro';
 import type { DadosLembrete } from './lembretes';
 import { montarLembrete } from './lembretes';
 import { estadoDeExemplo } from './exemplo';
-import type { AjusteEstoque, Comanda, EntradaEstoque, Estado, ItemComanda, Lancamento, Lembrete, Produto, Resultado, Venda } from './tipos';
+import type {
+  AjusteEstoque,
+  Comanda,
+  EntradaEstoque,
+  Estado,
+  ItemComanda,
+  Lancamento,
+  Lembrete,
+  Permissao,
+  Produto,
+  Resultado,
+  Usuario,
+  Venda,
+} from './tipos';
+import type { DadosUsuario } from './usuarios';
+import { entrar as conferirEntrada, montarUsuario, pode as usuarioPode } from './usuarios';
 import type { DadosPagamento, ItemCarrinho } from './vendas';
 import { alterarQuantidade, montarVenda, quantidadeNoCarrinho } from './vendas';
 
 interface ContextoAdega {
   estado: Estado;
+  /** Quem está usando agora (null = tela de entrada). */
+  usuario: Usuario | null;
+  entrar(usuarioId: string, pin: string): Resultado<Usuario>;
+  sair(): void;
+  /** Quem está usando pode fazer isso? */
+  pode(permissao: Permissao | 'usuarios'): boolean;
+  /** Cadastrar ou editar usuário (só administrador). */
+  salvarUsuario(dados: DadosUsuario): Resultado<Usuario>;
   carrinho: ItemCarrinho[];
   definirQuantidade(produtoId: string, quantidade: number): void;
   limparCarrinho(): void;
@@ -52,6 +75,7 @@ const Contexto = createContext<ContextoAdega | null>(null);
 export function AdegaProvider({ children, estadoInicial }: { children: ReactNode; estadoInicial?: Estado }) {
   const [estado, despacharNoReact] = useReducer(reducer, estadoInicial ?? null, (inicial) => inicial ?? estadoDeExemplo());
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
+  const [usuarioId, setUsuarioId] = useState<string | null>(null);
 
   // As validações precisam do estado mais recente, mesmo dentro de callbacks antigos.
   const estadoAtual = useRef(estado);
@@ -59,12 +83,51 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
   const carrinhoAtual = useRef(carrinho);
   carrinhoAtual.current = carrinho;
 
+  // Quem está logado (some se o administrador desativar a pessoa).
+  const usuario = estado.usuarios.find((u) => u.id === usuarioId && u.ativo) ?? null;
+  const usuarioAtual = useRef(usuario);
+  usuarioAtual.current = usuario;
+  const permitido = useCallback((permissao: Permissao | 'usuarios') => usuarioPode(usuarioAtual.current, permissao), []);
+  const semPermissao = <T,>(oQue: string): Resultado<T> => ({ ok: false, erro: `Seu usuário não tem permissão para ${oQue}.` });
+
   // A referência anda junto com cada ação, sem esperar a tela redesenhar: o assistente
   // registra uma entrada e, logo em seguida, já consulta o estoque novo.
+  // Cada ação sai com o nome de quem fez.
   const despachar = useCallback((acao: Acao) => {
-    estadoAtual.current = reducer(estadoAtual.current, acao);
-    despacharNoReact(acao);
+    const carimbada = comOperador(acao, usuarioAtual.current?.nome);
+    estadoAtual.current = reducer(estadoAtual.current, carimbada);
+    despacharNoReact(carimbada);
   }, []);
+
+  const entrar = useCallback((id: string, pin: string): Resultado<Usuario> => {
+    const resultado = conferirEntrada(estadoAtual.current, id, pin);
+    if (resultado.ok) {
+      usuarioAtual.current = resultado.valor;
+      setUsuarioId(resultado.valor.id);
+      setCarrinho([]);
+    }
+    return resultado;
+  }, []);
+
+  const sair = useCallback(() => {
+    usuarioAtual.current = null;
+    setUsuarioId(null);
+    setCarrinho([]);
+  }, []);
+
+  const salvarUsuario = useCallback(
+    (dados: DadosUsuario): Resultado<Usuario> => {
+      if (!permitido('usuarios')) return semPermissao('cadastrar usuários');
+      const eu = usuarioAtual.current;
+      if (eu && dados.id === eu.id && (!dados.ativo || dados.papel !== eu.papel)) {
+        return { ok: false, erro: 'Você não pode desativar nem tirar o acesso de administrador do seu próprio usuário. Peça a outro administrador.' };
+      }
+      const resultado = montarUsuario(estadoAtual.current, dados);
+      if (resultado.ok) despachar({ tipo: 'salvar-usuario', usuario: resultado.valor });
+      return resultado;
+    },
+    [despachar, permitido],
+  );
 
   const loja = useMemo<LojaAdega>(() => ({ estado: () => estadoAtual.current, despachar }), [despachar]);
 
@@ -87,27 +150,31 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
   const limparCarrinho = useCallback(() => setCarrinho([]), []);
 
   const registrarEntrada = useCallback((dados: DadosEntrada): Resultado<EntradaEstoque> => {
+    if (!permitido('entrada')) return semPermissao('registrar entrada');
     const resultado = montarEntrada(estadoAtual.current, dados);
     if (!resultado.ok) return resultado;
     despachar({ tipo: 'registrar-entrada', ...resultado.valor });
     return { ok: true, valor: resultado.valor.entrada };
-  }, [despachar]);
+  }, [despachar, permitido]);
 
   const finalizarVenda = useCallback((pagamento: DadosPagamento): Resultado<Venda> => {
+    if (!permitido('vender')) return semPermissao('vender');
     const resultado = montarVenda(estadoAtual.current, carrinhoAtual.current, pagamento);
     if (!resultado.ok) return resultado;
     despachar({ tipo: 'registrar-venda', venda: resultado.valor });
     setCarrinho([]);
     return resultado;
-  }, [despachar]);
+  }, [despachar, permitido]);
 
   const editarProduto = useCallback((produtoId: string, dados: DadosEdicaoProduto): Resultado<Produto> => {
+    if (!permitido('ajustar_estoque')) return semPermissao('editar produtos');
     const resultado = montarEdicaoProduto(estadoAtual.current, produtoId, dados);
     if (resultado.ok) despachar({ tipo: 'editar-produto', produto: resultado.valor });
     return resultado;
-  }, [despachar]);
+  }, [despachar, permitido]);
 
   const ajustarEstoque = useCallback((dados: DadosAjuste): Resultado<AjusteEstoque> => {
+    if (!permitido('ajustar_estoque')) return semPermissao('ajustar o estoque');
     const resultado = montarAjuste(estadoAtual.current, dados);
     if (resultado.ok) {
       despachar({ tipo: 'ajustar-estoque', ajuste: resultado.valor });
@@ -118,15 +185,21 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
       }
     }
     return resultado;
-  }, [despachar]);
+  }, [despachar, permitido]);
 
   const registrarLancamento = useCallback((dados: DadosLancamento): Resultado<Lancamento> => {
+    if (!permitido('financeiro')) return semPermissao('lançar no financeiro');
     const resultado = montarLancamento(dados);
     if (resultado.ok) despachar({ tipo: 'registrar-lancamento', lancamento: resultado.valor });
     return resultado;
-  }, [despachar]);
+  }, [despachar, permitido]);
 
-  const excluirLancamento = useCallback((id: string) => despachar({ tipo: 'excluir-lancamento', id }), [despachar]);
+  const excluirLancamento = useCallback(
+    (id: string) => {
+      if (permitido('financeiro')) despachar({ tipo: 'excluir-lancamento', id });
+    },
+    [despachar, permitido],
+  );
 
   const criarLembrete = useCallback(
     (dados: DadosLembrete): Resultado<Lembrete> => {
@@ -144,6 +217,7 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
 
   const abrirComanda = useCallback(
     (mesa: string): Resultado<Comanda> => {
+      if (!permitido('mesas')) return semPermissao('atender mesas');
       const resultado = montarComanda(estadoAtual.current, { mesa });
       if (resultado.ok) despachar({ tipo: 'abrir-comanda', comanda: resultado.valor });
       return resultado;
@@ -152,6 +226,7 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
   );
   const lancarNaComanda = useCallback(
     (comandaId: string, pedidos: ItemCarrinho[]): Resultado<ItemComanda[]> => {
+      if (!permitido('mesas')) return semPermissao('atender mesas');
       const resultado = montarItensComanda(estadoAtual.current, comandaId, pedidos);
       if (resultado.ok) {
         despachar({ tipo: 'lancar-na-comanda', comandaId, itens: resultado.valor });
@@ -159,37 +234,45 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
       }
       return resultado;
     },
-    [despachar, conferirCarrinho],
+    [despachar, conferirCarrinho, permitido],
   );
   const removerDaComanda = useCallback(
-    (comandaId: string, produtoId: string, quantidade: number) => {
+    (comandaId: string, produtoId: string, quantidade: number): Resultado<{ produtoId: string; quantidade: number }> => {
+      if (!permitido('corrigir_mesas')) return semPermissao('tirar itens da conta');
       const resultado = montarRemocaoComanda(estadoAtual.current, comandaId, produtoId, quantidade);
       if (resultado.ok) despachar({ tipo: 'remover-da-comanda', comandaId, ...resultado.valor });
       return resultado;
     },
-    [despachar],
+    [despachar, permitido],
   );
   const fecharComanda = useCallback(
     (comandaId: string, pagamento: DadosPagamento): Resultado<Venda> => {
+      if (!permitido('mesas')) return semPermissao('fechar contas');
       const resultado = montarFechamento(estadoAtual.current, comandaId, pagamento);
       if (resultado.ok) despachar({ tipo: 'fechar-comanda', comandaId, venda: resultado.valor });
       return resultado;
     },
-    [despachar],
+    [despachar, permitido],
   );
   const cancelarComanda = useCallback(
     (comandaId: string): Resultado<Comanda> => {
+      if (!permitido('corrigir_mesas')) return semPermissao('cancelar mesas');
       const comanda = estadoAtual.current.comandas.find((c) => c.id === comandaId && c.situacao === 'aberta');
       if (!comanda) return { ok: false, erro: 'Conta não encontrada ou já fechada.' };
       despachar({ tipo: 'cancelar-comanda', comandaId, data: new Date().toISOString() });
       return { ok: true, valor: comanda };
     },
-    [despachar],
+    [despachar, permitido],
   );
 
   const valor = useMemo(
     () => ({
       estado,
+      usuario,
+      entrar,
+      sair,
+      pode: permitido,
+      salvarUsuario,
       carrinho,
       definirQuantidade,
       limparCarrinho,
@@ -211,6 +294,11 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
     }),
     [
       estado,
+      usuario,
+      entrar,
+      sair,
+      permitido,
+      salvarUsuario,
       carrinho,
       definirQuantidade,
       limparCarrinho,

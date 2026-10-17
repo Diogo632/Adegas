@@ -27,7 +27,7 @@ export function ListaDeProdutos({
   const destaques = !busca && !filtro ? maisVendidos(estado, 4) : [];
   const secoes = [
     ...(destaques.length ? [{ titulo: 'Mais vendidos', data: destaques }] : []),
-    { titulo: destaques.length ? 'Todos os produtos' : `${produtos.length} produtos`, data: produtos },
+    { titulo: destaques.length ? 'Todos os produtos' : `${produtos.length} ${produtos.length === 1 ? 'produto' : 'produtos'}`, data: produtos },
   ];
 
   return (

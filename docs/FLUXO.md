@@ -25,6 +25,14 @@ flowchart LR
 
 ## 2. Mapa de telas
 
+Antes de tudo, **quem está usando?** Cada pessoa da equipe toca no próprio nome e digita o **PIN de 4 números**. O menu e as telas mostram só o que aquela pessoa pode fazer (veja 3.9). "Trocar usuário" volta para esta tela.
+
+```mermaid
+flowchart LR
+    Entrar["🔐 Quem está usando?<br/>nome + PIN"] -->|PIN certo| Inicio0["🏠 Início<br/>só o que a pessoa pode ver"]
+    Inicio0 -->|Trocar usuário| Entrar
+```
+
 ```mermaid
 flowchart TD
     Inicio["🏠 Início<br/>resumo do dia"]
@@ -53,8 +61,8 @@ flowchart TD
 flowchart TD
     Inicio2["🏠 Início<br/>mesas abertas"]
     Mesas["🪑 Mesas<br/>grade 1 a 12 · outra mesa ou nome"]
-    Conta["Conta da mesa<br/>pedidos com + e −"]
-    Pedido["Adicionar pedido<br/>escolher produtos"]
+    Conta["Conta da mesa<br/>pedidos já lançados"]
+    Pedido["Pedido para a Mesa X<br/>escolher produtos"]
     Fechar["Fechar conta<br/>dividir · Pix · Crédito · Débito · Dinheiro"]
     Fechada["✅ Mesa fechada<br/>mostra o troco"]
 
@@ -63,7 +71,7 @@ flowchart TD
     Mesas -->|"mesa livre: abre a conta"| Conta
     Mesas -->|mesa ocupada| Conta
     Conta -->|Adicionar pedido| Pedido
-    Pedido -->|Lançar na mesa| Conta
+    Pedido -->|Lançar na Mesa X| Conta
     Conta -->|Fechar conta| Fechar
     Fechar -->|Confirmar| Fechada
     Conta -->|Cancelar mesa| Mesas
@@ -82,11 +90,12 @@ flowchart TD
     Estoque -->|toca no produto| Produto
     Produto -->|Registrar entrada| EntradaG["📦 Entrada de produto"]
     Financeiro -->|Nova movimentação| NovaMov
+    Usuarios["👥 Usuários<br/>equipe, PIN e o que cada um pode"]
 ```
 
-No **app**, a barra de baixo tem 5 abas: **Início, Estoque, Financeiro, Relatórios e Assistente**. Vender, Mesas e Entrada ficam nos botões grandes do Início, e as mesas abertas aparecem logo abaixo deles.
+No **app**, a barra de baixo tem até 5 abas: **Início, Estoque, Financeiro, Relatórios e Assistente** (cada pessoa vê só as que pode). Vender, Mesas e Entrada ficam nos botões grandes do Início, e as mesas abertas aparecem logo abaixo deles. Tocando no seu nome, no topo do Início, ficam **Usuários** (só administrador) e **Trocar usuário**.
 
-No **web**, Mesas fica no menu, junto de Vender: a grade de mesas e os produtos à esquerda, a conta da mesa escolhida à direita (no celular, a conta aparece logo abaixo da grade).
+No **web**, Mesas fica no menu, junto de Vender: a grade de mesas e os produtos à esquerda, a conta da mesa escolhida à direita (no celular, a conta aparece logo abaixo da grade). Usuários fica no menu de Gestão (só administrador), e o nome de quem está usando fica no pé do menu, com o botão de trocar.
 
 No **web**, "Nova venda" e "Pagamento" ficam numa tela só (produtos à esquerda, carrinho e pagamento à direita), porque a tela é grande. No **app** são duas telas, para cada uma ter pouca coisa. Na tela de Estoque do web, o produto escolhido abre num painel ao lado da tabela.
 
@@ -103,6 +112,8 @@ Mostra, de cara:
 - **Últimas movimentações**: vendas (verde, +) e compras (vermelho, −).
 
 No web aparecem ainda o **ticket médio** e as **compras do dia** com o saldo (vendas − compras).
+
+Quem não tem **Financeiro e relatórios** não vê os valores do dia (vendido, lucro, recebido, movimentações): vê os botões que pode usar, as mesas abertas, o que repor e os lembretes.
 
 ### 3.2 Entrada de produto (chegou mercadoria)
 
@@ -175,7 +186,8 @@ Enquanto preenche, o **resumo** mostra: quantas unidades entram, custo por unida
 Para quem atende em mesas: o cliente senta, os pedidos vão sendo lançados e a conta é fechada no fim, de uma vez.
 
 - **Abrir:** toque numa mesa livre da grade (1 a 12) ou digite outro número ou um nome ("15", "Balcão", "João"). Não dá para abrir a mesma mesa duas vezes.
-- **Lançar pedidos:** "Adicionar pedido" (app) ou clique nos produtos (painel). **O item sai do estoque na hora**, porque a bebida já está na mesa. Não deixa lançar mais do que tem.
+- **Lançar pedidos:** sempre por um **botão com o nome da mesa**, para não lançar na mesa errada. No app: "Adicionar pedido na Mesa 10" → escolhe os produtos (o topo mostra em amarelo "Pedido para a Mesa 10") → **Lançar na Mesa 10**. No painel: clicar nos produtos só **monta o pedido** (aparece "Pedido novo · Mesa 10, ainda não lançado"); ele entra na conta ao apertar **Lançar na Mesa 10** (no celular, numa barra fixa embaixo). Dá para descartar o pedido montado, e a conta não fecha com pedido montado e não lançado. **O item sai do estoque ao lançar**, porque a bebida já vai para a mesa. Não deixa lançar mais do que tem.
+- **Tirar item e cancelar mesa:** só quem tem a permissão **Corrigir mesas** (e o administrador) vê o − ao lado do item e o "Cancelar mesa".
 - **Corrigir:** o − de cada item tira da conta e devolve ao estoque.
 - **Conta:** itens agrupados por produto, preço de cada um, total e há quanto tempo a mesa está aberta. O preço fica o da hora do pedido.
 - **Fechar:** dividir por pessoas (só mostra quanto dá para cada um), forma de pagamento e troco no dinheiro. A conta vira **uma venda** (entra no financeiro e nos relatórios, com "Mesa 10" na descrição) e a mesa fica livre.
@@ -185,7 +197,32 @@ Para quem atende em mesas: o cliente senta, os pedidos vão sendo lançados e a 
 ### 3.8 Assistente e lembretes
 
 - **Assistente:** conversa em português. Ele usa as mesmas ações das telas (consultar estoque, registrar entrada e venda, lançar pedidos nas mesas e fechar a conta, lançar despesa, ajustar estoque, buscar financeiro e relatórios, criar lembretes) por meio de um servidor **MCP** e da API do **Gemini**. Mostra cada passo que fez e um atalho para conferir. Lista completa em [`ASSISTENTE.md`](ASSISTENTE.md).
-- **Lembretes:** aparecem no Início (app e painel), do mais urgente para o mais distante; os atrasados ficam em amarelo. Um toque no ✓ conclui. Hoje são criados pelo assistente.
+- **Lembretes:** aparecem no Início (app e painel), do mais urgente para o mais distante; os atrasados ficam em laranja. Um toque no ✓ conclui. Hoje são criados pelo assistente.
+- O assistente **só faz o que a pessoa logada pode fazer**: para um funcionário sem Financeiro, ele nem recebe as ferramentas de financeiro e relatórios, e não vê preço de custo nem margem.
+
+### 3.9 Usuários e níveis de acesso
+
+Dois níveis:
+
+- **Administrador** (o dono): pode tudo, inclusive **cadastrar funcionários** e mudar o que cada um pode fazer.
+- **Funcionário**: só o que o administrador ligar no cadastro dele.
+
+| Permissão | O que libera |
+|---|---|
+| Vender no balcão | Nova venda e pagamento |
+| Atender mesas | Abrir mesa, lançar pedidos e fechar a conta |
+| Corrigir mesas | Tirar itens já lançados e cancelar mesa |
+| Ver estoque | Quantidades e situação dos produtos (sem custo, se não tiver Financeiro) |
+| Registrar entrada | Chegada de mercadoria (vira despesa no financeiro) |
+| Ajustar estoque e preços | Perdas, contagem, editar produto e preço |
+| Financeiro e relatórios | Faturamento, custos, lucro, despesas e relatórios |
+| Usar o assistente | O assistente, limitado às permissões acima |
+
+Funcionário novo já vem com **Vender, Atender mesas, Ver estoque e Usar o assistente**. Cadastro: nome, **PIN de 4 números** (guardado como "impressão digital", não o número) e as permissões. Quem sai da equipe tem o acesso desligado e o histórico continua. O sistema não deixa ficar sem nenhum administrador ativo, nem a pessoa tirar o próprio acesso.
+
+Cada venda, entrada, despesa, ajuste e pedido de mesa guarda **quem fez** (o nome de quem estava logado).
+
+> Os dados de exemplo vêm com **Dono** (administrador, PIN 1234), **Ana** (funcionária: vender, mesas, ver estoque e assistente; PIN 1111) e **Bruno** (funcionário que também corrige mesas e registra entrada; PIN 2222).
 
 ## 4. O que cada ação muda
 
@@ -203,6 +240,7 @@ Para quem atende em mesas: o cliente senta, os pedidos vão sendo lançados e a 
 | Tirar da mesa | + volta ao estoque | nada |
 | Fechar a conta da mesa | nada (já saiu nos pedidos) | + receita (na forma de pagamento), como uma venda |
 | Cancelar mesa | + tudo volta ao estoque | nada |
+| Cadastrar ou mudar usuário | nada | nada |
 
 O assistente não tem regras próprias: cada ferramenta dele faz exatamente uma das ações acima.
 
@@ -231,6 +269,7 @@ erDiagram
     COMANDA ||--o{ ITEM_COMANDA : "pedidos"
     PRODUTO ||--o{ ITEM_COMANDA : "pedido em"
     COMANDA |o--o| VENDA : "vira ao fechar"
+    USUARIO ||--o{ VENDA : "registrou (nome)"
 
     PRODUTO {
         texto nome
@@ -292,8 +331,18 @@ erDiagram
         centavos precoUnitario
         centavos custoUnitario
         data lancadoEm
+        texto operador
+    }
+    USUARIO {
+        texto nome
+        texto papel "admin ou funcionario"
+        lista permissoes
+        texto pinHash "impressão digital do PIN"
+        bool ativo
     }
 ```
+
+Venda, entrada, lançamento, ajuste e item de mesa têm também o campo **operador** (quem estava logado).
 
 Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, Cigarros, Gelo e carvão, Petiscos, Outros.
 
@@ -303,18 +352,20 @@ Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, 
 |---|---|---|
 | **1. Esqueleto** | Telas de Início, Entrada de produto e Venda/Pagamento no app e no web; regras de estoque, custo médio, troco e financeiro | ✅ pronto |
 | **1.1 Design** | Visual neutro e sofisticado, ícones de linha, "mais vendidos" na venda. Comparativo com o Cplug em [`ANALISE-CPLUG.md`](ANALISE-CPLUG.md) | ✅ pronto |
-| **1.2 Tema escuro e animações** | Preto com detalhes em roxo escuro; animações em JavaScript nos botões, na troca de telas e nos números (contam até o valor) | ✅ pronto |
-| **2. Banco na nuvem + login** | App e web passam a ver os mesmos dados em tempo real; login do dono. Sugestão: **Supabase** (banco Postgres, login e tempo real prontos, plano grátis para começar). Já pensar em **funcionar sem internet** | próxima |
+| **1.2 Tema escuro e animações** | Tema escuro; animações em JavaScript nos botões, na troca de telas e nos números (contam até o valor) | ✅ pronto |
+| **1.3 Cores de choperia** | **Preto, branco e amarelo de cerveja** (antes eram detalhes em roxo); ícone novo com caneca de chope. O texto sobre o amarelo é escuro, para ler bem; alertas viraram laranja para não se confundir com o amarelo | ✅ pronto |
+| **2. Banco na nuvem + login** | App e web passam a ver os mesmos dados em tempo real; os usuários e PINs passam para a nuvem (hoje ficam no aparelho, o que serve para separar o que cada um vê, mas não é segurança de verdade). Sugestão: **Supabase** (banco Postgres, login e tempo real prontos, plano grátis para começar). Já pensar em **funcionar sem internet** | próxima |
 | **3. Estoque** | Lista com situação e valor parado, editar produto e preço, ajuste por perda/consumo/contagem, histórico do produto | ✅ pronto (lote e validade ficam para depois) |
 | **4. Financeiro e relatórios** | Períodos, saldo, entradas e saídas, despesas da loja, recebido por forma, perdas; relatórios por dia, hora, produto, categoria e forma | ✅ pronto |
 | **4.1 Assistente com IA** | Conversa (Gemini) que consulta e registra tudo via servidor MCP: estoque, entradas, vendas, despesas, financeiro, relatórios e lembretes. O servidor MCP também roda no terminal para outros clientes (Gemini CLI etc.) | ✅ pronto (notificação dos lembretes e chave no servidor ficam para a etapa 2) |
 | **4.2 Mesas** | Conta por mesa: abrir, lançar pedidos (sai do estoque na hora), tirar, dividir, fechar com forma de pagamento e troco, cancelar; mesas abertas no Início; o assistente também lança e fecha mesas | ✅ pronto (número de mesas fixo em 12 na grade; dá para abrir qualquer outro número ou nome) |
+| **4.3 Usuários e acesso** | Entrar com nome e PIN; administrador × funcionário com permissões ligáveis; cadastro de funcionários; menus, telas e assistente respeitam a permissão; cada registro guarda quem fez. Mesas: pedido só entra pelo botão "Lançar na Mesa X" | ✅ pronto |
 | **5. Caixa do dia** | **Abrir/fechar o caixa, sangria e reforço**, conferência do dinheiro da gaveta, taxa da maquininha | |
-| **6. Extras** | Leitor de código de barras pela câmera, desconto na venda, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, perfis dono/funcionário, publicar o app nas lojas | |
+| **6. Extras** | Leitor de código de barras pela câmera, desconto na venda, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, vendas por funcionário (comissão), publicar o app nas lojas | |
 
 ## 8. Perguntas para decidir antes da etapa 2
 
-1. **Funcionários** vão usar o app? Se sim, o que eles **não** podem ver ou fazer (ex.: ver lucro, dar entrada)?
+1. Quer um relatório de **vendas por funcionário** (para comissão)? Os dados de quem vendeu já ficam guardados.
 2. É **uma loja** ou mais de uma?
 3. Vende **fiado** / tem cliente com conta?
 4. Quer descontar a **taxa da maquininha** automaticamente (ex.: crédito 3%, débito 1,5%) para o lucro ficar real?

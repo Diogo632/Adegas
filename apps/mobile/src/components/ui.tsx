@@ -28,7 +28,7 @@ export function Divisor() {
 interface BotaoProps {
   titulo: string;
   onPress: () => void;
-  /** primario = roxo (a ação principal da tela); contorno = secundário. */
+  /** primario = amarelo (a ação principal da tela); contorno = secundário. */
   variante?: 'primario' | 'contorno';
   icone?: LucideIcon;
   desabilitado?: boolean;
@@ -36,7 +36,7 @@ interface BotaoProps {
 }
 
 export function Botao({ titulo, onPress, variante = 'primario', icone: Icone, desabilitado, style }: BotaoProps) {
-  const corTexto = variante === 'contorno' ? CORES.texto : '#FFFFFF';
+  const corTexto = variante === 'contorno' ? CORES.texto : CORES.sobrePrimaria;
   return (
     <Tocavel
       accessibilityRole="button"
@@ -64,12 +64,12 @@ export function Chip({ rotulo, ativo, onPress }: { rotulo: string; ativo: boolea
       escala={0.92}
       style={[estilos.chip, ativo && estilos.chipAtivo]}
     >
-      <Text style={[estilos.chipTexto, ativo && { color: '#FFFFFF' }]}>{rotulo}</Text>
+      <Text style={[estilos.chipTexto, ativo && { color: CORES.sobrePrimaria, fontFamily: FONTE.semi }]}>{rotulo}</Text>
     </Tocavel>
   );
 }
 
-/** Escolha entre 2 ou 3 opções; o destaque roxo desliza até a opção tocada. */
+/** Escolha entre 2 ou 3 opções; o destaque amarelo desliza até a opção tocada. */
 export function Segmentado<T extends string>({
   opcoes,
   valor,
@@ -127,7 +127,7 @@ export function Segmentado<T extends string>({
             style={[estilos.segmento, compacto && { paddingVertical: 9 }]}
           >
             <Text
-              style={[estilos.segmentoTexto, compacto && { fontSize: 13 }, ativo && { color: '#FFFFFF' }]}
+              style={[estilos.segmentoTexto, compacto && { fontSize: 13 }, ativo && { color: CORES.sobrePrimaria, fontFamily: FONTE.semi }]}
               numberOfLines={1}
             >
               {o.rotulo}
@@ -147,6 +147,7 @@ export function Campo({
   teclado = 'default',
   prefixo,
   icone: Icone,
+  seguro,
 }: {
   rotulo?: string;
   value: string;
@@ -155,6 +156,8 @@ export function Campo({
   teclado?: KeyboardTypeOptions;
   prefixo?: string;
   icone?: LucideIcon;
+  /** Esconde o que é digitado (PIN). */
+  seguro?: boolean;
 }) {
   const [foco, setFoco] = useState(false);
   return (
@@ -169,6 +172,7 @@ export function Campo({
           placeholder={placeholder}
           placeholderTextColor={CORES.textoFraco}
           keyboardType={teclado}
+          secureTextEntry={seguro}
           keyboardAppearance="dark"
           selectionColor={CORES.primariaClara}
           onFocus={() => setFoco(true)}
@@ -220,13 +224,13 @@ export function Contador({
           !podeMais && { opacity: 0.3 },
         ]}
       >
-        <Plus size={18} color="#FFFFFF" strokeWidth={2} />
+        <Plus size={18} color={CORES.sobrePrimaria} strokeWidth={2.4} />
       </Tocavel>
     </View>
   );
 }
 
-/** Ícone de categoria dentro de um quadrado escuro, com o traço em roxo. */
+/** Ícone de categoria dentro de um quadrado escuro, com o traço em amarelo. */
 export function IconeQuadrado({ icone: Icone, tamanho = 44 }: { icone: LucideIcon; tamanho?: number }) {
   return (
     <View style={[estilos.iconeQuadrado, { width: tamanho, height: tamanho }]}>

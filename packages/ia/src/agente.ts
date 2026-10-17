@@ -10,6 +10,7 @@ export interface OpcoesAgente {
   modelo?: string;
   buscar?: Buscar;
   agora?: () => Date;
+  quemUsa?: QuemUsa;
 }
 
 /** Uma ferramenta que o assistente usou para responder. */
@@ -47,10 +48,28 @@ function agoraPorExtenso(agora: Date): string {
   );
 }
 
-export function instrucoesDoAgente(agora: Date): string {
+/** Quem está conversando com o assistente (para ele saber o que a pessoa pode pedir). */
+export interface QuemUsa {
+  nome: string;
+  papel: 'admin' | 'funcionario';
+  /** Nomes das permissões, ex.: "Atender mesas". */
+  permissoes: string[];
+}
+
+function sobreQuemUsa(quem?: QuemUsa): string[] {
+  if (!quem) return [];
+  if (quem.papel === 'admin') return [`Quem está usando: ${quem.nome}, administrador (pode tudo).`];
+  return [
+    `Quem está usando: ${quem.nome}, funcionário. Pode: ${quem.permissoes.join(', ') || 'só lembretes'}.`,
+    '- Se a pessoa pedir algo fora disso (ou que nenhuma ferramenta faz), diga com gentileza que precisa de um administrador. Não informe custos nem lucro.',
+  ];
+}
+
+export function instrucoesDoAgente(agora: Date, quem?: QuemUsa): string {
   return [
     'Você é o assistente da adega (loja de bebidas) dentro da plataforma Adegas. Fala português do Brasil, de forma curta, simpática e direta, como um gerente experiente.',
     `Agora é ${agoraPorExtenso(agora)}.`,
+    ...sobreQuemUsa(quem),
     '',
     'Como trabalhar:',
     '- Use as ferramentas para qualquer número ou informação da loja. Nunca invente estoque, valores ou datas.',
@@ -109,7 +128,7 @@ export class AgenteAdega {
     const { declaracoes } = await this.carregarFerramentas();
     const agora = this.opcoes.agora?.() ?? new Date();
     const pedido = {
-      systemInstruction: { parts: [{ text: instrucoesDoAgente(agora) }] },
+      systemInstruction: { parts: [{ text: instrucoesDoAgente(agora, this.opcoes.quemUsa) }] },
       contents: this.historico,
       tools: [{ functionDeclarations: declaracoes }],
       toolConfig: { functionCallingConfig: { mode: 'AUTO' as const } },

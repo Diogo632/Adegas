@@ -80,35 +80,39 @@ export function motivoAjuste(id: MotivoAjuste): InfoMotivoAjuste {
 }
 
 /**
- * Cores da marca, iguais no app e no web. Tema escuro: base quase preta,
- * cartões um tom acima e roxo escuro nos detalhes e na ação principal.
+ * Cores da marca, iguais no app e no web. Clima de cervejaria e choperia:
+ * preto de fundo, branco no texto e amarelo-chope nos detalhes e na ação principal.
+ * Os cinzas puxam levemente para o amarelo, para combinar com ele.
  */
 export const CORES = {
-  fundo: '#0B0A10',
+  fundo: '#0B0B0A',
   /** Menu lateral do web. */
-  lateral: '#100E17',
-  superficie: '#15131D',
+  lateral: '#11110F',
+  superficie: '#171714',
   /** Campos, ícones e controles dentro dos cartões. */
-  superficieAlta: '#1D1A28',
-  /** Cartão de resumo (preto arroxeado). */
-  destaqueFundo: '#1B1330',
-  destaqueBorda: '#3A2766',
-  borda: '#26222F',
-  bordaForte: '#3B3548',
-  texto: '#F5F3FA',
-  textoSuave: '#A7A1B7',
-  textoFraco: '#7A748C',
-  /** Roxo escuro: ação principal e item selecionado. */
-  primaria: '#6D28D9',
-  primariaHover: '#7C3AED',
-  /** Roxo claro para texto e ícones sobre o preto. */
-  primariaClara: '#A78BFA',
-  primariaSuave: '#231A38',
-  grafico: '#8B5CF6',
+  superficieAlta: '#201F1B',
+  /** Cartão de resumo (preto com um toque de âmbar). */
+  destaqueFundo: '#1D1808',
+  destaqueBorda: '#4D3D10',
+  borda: '#2A2924',
+  bordaForte: '#3E3C34',
+  texto: '#FAFAF7',
+  textoSuave: '#B6B3A8',
+  textoFraco: '#86837A',
+  /** Amarelo-chope: ação principal e item selecionado. */
+  primaria: '#F5B700',
+  primariaHover: '#FFC62E',
+  /** Amarelo claro para texto e ícones sobre o preto. */
+  primariaClara: '#FFD45C',
+  primariaSuave: '#2A2108',
+  /** Texto e ícones em cima do amarelo (botão principal, chip escolhido). */
+  sobrePrimaria: '#14130F',
+  grafico: '#F5B700',
   receita: '#34D399',
   receitaFundo: '#0E2A21',
   despesa: '#F87171',
   despesaFundo: '#2E1517',
-  alerta: '#FBBF24',
-  alertaFundo: '#2B2110',
+  /** Laranja, para o aviso de estoque baixo não se confundir com o amarelo da marca. */
+  alerta: '#FB923C',
+  alertaFundo: '#2D1A0D',
 };

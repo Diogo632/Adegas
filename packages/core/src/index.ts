@@ -8,6 +8,8 @@ export * from './financeiro';
 export * from './lembretes';
 export * from './react';
 export * from './relatorios';
+export * from './seguranca';
 export * from './tipos';
+export * from './usuarios';
 export * from './util';
 export * from './vendas';

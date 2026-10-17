@@ -22,11 +22,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Entrar, NumeroAnimado, Tocavel } from '../../components/animacoes';
 import { ICONE_FORMA } from '../../components/icones';
 import { LinhaMesa } from '../../components/mesas';
+import { Avatar } from '../../components/pessoas';
 import { Botao, Cartao, Divisor, Secao } from '../../components/ui';
 import { CORES, FONTE, RAIO, TEXTO } from '../../tema';
 
 export default function Inicio() {
-  const { estado, concluirLembrete } = useAdega();
+  const { estado, concluirLembrete, usuario, pode } = useAdega();
   const insets = useSafeAreaInsets();
   const hoje = new Date();
   const resumo = resumoDoDia(estado, hoje);
@@ -38,70 +39,96 @@ export default function Inicio() {
 
   return (
     <ScrollView contentContainerStyle={[estilos.tela, { paddingTop: insets.top + 20 }]}>
-      <Entrar style={{ gap: 2 }}>
-        <Text style={TEXTO.legenda}>{formatarDiaExtenso(hoje)}</Text>
-        <Text style={TEXTO.tituloTela}>{saudacao(hoje)}</Text>
+      <Entrar style={estilos.cabecalho}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={TEXTO.legenda}>{formatarDiaExtenso(hoje)}</Text>
+          <Text style={TEXTO.tituloTela} numberOfLines={1}>
+            {saudacao(hoje)}
+            {usuario ? `, ${usuario.nome}` : ''}
+          </Text>
+        </View>
+        {usuario && (
+          <Tocavel accessibilityRole="button" accessibilityLabel="Minha conta" onPress={() => router.push('/conta')} escala={0.9}>
+            <Avatar nome={usuario.nome} admin={usuario.papel === 'admin'} pequeno />
+          </Tocavel>
+        )}
       </Entrar>
 
-      <Entrar atraso={80} style={estilos.resumo}>
-        <Text style={estilos.resumoRotulo}>Vendido hoje</Text>
-        <NumeroAnimado valor={resumo.faturamento} formatar={formatarDinheiro} style={estilos.resumoValor} />
-        <Text style={estilos.resumoDetalhe}>
-          {resumo.quantidadeVendas} vendas · lucro bruto {formatarDinheiro(resumo.lucroBruto)}
-        </Text>
-        <View style={estilos.resumoDivisor} />
-        <View style={estilos.formas}>
-          {FORMAS_PAGAMENTO.map((f) => {
-            const Icone = ICONE_FORMA[f.id];
-            return (
-              <View key={f.id} style={estilos.forma}>
-                <View style={estilos.formaTopo}>
-                  <Icone size={14} color={CORES.primariaClara} strokeWidth={1.75} />
-                  <Text style={estilos.formaNome}>{f.nome}</Text>
+      {pode('financeiro') && (
+        <Entrar atraso={80} style={estilos.resumo}>
+          <Text style={estilos.resumoRotulo}>Vendido hoje</Text>
+          <NumeroAnimado valor={resumo.faturamento} formatar={formatarDinheiro} style={estilos.resumoValor} />
+          <Text style={estilos.resumoDetalhe}>
+            {resumo.quantidadeVendas} vendas · lucro bruto {formatarDinheiro(resumo.lucroBruto)}
+          </Text>
+          <View style={estilos.resumoDivisor} />
+          <View style={estilos.formas}>
+            {FORMAS_PAGAMENTO.map((f) => {
+              const Icone = ICONE_FORMA[f.id];
+              return (
+                <View key={f.id} style={estilos.forma}>
+                  <View style={estilos.formaTopo}>
+                    <Icone size={14} color={CORES.primariaClara} strokeWidth={1.75} />
+                    <Text style={estilos.formaNome}>{f.nome}</Text>
+                  </View>
+                  <NumeroAnimado
+                    valor={resumo.porFormaPagamento[f.id]}
+                    formatar={formatarDinheiro}
+                    style={estilos.formaValor}
+                  />
                 </View>
-                <NumeroAnimado
-                  valor={resumo.porFormaPagamento[f.id]}
-                  formatar={formatarDinheiro}
-                  style={estilos.formaValor}
-                />
-              </View>
-            );
-          })}
-        </View>
-      </Entrar>
+              );
+            })}
+          </View>
+        </Entrar>
+      )}
 
       <Entrar atraso={160} style={{ gap: 10 }}>
-        <Botao titulo="Nova venda" icone={ShoppingBag} onPress={() => router.push('/venda')} />
-        <View style={estilos.botoesLado}>
-          <Botao titulo="Mesas" icone={Armchair} variante="contorno" onPress={() => router.push('/mesas')} style={{ flex: 1 }} />
-          <Botao titulo="Entrada" icone={PackagePlus} variante="contorno" onPress={() => router.push('/entrada')} style={{ flex: 1 }} />
-        </View>
+        {pode('vender') && <Botao titulo="Nova venda" icone={ShoppingBag} onPress={() => router.push('/venda')} />}
+        {(pode('mesas') || pode('entrada')) && (
+          <View style={estilos.botoesLado}>
+            {pode('mesas') && (
+              <Botao
+                titulo="Mesas"
+                icone={Armchair}
+                variante={pode('vender') ? 'contorno' : 'primario'}
+                onPress={() => router.push('/mesas')}
+                style={{ flex: 1 }}
+              />
+            )}
+            {pode('entrada') && (
+              <Botao titulo="Entrada" icone={PackagePlus} variante="contorno" onPress={() => router.push('/entrada')} style={{ flex: 1 }} />
+            )}
+          </View>
+        )}
       </Entrar>
 
-      <Entrar atraso={180} style={{ gap: 16 }}>
-        <Secao
-          acao={
-            <Tocavel accessibilityRole="button" onPress={() => router.push('/mesas')} style={estilos.secaoAcao}>
-              <Text style={estilos.repor}>{mesas.length ? 'Ver todas' : 'Abrir mesa'}</Text>
-            </Tocavel>
-          }
-        >
-          {mesas.length ? `Mesas abertas · ${formatarDinheiro(resumoDasMesas.emAberto)}` : 'Mesas'}
-        </Secao>
-        <Cartao style={{ paddingVertical: 6, gap: 0 }}>
-          {mesas.length === 0 && (
-            <Text style={[TEXTO.legenda, { paddingVertical: 14 }]}>
-              Nenhuma mesa aberta. Quando um cliente sentar, abra a conta da mesa e vá lançando os pedidos.
-            </Text>
-          )}
-          {mesas.slice(0, 5).map((c, i) => (
-            <Fragment key={c.id}>
-              {i > 0 && <Divisor />}
-              <LinhaMesa comanda={c} agora={hoje} />
-            </Fragment>
-          ))}
-        </Cartao>
-      </Entrar>
+      {pode('mesas') && (
+        <Entrar atraso={180} style={{ gap: 16 }}>
+          <Secao
+            acao={
+              <Tocavel accessibilityRole="button" onPress={() => router.push('/mesas')} style={estilos.secaoAcao}>
+                <Text style={estilos.repor}>{mesas.length ? 'Ver todas' : 'Abrir mesa'}</Text>
+              </Tocavel>
+            }
+          >
+            {mesas.length ? `Mesas abertas · ${formatarDinheiro(resumoDasMesas.emAberto)}` : 'Mesas'}
+          </Secao>
+          <Cartao style={{ paddingVertical: 6, gap: 0 }}>
+            {mesas.length === 0 && (
+              <Text style={[TEXTO.legenda, { paddingVertical: 14 }]}>
+                Nenhuma mesa aberta. Quando um cliente sentar, abra a conta da mesa e vá lançando os pedidos.
+              </Text>
+            )}
+            {mesas.slice(0, 5).map((c, i) => (
+              <Fragment key={c.id}>
+                {i > 0 && <Divisor />}
+                <LinhaMesa comanda={c} agora={hoje} />
+              </Fragment>
+            ))}
+          </Cartao>
+        </Entrar>
+      )}
 
       <Entrar atraso={200} style={{ gap: 16 }}>
         <Secao
@@ -156,7 +183,7 @@ export default function Inicio() {
         </Cartao>
       </Entrar>
 
-      {alertas.length > 0 && (
+      {pode('estoque') && alertas.length > 0 && (
         <Entrar atraso={240} style={{ gap: 16 }}>
           <Secao>Repor estoque</Secao>
           <Cartao style={{ paddingVertical: 6, gap: 0 }}>
@@ -166,6 +193,7 @@ export default function Inicio() {
                 <Tocavel
                   accessibilityRole="button"
                   escala={0.98}
+                  disabled={!pode('entrada')}
                   onPress={() => router.push({ pathname: '/entrada', params: { produtoId: p.id } })}
                   style={estilos.linha}
                 >
@@ -180,8 +208,12 @@ export default function Inicio() {
                       {p.estoque} em estoque · mínimo {p.estoqueMinimo}
                     </Text>
                   </View>
-                  <Text style={estilos.repor}>Repor</Text>
-                  <ChevronRight size={18} color={CORES.primariaClara} />
+                  {pode('entrada') && (
+                    <>
+                      <Text style={estilos.repor}>Repor</Text>
+                      <ChevronRight size={18} color={CORES.primariaClara} />
+                    </>
+                  )}
                 </Tocavel>
               </Fragment>
             ))}
@@ -189,37 +221,39 @@ export default function Inicio() {
         </Entrar>
       )}
 
-      <Entrar atraso={320} style={{ gap: 16 }}>
-        <Secao>Movimentações</Secao>
-        <Cartao style={{ paddingVertical: 6, gap: 0 }}>
-          {movimentos.length === 0 && (
-            <Text style={[TEXTO.legenda, { paddingVertical: 14 }]}>Nada registrado ainda.</Text>
-          )}
-          {movimentos.map((l, i) => {
-            const receita = l.tipo === 'receita';
-            const Seta = receita ? ArrowUpRight : ArrowDownLeft;
-            return (
-              <Fragment key={l.id}>
-                {i > 0 && <Divisor />}
-                <View style={estilos.linha}>
-                  <View style={[estilos.marcador, { backgroundColor: receita ? CORES.receitaFundo : CORES.despesaFundo }]}>
-                    <Seta size={16} color={receita ? CORES.receita : CORES.despesa} strokeWidth={2} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[TEXTO.corpo, { fontSize: 15 }]} numberOfLines={1}>
-                      {l.descricao}
+      {pode('financeiro') && (
+        <Entrar atraso={320} style={{ gap: 16 }}>
+          <Secao>Movimentações</Secao>
+          <Cartao style={{ paddingVertical: 6, gap: 0 }}>
+            {movimentos.length === 0 && (
+              <Text style={[TEXTO.legenda, { paddingVertical: 14 }]}>Nada registrado ainda.</Text>
+            )}
+            {movimentos.map((l, i) => {
+              const receita = l.tipo === 'receita';
+              const Seta = receita ? ArrowUpRight : ArrowDownLeft;
+              return (
+                <Fragment key={l.id}>
+                  {i > 0 && <Divisor />}
+                  <View style={estilos.linha}>
+                    <View style={[estilos.marcador, { backgroundColor: receita ? CORES.receitaFundo : CORES.despesaFundo }]}>
+                      <Seta size={16} color={receita ? CORES.receita : CORES.despesa} strokeWidth={2} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[TEXTO.corpo, { fontSize: 15 }]} numberOfLines={1}>
+                        {l.descricao}
+                      </Text>
+                      <Text style={TEXTO.legenda}>{formatarDataHora(l.data)}</Text>
+                    </View>
+                    <Text style={[TEXTO.valor, { fontSize: 15, color: receita ? CORES.receita : CORES.despesa }]}>
+                      {receita ? '+' : '−'} {formatarDinheiro(l.valor)}
                     </Text>
-                    <Text style={TEXTO.legenda}>{formatarDataHora(l.data)}</Text>
                   </View>
-                  <Text style={[TEXTO.valor, { fontSize: 15, color: receita ? CORES.receita : CORES.despesa }]}>
-                    {receita ? '+' : '−'} {formatarDinheiro(l.valor)}
-                  </Text>
-                </View>
-              </Fragment>
-            );
-          })}
-        </Cartao>
-      </Entrar>
+                </Fragment>
+              );
+            })}
+          </Cartao>
+        </Entrar>
+      )}
     </ScrollView>
   );
 }
@@ -237,7 +271,7 @@ const estilos = StyleSheet.create({
   resumoValor: {
     fontFamily: FONTE.semi,
     fontSize: 44,
-    color: '#FFFFFF',
+    color: CORES.texto,
     letterSpacing: -1,
     marginTop: 4,
     fontVariant: ['tabular-nums'],
@@ -248,12 +282,13 @@ const estilos = StyleSheet.create({
   forma: { width: '50%', gap: 4 },
   formaTopo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   formaNome: { fontFamily: FONTE.regular, fontSize: 13, color: CORES.textoSuave },
-  formaValor: { fontFamily: FONTE.semi, fontSize: 17, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  formaValor: { fontFamily: FONTE.semi, fontSize: 17, color: CORES.texto, fontVariant: ['tabular-nums'] },
   linha: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   marcador: { width: 34, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   repor: { fontFamily: FONTE.semi, fontSize: 14, color: CORES.primariaClara },
   secaoAcao: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
   botoesLado: { flexDirection: 'row', gap: 10 },
+  cabecalho: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   feito: {
     width: 36,
     height: 36,

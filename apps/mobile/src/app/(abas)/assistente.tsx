@@ -151,7 +151,7 @@ export default function Assistente() {
           escala={0.9}
           style={[estilos.enviar, (!texto.trim() || enviando) && { opacity: 0.4 }]}
         >
-          {enviando ? <Girando /> : <ArrowUp size={20} color="#FFFFFF" strokeWidth={2.4} />}
+          {enviando ? <Girando /> : <ArrowUp size={20} color={CORES.sobrePrimaria} strokeWidth={2.4} />}
         </Tocavel>
       </View>
     </KeyboardAvoidingView>
@@ -293,7 +293,7 @@ function Pensando() {
   );
 }
 
-function Girando({ cor = '#FFFFFF', tamanho = 20 }: { cor?: string; tamanho?: number }) {
+function Girando({ cor = CORES.sobrePrimaria, tamanho = 20 }: { cor?: string; tamanho?: number }) {
   const giro = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const animacao = Animated.loop(Animated.timing(giro, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: NATIVO }));

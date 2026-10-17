@@ -43,6 +43,15 @@ import {
   valorPorPessoa,
   tempoAberta,
   nomeDaMesa,
+  sha256,
+  montarUsuario,
+  entrar,
+  pode,
+  permissoesDe,
+  usuarioInicial,
+  comOperador,
+  iniciais,
+  PERMISSOES_PADRAO,
 } from './index';
 import type { Estado, Produto } from './index';
 
@@ -417,5 +426,85 @@ describe('contas por mesa', () => {
     const exemplo = estadoDeExemplo(agora);
     expect(comandasAbertas(exemplo).map((c) => c.mesa)).toEqual(['4', '10']);
     expect(resumoMesas(exemplo).emAberto).toBeGreaterThan(0);
+  });
+});
+
+describe('usuários e acesso', () => {
+  const dono = usuarioInicial('u1', 'Dono', 'admin', '1234');
+  const base = (): Estado => ({ ...ESTADO_VAZIO, produtos: [{ ...cerveja }], usuarios: [dono] });
+  const ok = <T,>(r: { ok: true; valor: T } | { ok: false; erro: string }): T => {
+    if (!r.ok) throw new Error(r.erro);
+    return r.valor;
+  };
+
+  it('calcula SHA-256 certo e não guarda o PIN', () => {
+    expect(sha256('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+    expect(sha256('')).toBe('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+    expect(sha256('ação')).toBe('0664077f33cc3ebbaa4bbdacac0eb70e740983080f01dce29929e73b7785a7ad');
+    expect(sha256('x'.repeat(1000))).toBe('44f8354494a5ba03ba1792a8d3e9c534c47a9181980fde7a3f44b06ef2ae7c7f');
+    expect(JSON.stringify(dono)).not.toContain('1234');
+  });
+
+  it('entra só com o PIN certo', () => {
+    const estado = base();
+    expect(entrar(estado, 'u1', '1234').ok).toBe(true);
+    expect(entrar(estado, 'u1', '4321').ok).toBe(false);
+    expect(entrar(estado, 'nao-existe', '1234').ok).toBe(false);
+  });
+
+  it('cadastra funcionário com permissões e o administrador pode tudo', () => {
+    let estado = base();
+    const ana = ok(montarUsuario(estado, { nome: ' Ana  Paula ', papel: 'funcionario', permissoes: [...PERMISSOES_PADRAO, 'mesas'], pin: '1111', ativo: true }));
+    estado = reducer(estado, { tipo: 'salvar-usuario', usuario: ana });
+    expect(ana.nome).toBe('Ana Paula');
+    expect(ana.permissoes).toEqual(['vender', 'mesas', 'estoque', 'assistente']);
+    expect(iniciais(ana.nome)).toBe('AP');
+    expect(pode(ana, 'mesas')).toBe(true);
+    expect(pode(ana, 'financeiro')).toBe(false);
+    expect(pode(ana, 'usuarios')).toBe(false);
+    expect(pode(dono, 'financeiro')).toBe(true);
+    expect(pode(dono, 'usuarios')).toBe(true);
+    expect(pode(null, 'vender')).toBe(false);
+    expect(permissoesDe(ana)).toEqual(['vender', 'mesas', 'estoque', 'assistente']);
+    expect(entrar(estado, ana.id, '1111').ok).toBe(true);
+
+    // Editar sem PIN mantém o PIN; desativar tira o acesso.
+    const editada = ok(montarUsuario(estado, { id: ana.id, nome: 'Ana Paula', papel: 'funcionario', permissoes: ['vender'], ativo: false }));
+    estado = reducer(estado, { tipo: 'salvar-usuario', usuario: editada });
+    expect(estado.usuarios).toHaveLength(2);
+    expect(entrar(estado, ana.id, '1111').ok).toBe(false);
+    expect(pode(editada, 'vender')).toBe(false);
+  });
+
+  it('valida nome, PIN e não deixa ficar sem administrador', () => {
+    const estado = base();
+    expect(montarUsuario(estado, { nome: 'dono', papel: 'funcionario', permissoes: [], pin: '1111', ativo: true }).ok).toBe(false);
+    expect(montarUsuario(estado, { nome: 'Ana', papel: 'funcionario', permissoes: [], ativo: true }).ok).toBe(false);
+    expect(montarUsuario(estado, { nome: 'Ana', papel: 'funcionario', permissoes: [], pin: '12a4', ativo: true }).ok).toBe(false);
+    expect(montarUsuario(estado, { nome: 'Ana', papel: 'funcionario', permissoes: [], pin: '123', ativo: true }).ok).toBe(false);
+    expect(montarUsuario(estado, { nome: 'Ana', papel: 'funcionario', permissoes: [], pin: '12345', ativo: true }).ok).toBe(false);
+    const semAdmin = montarUsuario(estado, { id: 'u1', nome: 'Dono', papel: 'funcionario', permissoes: [], ativo: true });
+    expect(semAdmin.ok).toBe(false);
+    if (!semAdmin.ok) expect(semAdmin.erro).toContain('administrador');
+    expect(montarUsuario(estado, { id: 'u1', nome: 'Dono', papel: 'admin', permissoes: [], ativo: false }).ok).toBe(false);
+  });
+
+  it('anota quem fez cada registro', () => {
+    const agora = new Date(2026, 9, 12, 20, 0);
+    const venda = ok(montarVenda(base(), [{ produtoId: 'c1', quantidade: 1 }], { forma: 'pix' }, agora));
+    const estado = reducer(base(), comOperador({ tipo: 'registrar-venda', venda }, 'Ana'));
+    expect(estado.vendas[0].operador).toBe('Ana');
+    expect(estado.lancamentos[0].operador).toBe('Ana');
+  });
+
+  it('exemplo vem com o dono e dois funcionários', () => {
+    const exemplo = estadoDeExemplo(new Date(2026, 9, 12, 20, 0));
+    expect(exemplo.usuarios.map((u) => [u.nome, u.papel])).toEqual([
+      ['Dono', 'admin'],
+      ['Ana', 'funcionario'],
+      ['Bruno', 'funcionario'],
+    ]);
+    expect(entrar(exemplo, 'u-ana', '1111').ok).toBe(true);
+    expect(exemplo.comandas[0].abertaPor).toBe('Ana');
   });
 });

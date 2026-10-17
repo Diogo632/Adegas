@@ -17,7 +17,8 @@ const FILTROS: { id: FiltroEstoque; nome: string }[] = [
 ];
 
 export default function Estoque() {
-  const { estado } = useAdega();
+  const { estado, pode } = useAdega();
+  const verCustos = pode('financeiro');
   const insets = useSafeAreaInsets();
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroEstoque>('todos');
@@ -36,11 +37,19 @@ export default function Estoque() {
         <View style={{ gap: 16, marginBottom: 16 }}>
           <TituloAba sobretitulo="Prateleira" titulo="Estoque" topo={insets.top} />
           <Entrar atraso={60} style={estilos.resumos}>
-            <View style={[estilos.resumo, estilos.resumoDestaque]}>
-              <Text style={estilos.resumoRotulo}>Valor em estoque</Text>
-              <NumeroAnimado valor={resumo.valorCusto} formatar={formatarDinheiro} style={estilos.resumoValor} />
-              <Text style={estilos.resumoDetalhe}>{resumo.unidades} unidades pelo custo</Text>
-            </View>
+            {verCustos ? (
+              <View style={[estilos.resumo, estilos.resumoDestaque]}>
+                <Text style={estilos.resumoRotulo}>Valor em estoque</Text>
+                <NumeroAnimado valor={resumo.valorCusto} formatar={formatarDinheiro} style={estilos.resumoValor} />
+                <Text style={estilos.resumoDetalhe}>{resumo.unidades} unidades pelo custo</Text>
+              </View>
+            ) : (
+              <View style={[estilos.resumo, estilos.resumoDestaque]}>
+                <Text style={estilos.resumoRotulo}>Na prateleira</Text>
+                <NumeroAnimado valor={resumo.unidades} formatar={String} style={estilos.resumoValor} />
+                <Text style={estilos.resumoDetalhe}>unidades de {resumo.produtos} produtos</Text>
+              </View>
+            )}
             <Tocavel
               accessibilityRole="button"
               onPress={() => setFiltro('baixo')}
@@ -107,7 +116,7 @@ const estilos = StyleSheet.create({
   resumoDestaque: { flex: 1.4, backgroundColor: CORES.destaqueFundo, borderColor: CORES.destaqueBorda },
   resumoAlerta: { backgroundColor: CORES.alertaFundo, borderColor: '#5A4515' },
   resumoRotulo: { fontFamily: FONTE.media, fontSize: 13, color: CORES.primariaClara },
-  resumoValor: { fontFamily: FONTE.semi, fontSize: 22, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  resumoValor: { fontFamily: FONTE.semi, fontSize: 22, color: CORES.texto, fontVariant: ['tabular-nums'] },
   resumoDetalhe: { fontFamily: FONTE.regular, fontSize: 12, color: CORES.textoSuave },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   linha: {

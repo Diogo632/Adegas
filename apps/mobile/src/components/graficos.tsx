@@ -91,7 +91,7 @@ export function GraficoColunas({
             <View style={[estilos.grade, { top: altura / 2 }]} />
             {colunas.map((c, i) => {
               const cor =
-                i === indice ? CORES.primariaClara : temEnfase && !c.destaque ? CORES.bordaForte : CORES.grafico;
+                i === indice ? CORES.texto : temEnfase && !c.destaque ? CORES.bordaForte : CORES.grafico;
               return (
                 <Pressable
                   key={c.chave}

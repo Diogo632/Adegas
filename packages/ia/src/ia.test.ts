@@ -203,6 +203,46 @@ describe('mesas pelo MCP', () => {
   });
 });
 
+describe('assistente conforme a permissão', () => {
+  it('funcionário só recebe as ferramentas que pode usar e não vê custo', async () => {
+    const loja = criarLojaNaMemoria(estadoDeExemplo(agora));
+    const conexao = await conectarNaMemoria(loja, { agora: relogio, permissoes: ['vender', 'mesas', 'estoque'] });
+    const { tools } = await conexao.cliente.listTools();
+    const nomes = tools.map((t) => t.name);
+    expect(nomes).toContain('lancar_na_mesa');
+    expect(nomes).toContain('consultar_produto');
+    expect(nomes).toContain('criar_lembrete');
+    for (const proibida of ['registrar_entrada', 'cancelar_mesa', 'remover_da_mesa', 'resumo_financeiro', 'relatorio_vendas', 'editar_produto']) {
+      expect(nomes).not.toContain(proibida);
+    }
+    const r = await conexao.cliente.callTool({ name: 'consultar_produto', arguments: { produto: 'heineken' } });
+    const dados = JSON.parse((r.content as { text: string }[])[0].text);
+    expect(dados.preco_venda).toBe('R$ 8,00');
+    expect(dados.custo_medio).toBeUndefined();
+    expect(dados.margem).toBeUndefined();
+    expect(dados.valor_em_estoque_pelo_custo).toBeUndefined();
+    // Ferramenta que não foi publicada não pode ser chamada.
+    const proibida = await conexao.cliente.callTool({ name: 'resumo_financeiro', arguments: {} }).catch(() => ({ isError: true }));
+    expect(proibida.isError).toBe(true);
+  });
+
+  it('o agente sabe quem está usando', async () => {
+    const { conexao } = await preparar();
+    const { buscar, pedidos } = geminiFalso([() => modelo({ text: 'Oi, Ana!' })]);
+    const agente = new AgenteAdega({
+      cliente: conexao.cliente,
+      chave: 'k',
+      buscar,
+      agora: relogio,
+      quemUsa: { nome: 'Ana', papel: 'funcionario', permissoes: ['Vender no balcão', 'Atender mesas'] },
+    });
+    await agente.enviar('oi');
+    const instrucao = pedidos[0].corpo!.systemInstruction!.parts[0].text;
+    expect(instrucao).toContain('Quem está usando: Ana, funcionário. Pode: Vender no balcão, Atender mesas.');
+    expect(instrucao).toContain('precisa de um administrador');
+  });
+});
+
 // ---------- Agente com um Gemini de mentira ----------
 
 function geminiFalso(respostas: ((pedido: PedidoGemini) => { status?: number; corpo: unknown })[]) {

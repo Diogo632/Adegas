@@ -1,6 +1,6 @@
 # Adegas
 
-Sistema para adegas controlarem **estoque** (bebidas, cigarros, gelo...), **vendas** e **financeiro**, com um **app** para o dia a dia no balcão e um **painel web** para a gestão. Os dois usam as mesmas regras.
+Sistema para adegas controlarem **estoque** (bebidas, cigarros, gelo...), **vendas**, **contas por mesa** e **financeiro**, com um **app** para o dia a dia no balcão e um **painel web** para a gestão. Os dois usam as mesmas regras. Cada pessoa da equipe entra com o próprio **PIN**, e o dono escolhe o que cada funcionário pode fazer.
 
 📄 **Fluxo completo das telas, regras e próximas etapas:** [`docs/FLUXO.md`](docs/FLUXO.md)
 
@@ -12,14 +12,14 @@ Sistema para adegas controlarem **estoque** (bebidas, cigarros, gelo...), **vend
 
 ```
 apps/
-  mobile/   App (Expo + React Native) — abas Início, Estoque, Financeiro, Relatórios,
-            Assistente; Nova venda, Pagamento, Mesas (conta, pedido, fechar), Entrada de
-            produto, Produto, Nova movimentação
-  web/      Painel web (Vite + React) — Início, Vender, Mesas, Entrada de produto, Estoque,
-            Financeiro, Relatórios, Assistente
+  mobile/   App (Expo + React Native) — Entrar (PIN); abas Início, Estoque, Financeiro,
+            Relatórios, Assistente; Nova venda, Pagamento, Mesas (conta, pedido, fechar),
+            Entrada de produto, Produto, Nova movimentação, Conta, Usuários
+  web/      Painel web (Vite + React) — Entrar (PIN), Início, Vender, Mesas, Entrada de
+            produto, Estoque, Financeiro, Relatórios, Usuários, Assistente
 packages/
   core/     Regras compartilhadas: produtos, estoque, ajustes, custo médio, vendas, troco,
-            contas por mesa, financeiro, relatórios, lembretes
+            contas por mesa, financeiro, relatórios, lembretes, usuários e permissões
   ia/       Assistente: servidor MCP com tudo da plataforma + agente que usa o Gemini
 docs/
   FLUXO.md  Fluxo do sistema
@@ -66,6 +66,7 @@ Os dados ainda ficam só na memória: ao fechar ou recarregar, tudo volta para o
 
 ### Roteiro rápido
 
+- **Entrar:** ao abrir, toque em quem está usando e digite o PIN. Nos dados de exemplo: **Dono 1234** (administrador, vê tudo), **Ana 1111** e **Bruno 2222** (funcionários). Faça o roteiro abaixo como **Dono**.
 - **Venda no dinheiro:** Nova venda → 2 Heineken + 1 Gelo → Pagamento → Dinheiro → R$ 50,00. O troco deve ser **R$ 19,00**. Volte ao início: o "Vendido hoje" sobe R$ 31,00 e o Gelo passa a ter 3 em estoque.
 - **Reposição:** no início, toque em **Repor** no Gelo → Unidade → 10 unidades a R$ 7,00 → Registrar. O estoque vai a 13 e o Gelo sai da lista de repor.
 - **Produto novo:** Entrada (no app; "Entrada de produto" no painel) → Produto novo → preencha nome, preço e custo. Ele aparece na tela de venda.
@@ -73,7 +74,9 @@ Os dados ainda ficam só na memória: ao fechar ou recarregar, tudo volta para o
 - **Estoque:** abra o Gelo → Ajustar → Perda, 1 unidade → Salvar. O estoque cai 1 e a perda aparece no Financeiro.
 - **Financeiro:** Nova movimentação → Saída → Luz, água e internet → R$ 120,00. Ela entra no topo das movimentações e no "Para onde foi o dinheiro".
 - **Relatórios:** troque o período (Hoje, 7 dias, 30 dias) e passe o mouse (ou toque) nas colunas.
-- **Mesas:** no início, toque em **Mesas** → a mesa 10 já tem Coca, água e Skol. Abra → **Adicionar pedido** → 1 água → **Lançar**: o total sobe R$ 3,00 e a água sai do estoque. Toque no − para tirar. **Fechar conta** → dividir por 2 → Dinheiro → R$ 100 mostra o troco. A mesa fica livre e a conta aparece no Financeiro como "Mesa 10". Toque numa mesa livre para abrir outra, ou digite um nome ("Balcão").
+- **Mesas:** no início, toque em **Mesas** → a mesa 10 já tem Coca, água e Skol. Abra → **Adicionar pedido na Mesa 10** → 1 água → **Lançar na Mesa 10**: o total sobe R$ 3,00 e a água sai do estoque. No painel, clicar nos produtos só monta o pedido ("Pedido novo · Mesa 10"); ele entra na conta ao clicar em **Lançar na Mesa 10**. Toque no − para tirar. **Fechar conta** → dividir por 2 → Dinheiro → R$ 100 mostra o troco. A mesa fica livre e a conta aparece no Financeiro como "Mesa 10". Toque numa mesa livre para abrir outra, ou digite um nome ("Balcão").
+- **Níveis de acesso:** **Trocar usuário** (no app, toque no seu nome no topo do Início; no painel, no pé do menu) → **Ana, 1111**. Ela não vê Financeiro, Relatórios, Entrada, preço de custo, nem o − e o "Cancelar mesa" das mesas. Abra **Mesas** e lance um pedido: funciona.
+- **Cadastrar funcionário:** entre como **Dono** → **Usuários** (no app, toque no seu nome no Início) → **Cadastrar funcionário** → nome "Carla", PIN 3333, deixe ligado só **Atender mesas** → Cadastrar. Troque de usuário e entre como Carla: ela só vê o Início e as Mesas.
 - **Assistente:** cole sua chave do Gemini (grátis em https://aistudio.google.com/apikey) na tela **Assistente** → peça "Chegaram 2 fardos de Skol por R$ 33 cada". Ele registra a entrada; toque em **Ver estoque**: a Skol subiu 24. Depois peça "Me lembre de pagar a luz amanhã às 10h" e veja o lembrete no Início. Detalhes em [`docs/ASSISTENTE.md`](docs/ASSISTENTE.md).
 
 ### Testes automáticos

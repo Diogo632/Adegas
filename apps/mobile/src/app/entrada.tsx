@@ -253,7 +253,7 @@ export default function Entrada() {
         {precoVenda ? <LinhaResumo rotulo="Margem na venda" valor={`${margem(precoVenda, previa.custoUnitario)}%`} /> : null}
         <View style={estilos.resumoDivisor} />
         <View style={estilos.linhaResumo}>
-          <Text style={[estilos.resumoRotulo, { color: '#FFFFFF' }]}>Total da compra</Text>
+          <Text style={[estilos.resumoRotulo, { color: CORES.texto }]}>Total da compra</Text>
           <NumeroAnimado valor={previa.custoTotal} formatar={formatarDinheiro} style={estilos.resumoTotal} />
         </View>
       </Entrar>
@@ -353,9 +353,9 @@ const estilos = StyleSheet.create({
   },
   linhaResumo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   resumoRotulo: { fontFamily: FONTE.regular, fontSize: 15, color: CORES.textoSuave },
-  resumoValor: { fontFamily: FONTE.semi, fontSize: 15, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  resumoValor: { fontFamily: FONTE.semi, fontSize: 15, color: CORES.texto, fontVariant: ['tabular-nums'] },
   resumoDivisor: { height: StyleSheet.hairlineWidth, backgroundColor: CORES.destaqueBorda, marginVertical: 4 },
-  resumoTotal: { fontFamily: FONTE.semi, fontSize: 24, color: '#FFFFFF', letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  resumoTotal: { fontFamily: FONTE.semi, fontSize: 24, color: CORES.texto, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
   selo: {
     width: 64,
     height: 64,

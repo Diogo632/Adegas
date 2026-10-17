@@ -33,7 +33,8 @@ const FILTROS: { id: FiltroEstoque; nome: string }[] = [
 const NOME_STATUS: Record<StatusEstoque, string> = { ok: 'Em dia', baixo: 'Baixo', zerado: 'Sem estoque' };
 
 export function Estoque() {
-  const { estado } = useAdega();
+  const { estado, pode } = useAdega();
+  const verCustos = pode('financeiro');
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroEstoque>('todos');
   const [cat, setCat] = useState<CategoriaId | null>(null);
@@ -50,21 +51,25 @@ export function Estoque() {
           <p className="sobretitulo">Prateleira</p>
           <h1>Estoque</h1>
         </div>
-        <div className="acoes">
-          <Link to="/entrada" className="botao">
-            <PackagePlus size={18} strokeWidth={1.75} /> Entrada de produto
-          </Link>
-        </div>
+        {pode('entrada') && (
+          <div className="acoes">
+            <Link to="/entrada" className="botao">
+              <PackagePlus size={18} strokeWidth={1.75} /> Entrada de produto
+            </Link>
+          </div>
+        )}
       </header>
 
       <section className="kpis">
-        <div className="kpi escuro" data-entrada>
-          <span>Valor em estoque</span>
-          <strong className="kpi-heroi">
-            <Numero valor={resumo.valorCusto} />
-          </strong>
-          <small>pelo custo de compra</small>
-        </div>
+        {verCustos && (
+          <div className="kpi escuro" data-entrada>
+            <span>Valor em estoque</span>
+            <strong className="kpi-heroi">
+              <Numero valor={resumo.valorCusto} />
+            </strong>
+            <small>pelo custo de compra</small>
+          </div>
+        )}
         <div className="kpi" data-entrada>
           <span>Se vender tudo</span>
           <strong>
@@ -72,7 +77,7 @@ export function Estoque() {
           </strong>
           <small>pelo preço de venda atual</small>
         </div>
-        <div className="kpi" data-entrada>
+        <div className={`kpi ${verCustos ? '' : 'escuro'}`} data-entrada>
           <span>Unidades</span>
           <strong>
             <Numero valor={resumo.unidades} formato="inteiro" />
@@ -126,10 +131,10 @@ export function Estoque() {
                   <th>Produto</th>
                   <th className="num">Estoque</th>
                   <th>Situação</th>
-                  <th className="num some-medio">Custo médio</th>
-                  <th className="num some-medio">Preço</th>
-                  <th className="num some-medio">Margem</th>
-                  <th className="num">Valor parado</th>
+                  {verCustos && <th className="num some-medio">Custo médio</th>}
+                  <th className={`num ${verCustos ? 'some-medio' : ''}`}>Preço</th>
+                  {verCustos && <th className="num some-medio">Margem</th>}
+                  {verCustos && <th className="num">Valor parado</th>}
                 </tr>
               </thead>
               <tbody>
@@ -158,10 +163,10 @@ export function Estoque() {
                       <td>
                         <span className={`pilula ${status}`}>{NOME_STATUS[status]}</span>
                       </td>
-                      <td className="num some-medio">{formatarDinheiro(p.custoMedio)}</td>
-                      <td className="num some-medio">{formatarDinheiro(p.precoVenda)}</td>
-                      <td className="num some-medio">{margem(p.precoVenda, p.custoMedio)}%</td>
-                      <td className="num">{formatarDinheiro(Math.max(p.estoque, 0) * p.custoMedio)}</td>
+                      {verCustos && <td className="num some-medio">{formatarDinheiro(p.custoMedio)}</td>}
+                      <td className={`num ${verCustos ? 'some-medio' : ''}`}>{formatarDinheiro(p.precoVenda)}</td>
+                      {verCustos && <td className="num some-medio">{margem(p.precoVenda, p.custoMedio)}%</td>}
+                      {verCustos && <td className="num">{formatarDinheiro(Math.max(p.estoque, 0) * p.custoMedio)}</td>}
                     </tr>
                   );
                 })}
@@ -177,7 +182,11 @@ export function Estoque() {
           ) : (
             <div className="detalhe-vazio">
               <h2>Escolha um produto</h2>
-              <p className="suave">Clique numa linha da tabela para ver o histórico, corrigir o estoque ou mudar preço e mínimo.</p>
+              <p className="suave">
+                {pode('ajustar_estoque')
+                  ? 'Clique numa linha da tabela para ver o histórico, corrigir o estoque ou mudar preço e mínimo.'
+                  : 'Clique numa linha da tabela para ver o histórico do produto.'}
+              </p>
             </div>
           )}
         </aside>
@@ -187,7 +196,8 @@ export function Estoque() {
 }
 
 function DetalheProduto({ produto }: { produto: Produto }) {
-  const { estado, editarProduto, ajustarEstoque } = useAdega();
+  const { estado, editarProduto, ajustarEstoque, pode } = useAdega();
+  const podeAjustar = pode('ajustar_estoque');
   const [aba, setAba] = useState<'historico' | 'ajustar' | 'editar'>('historico');
   const [aviso, setAviso] = useState<{ id: number; texto: string } | null>(null);
   const status = statusEstoque(produto);
@@ -220,16 +230,25 @@ function DetalheProduto({ produto }: { produto: Produto }) {
           <dt>Mínimo</dt>
           <dd>{produto.estoqueMinimo} un</dd>
         </div>
-        <div>
-          <dt>Custo médio</dt>
-          <dd>{formatarDinheiro(produto.custoMedio)}</dd>
-        </div>
-        <div>
-          <dt>Preço · margem</dt>
-          <dd>
-            {formatarDinheiro(produto.precoVenda)} · {margem(produto.precoVenda, produto.custoMedio)}%
-          </dd>
-        </div>
+        {pode('financeiro') ? (
+          <>
+            <div>
+              <dt>Custo médio</dt>
+              <dd>{formatarDinheiro(produto.custoMedio)}</dd>
+            </div>
+            <div>
+              <dt>Preço · margem</dt>
+              <dd>
+                {formatarDinheiro(produto.precoVenda)} · {margem(produto.precoVenda, produto.custoMedio)}%
+              </dd>
+            </div>
+          </>
+        ) : (
+          <div>
+            <dt>Preço de venda</dt>
+            <dd>{formatarDinheiro(produto.precoVenda)}</dd>
+          </div>
+        )}
       </dl>
 
       {aviso && (
@@ -243,19 +262,21 @@ function DetalheProduto({ produto }: { produto: Produto }) {
         </Surgir>
       )}
 
-      <div className="segmentado">
-        <button type="button" className={aba === 'historico' ? 'ativo' : ''} onClick={() => setAba('historico')}>
-          Histórico
-        </button>
-        <button type="button" className={aba === 'ajustar' ? 'ativo' : ''} onClick={() => setAba('ajustar')}>
-          Ajustar
-        </button>
-        <button type="button" className={aba === 'editar' ? 'ativo' : ''} onClick={() => setAba('editar')}>
-          Editar
-        </button>
-      </div>
+      {podeAjustar && (
+        <div className="segmentado">
+          <button type="button" className={aba === 'historico' ? 'ativo' : ''} onClick={() => setAba('historico')}>
+            Histórico
+          </button>
+          <button type="button" className={aba === 'ajustar' ? 'ativo' : ''} onClick={() => setAba('ajustar')}>
+            Ajustar
+          </button>
+          <button type="button" className={aba === 'editar' ? 'ativo' : ''} onClick={() => setAba('editar')}>
+            Editar
+          </button>
+        </div>
+      )}
 
-      {aba === 'historico' && (
+      {(aba === 'historico' || !podeAjustar) && (
         <>
           {movimentos.length === 0 ? (
             <p className="suave">Nenhuma movimentação ainda.</p>
@@ -275,13 +296,15 @@ function DetalheProduto({ produto }: { produto: Produto }) {
               ))}
             </ul>
           )}
-          <Link to={`/entrada?produto=${produto.id}`} className="botao contorno largo">
-            <PackagePlus size={18} strokeWidth={1.75} /> Registrar entrada deste produto
-          </Link>
+          {pode('entrada') && (
+            <Link to={`/entrada?produto=${produto.id}`} className="botao contorno largo">
+              <PackagePlus size={18} strokeWidth={1.75} /> Registrar entrada deste produto
+            </Link>
+          )}
         </>
       )}
 
-      {aba === 'ajustar' && (
+      {podeAjustar && aba === 'ajustar' && (
         <FormAjuste
           produto={produto}
           onSalvar={(dados) => {
@@ -295,7 +318,7 @@ function DetalheProduto({ produto }: { produto: Produto }) {
         />
       )}
 
-      {aba === 'editar' && (
+      {podeAjustar && aba === 'editar' && (
         <FormEdicao
           produto={produto}
           onSalvar={(dados) => {

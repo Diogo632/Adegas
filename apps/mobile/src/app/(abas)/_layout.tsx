@@ -1,10 +1,12 @@
 import { Tabs } from 'expo-router/tabs';
 import { Boxes, ChartColumn, House, Sparkles, Wallet } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAdega } from '@adegas/core';
 import { CORES, FONTE } from '../../tema';
 
 export default function Abas() {
   const insets = useSafeAreaInsets();
+  const { pode } = useAdega();
   return (
     <Tabs
       screenOptions={{
@@ -27,28 +29,35 @@ export default function Abas() {
         name="index"
         options={{ title: 'Início', tabBarIcon: ({ color, size }) => <House color={color} size={size} strokeWidth={1.75} /> }}
       />
-      <Tabs.Screen
-        name="estoque"
-        options={{ title: 'Estoque', tabBarIcon: ({ color, size }) => <Boxes color={color} size={size} strokeWidth={1.75} /> }}
-      />
-      <Tabs.Screen
-        name="financeiro"
-        options={{ title: 'Financeiro', tabBarIcon: ({ color, size }) => <Wallet color={color} size={size} strokeWidth={1.75} /> }}
-      />
-      <Tabs.Screen
-        name="relatorios"
-        options={{
-          title: 'Relatórios',
-          tabBarIcon: ({ color, size }) => <ChartColumn color={color} size={size} strokeWidth={1.75} />,
-        }}
-      />
-      <Tabs.Screen
-        name="assistente"
-        options={{
-          title: 'Assistente',
-          tabBarIcon: ({ color, size }) => <Sparkles color={color} size={size} strokeWidth={1.75} />,
-        }}
-      />
+      {/* Cada aba só aparece para quem tem a permissão. */}
+      <Tabs.Protected guard={pode('estoque')}>
+        <Tabs.Screen
+          name="estoque"
+          options={{ title: 'Estoque', tabBarIcon: ({ color, size }) => <Boxes color={color} size={size} strokeWidth={1.75} /> }}
+        />
+      </Tabs.Protected>
+      <Tabs.Protected guard={pode('financeiro')}>
+        <Tabs.Screen
+          name="financeiro"
+          options={{ title: 'Financeiro', tabBarIcon: ({ color, size }) => <Wallet color={color} size={size} strokeWidth={1.75} /> }}
+        />
+        <Tabs.Screen
+          name="relatorios"
+          options={{
+            title: 'Relatórios',
+            tabBarIcon: ({ color, size }) => <ChartColumn color={color} size={size} strokeWidth={1.75} />,
+          }}
+        />
+      </Tabs.Protected>
+      <Tabs.Protected guard={pode('assistente')}>
+        <Tabs.Screen
+          name="assistente"
+          options={{
+            title: 'Assistente',
+            tabBarIcon: ({ color, size }) => <Sparkles color={color} size={size} strokeWidth={1.75} />,
+          }}
+        />
+      </Tabs.Protected>
     </Tabs>
   );
 }

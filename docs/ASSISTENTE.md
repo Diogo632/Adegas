@@ -56,34 +56,44 @@ O servidor MCP usa as mesmas regras do núcleo (`packages/core`) que as telas us
 
 ### Ferramentas do servidor MCP
 
-| Ferramenta | O que faz | Muda dados? |
-|---|---|---|
-| `buscar_produtos` | Lista produtos por nome, categoria e situação | não |
-| `consultar_produto` | Estoque, preço, custo, vendas em 30 dias, duração do estoque, últimas movimentações | não |
-| `resumo_estoque` | Total, valor parado e o que precisa repor | não |
-| `registrar_entrada` | Entrada de mercadoria (fardo ou unidade), com cadastro de produto novo | **sim** |
-| `ajustar_estoque` | Perda, consumo próprio ou contagem | **sim** |
-| `editar_produto` | Nome, categoria, preço de venda, estoque mínimo | **sim** |
-| `registrar_venda` | Venda com forma de pagamento e troco | **sim** |
-| `listar_mesas` | Mesas abertas (itens, total, tempo), total em aberto e fechadas hoje | não |
-| `consultar_mesa` | Conta de uma mesa, com divisão por pessoa | não |
-| `abrir_mesa` | Abre a conta de uma mesa | **sim** |
-| `lancar_na_mesa` | Lança pedidos na mesa (abre se precisar); saem do estoque | **sim** |
-| `remover_da_mesa` | Tira um item da conta e devolve ao estoque | **sim** |
-| `fechar_mesa` | Fecha a conta com a forma de pagamento (vira venda) | **sim** |
-| `cancelar_mesa` | Cancela a conta; tudo volta ao estoque | **sim** |
-| `resumo_do_dia` | Vendas, lucro, despesas e recebido por forma de pagamento de hoje | não |
-| `resumo_financeiro` | Entradas, saídas, saldo, lucro, saídas por categoria e perdas de um período | não |
-| `listar_lancamentos` | Movimentações do financeiro com filtros | não |
-| `registrar_lancamento` | Despesa da loja ou outra entrada de dinheiro | **sim** |
-| `excluir_lancamento` | Apaga uma movimentação lançada à mão | **sim** |
-| `relatorio_vendas` | Faturamento, ticket, margem, melhores dias, picos, mais vendidos, parados, categorias | não |
-| `criar_lembrete` | Lembrete com data e hora (e produto, se houver) | **sim** |
-| `listar_lembretes` | Pendentes (e concluídos, se pedir) | não |
-| `concluir_lembrete` | Marca como feito | **sim** |
-| `excluir_lembrete` | Apaga | **sim** |
+| Ferramenta | O que faz | Muda dados? | Quem pode |
+|---|---|---|---|
+| `buscar_produtos` | Lista produtos por nome, categoria e situação | não | Ver estoque |
+| `consultar_produto` | Estoque, preço, custo, vendas em 30 dias, duração do estoque, últimas movimentações | não | Ver estoque |
+| `resumo_estoque` | Total, valor parado e o que precisa repor | não | Ver estoque |
+| `registrar_entrada` | Entrada de mercadoria (fardo ou unidade), com cadastro de produto novo | **sim** | Registrar entrada |
+| `ajustar_estoque` | Perda, consumo próprio ou contagem | **sim** | Ajustar estoque |
+| `editar_produto` | Nome, categoria, preço de venda, estoque mínimo | **sim** | Ajustar estoque |
+| `registrar_venda` | Venda com forma de pagamento e troco | **sim** | Vender |
+| `listar_mesas` | Mesas abertas (itens, total, tempo), total em aberto e fechadas hoje | não | Atender mesas |
+| `consultar_mesa` | Conta de uma mesa, com divisão por pessoa | não | Atender mesas |
+| `abrir_mesa` | Abre a conta de uma mesa | **sim** | Atender mesas |
+| `lancar_na_mesa` | Lança pedidos na mesa (abre se precisar); saem do estoque | **sim** | Atender mesas |
+| `remover_da_mesa` | Tira um item da conta e devolve ao estoque | **sim** | Corrigir mesas |
+| `fechar_mesa` | Fecha a conta com a forma de pagamento (vira venda) | **sim** | Atender mesas |
+| `cancelar_mesa` | Cancela a conta; tudo volta ao estoque | **sim** | Corrigir mesas |
+| `resumo_do_dia` | Vendas, lucro, despesas e recebido por forma de pagamento de hoje | não | Financeiro |
+| `resumo_financeiro` | Entradas, saídas, saldo, lucro, saídas por categoria e perdas de um período | não | Financeiro |
+| `listar_lancamentos` | Movimentações do financeiro com filtros | não | Financeiro |
+| `registrar_lancamento` | Despesa da loja ou outra entrada de dinheiro | **sim** | Financeiro |
+| `excluir_lancamento` | Apaga uma movimentação lançada à mão | **sim** | Financeiro |
+| `relatorio_vendas` | Faturamento, ticket, margem, melhores dias, picos, mais vendidos, parados, categorias | não | Financeiro |
+| `criar_lembrete` | Lembrete com data e hora (e produto, se houver) | **sim** | todos |
+| `listar_lembretes` | Pendentes (e concluídos, se pedir) | não | todos |
+| `concluir_lembrete` | Marca como feito | **sim** | todos |
+| `excluir_lembrete` | Apaga | **sim** | todos |
 
 Períodos: `hoje`, `7d`, `30d`, `mes` ou datas de início e fim (`AAAA-MM-DD`). Valores em reais.
+
+### Só o que a pessoa logada pode fazer
+
+O assistente trabalha **com as permissões de quem está usando** (veja "Usuários e níveis de acesso" em [`FLUXO.md`](FLUXO.md#39-usuários-e-níveis-de-acesso)):
+
+- O servidor MCP do aparelho é criado **só com as ferramentas permitidas** (coluna "Quem pode" acima). Para a Ana, que não tem Financeiro, o Gemini nem fica sabendo que existem `resumo_financeiro` ou `relatorio_vendas`.
+- Sem Financeiro, as respostas sobre produtos **não trazem preço de custo nem margem**.
+- O agente diz ao Gemini quem está usando e o que a pessoa pode fazer; se ela pedir algo fora disso, ele explica que precisa de um administrador.
+- Tudo o que o assistente registra fica com o **nome de quem estava logado**, igual às telas.
+- O administrador usa todas as ferramentas. O servidor do terminal (abaixo) também, porque ali não há login.
 
 ## Usar o servidor MCP com outros programas
 
@@ -119,7 +129,7 @@ GEMINI_API_KEY=sua-chave npm run assistente
 
 - **Ele registra direto**, sem pedir confirmação, como combinado. Ele avisa o que fez e tudo fica no histórico (movimentações e histórico do produto). Ainda não existe "desfazer" para entradas e vendas: se errar, corrija com um ajuste de estoque.
 - **Os dados ainda são de cada aparelho.** Até a etapa do banco na nuvem, o que o assistente registra no celular não aparece no painel de outro computador, e o servidor MCP do terminal usa o arquivo dele.
-- **A chave do Gemini fica no aparelho** e a conversa vai direto do aparelho para o Google. Para testar, isso é suficiente. Com o banco na nuvem e vários funcionários, o certo é a chamada ao Gemini passar por um servidor nosso, para a chave não ficar nos celulares, e cada um usar o assistente com o próprio login.
+- **A chave do Gemini fica no aparelho** e a conversa vai direto do aparelho para o Google. Para testar, isso é suficiente. Com o banco na nuvem, o certo é a chamada ao Gemini passar por um servidor nosso, para a chave não ficar nos celulares. O limite por permissão já existe hoje (veja acima).
 - Lembretes aparecem no Início, mas **ainda não tocam notificação** no celular.
 - Nas prévias abertas dentro do Claude a página não tem acesso à internet, então lá o assistente mostra um aviso e não conversa. Ele funciona na prévia do GitHub Pages, no `npm run web` / `npm run app` e no Expo Go.
 

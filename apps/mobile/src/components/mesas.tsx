@@ -26,7 +26,7 @@ export function LinhaMesa({ comanda, agora }: { comanda: Comanda; agora: Date })
   );
 }
 
-/** Número da mesa (ou as iniciais do nome) num quadradinho roxo. */
+/** Número da mesa (ou as iniciais do nome) num quadradinho amarelo. */
 export function SeloMesa({ mesa }: { mesa: string }) {
   return (
     <View style={estilos.selo}>

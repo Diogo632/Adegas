@@ -55,6 +55,7 @@ import type {
   Intervalo,
   Lembrete,
   LojaAdega,
+  Permissao,
   Produto,
 } from '@adegas/core';
 
@@ -64,6 +65,8 @@ export class ErroFerramenta extends Error {}
 export interface ContextoFerramenta {
   loja: LojaAdega;
   agora: () => Date;
+  /** Custo, margem e valor do estoque pelo custo só para quem vê o financeiro. */
+  verCustos: boolean;
 }
 
 /** Uma ação da plataforma que o assistente (ou qualquer cliente MCP) pode usar. */
@@ -124,7 +127,7 @@ const paraCentavos = (valor: number) => Math.round(valor * 100);
 
 const SITUACAO = { ok: 'em dia', baixo: 'abaixo do mínimo', zerado: 'sem estoque' } as const;
 
-function resumoProduto(p: Produto) {
+function resumoProduto(p: Produto, verCustos = true) {
   return {
     id: p.id,
     nome: p.nome,
@@ -133,8 +136,7 @@ function resumoProduto(p: Produto) {
     estoque_minimo: p.estoqueMinimo,
     situacao: SITUACAO[statusEstoque(p)],
     preco_venda: reais(p.precoVenda),
-    custo_medio: reais(p.custoMedio),
-    margem: `${margem(p.precoVenda, p.custoMedio)}%`,
+    ...(verCustos ? { custo_medio: reais(p.custoMedio), margem: `${margem(p.precoVenda, p.custoMedio)}%` } : {}),
   };
 }
 
@@ -296,6 +298,45 @@ function confirmar<T>(resultado: { ok: true; valor: T } | { ok: false; erro: str
   return resultado.valor;
 }
 
+// ---------- Quem pode usar cada ferramenta ----------
+
+/** Permissão que a pessoa precisa ter para o assistente usar a ferramenta (null = todos). */
+export const PERMISSAO_DA_FERRAMENTA: Record<string, Permissao | null> = {
+  buscar_produtos: 'estoque',
+  consultar_produto: 'estoque',
+  resumo_estoque: 'estoque',
+  registrar_entrada: 'entrada',
+  ajustar_estoque: 'ajustar_estoque',
+  editar_produto: 'ajustar_estoque',
+  registrar_venda: 'vender',
+  listar_mesas: 'mesas',
+  consultar_mesa: 'mesas',
+  abrir_mesa: 'mesas',
+  lancar_na_mesa: 'mesas',
+  fechar_mesa: 'mesas',
+  remover_da_mesa: 'corrigir_mesas',
+  cancelar_mesa: 'corrigir_mesas',
+  resumo_do_dia: 'financeiro',
+  resumo_financeiro: 'financeiro',
+  listar_lancamentos: 'financeiro',
+  registrar_lancamento: 'financeiro',
+  excluir_lancamento: 'financeiro',
+  relatorio_vendas: 'financeiro',
+  criar_lembrete: null,
+  listar_lembretes: null,
+  concluir_lembrete: null,
+  excluir_lembrete: null,
+};
+
+/** Ferramentas que quem tem essas permissões pode usar (sem lista = todas, como no servidor do terminal). */
+export function ferramentasPermitidas(permissoes?: Permissao[]): FerramentaAdega[] {
+  if (!permissoes) return FERRAMENTAS;
+  return FERRAMENTAS.filter((f) => {
+    const exige = PERMISSAO_DA_FERRAMENTA[f.nome];
+    return exige === null || (exige !== undefined && permissoes.includes(exige));
+  });
+}
+
 // ---------- Ferramentas ----------
 
 export const FERRAMENTAS: FerramentaAdega[] = [
@@ -311,13 +352,13 @@ export const FERRAMENTAS: FerramentaAdega[] = [
       categoria: esquemaCategoria.optional(),
       situacao: z.enum(['todos', 'baixo', 'zerado']).optional().describe('todos (padrão), baixo ou zerado.'),
     }),
-    executar(args, { loja }) {
+    executar(args, { loja, verCustos }) {
       const estado = loja.estado();
       const porNome = args.busca ? buscarPorNome(estado.produtos, args.busca, true) : estado.produtos;
       const lista = filtrarEstoque(porNome, '', args.situacao ?? 'todos', args.categoria);
       return {
         total: lista.length,
-        produtos: lista.slice(0, 40).map(resumoProduto),
+        produtos: lista.slice(0, 40).map((p) => resumoProduto(p, verCustos)),
         ...(lista.length > 40 ? { observacao: 'Mostrando 40. Refine a busca.' } : {}),
       };
     },
@@ -330,7 +371,7 @@ export const FERRAMENTAS: FerramentaAdega[] = [
       'Tudo sobre um produto: estoque atual, mínimo, preço, custo, quanto vendeu nos últimos 30 dias, para quantos dias o estoque dá e as últimas movimentações.',
     somenteLeitura: true,
     entrada: z.object({ produto: esquemaProduto }),
-    executar(args, { loja, agora }) {
+    executar(args, { loja, agora, verCustos }) {
       const estado = loja.estado();
       const p = acharProduto(estado, args.produto);
       const ultimos30 = intervaloDoPeriodo('30d', agora());
@@ -339,8 +380,8 @@ export const FERRAMENTAS: FerramentaAdega[] = [
         .reduce((s, v) => s + v.itens.filter((i) => i.produtoId === p.id).reduce((t, i) => t + i.quantidade, 0), 0);
       const mediaDia = vendidos / 30;
       return {
-        ...resumoProduto(p),
-        valor_em_estoque_pelo_custo: reais(Math.max(p.estoque, 0) * p.custoMedio),
+        ...resumoProduto(p, verCustos),
+        ...(verCustos ? { valor_em_estoque_pelo_custo: reais(Math.max(p.estoque, 0) * p.custoMedio) } : {}),
         vendidos_ultimos_30_dias: vendidos,
         media_vendida_por_dia: Math.round(mediaDia * 10) / 10,
         estoque_dura: duracaoDoEstoque(p.estoque, mediaDia),
@@ -363,13 +404,13 @@ export const FERRAMENTAS: FerramentaAdega[] = [
     descricao: 'Visão geral do estoque: total de produtos e unidades, valor parado em estoque e o que precisa repor.',
     somenteLeitura: true,
     entrada: z.object({}),
-    executar(_args, { loja }) {
+    executar(_args, { loja, verCustos }) {
       const estado = loja.estado();
       const r = resumoEstoque(estado.produtos);
       return {
         produtos: r.produtos,
         unidades: r.unidades,
-        valor_pelo_custo: reais(r.valorCusto),
+        ...(verCustos ? { valor_pelo_custo: reais(r.valorCusto) } : {}),
         valor_pelo_preco_de_venda: reais(r.valorVenda),
         abaixo_do_minimo: r.baixo,
         sem_estoque: r.zerado,
