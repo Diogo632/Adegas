@@ -47,6 +47,28 @@ flowchart TD
     EntradaOk -->|Voltar ao início| Inicio
 ```
 
+**Mesas** (conta por mesa):
+
+```mermaid
+flowchart TD
+    Inicio2["🏠 Início<br/>mesas abertas"]
+    Mesas["🪑 Mesas<br/>grade 1 a 12 · outra mesa ou nome"]
+    Conta["Conta da mesa<br/>pedidos com + e −"]
+    Pedido["Adicionar pedido<br/>escolher produtos"]
+    Fechar["Fechar conta<br/>dividir · Pix · Crédito · Débito · Dinheiro"]
+    Fechada["✅ Mesa fechada<br/>mostra o troco"]
+
+    Inicio2 -->|Mesas| Mesas
+    Inicio2 -->|toca na mesa| Conta
+    Mesas -->|"mesa livre: abre a conta"| Conta
+    Mesas -->|mesa ocupada| Conta
+    Conta -->|Adicionar pedido| Pedido
+    Pedido -->|Lançar na mesa| Conta
+    Conta -->|Fechar conta| Fechar
+    Fechar -->|Confirmar| Fechada
+    Conta -->|Cancelar mesa| Mesas
+```
+
 **Gestão** (abas no app; menu lateral no web):
 
 ```mermaid
@@ -62,7 +84,9 @@ flowchart TD
     Financeiro -->|Nova movimentação| NovaMov
 ```
 
-No **app**, a barra de baixo tem 5 abas: **Início, Estoque, Financeiro, Relatórios e Assistente**. Vender e dar entrada continuam nos botões grandes do Início.
+No **app**, a barra de baixo tem 5 abas: **Início, Estoque, Financeiro, Relatórios e Assistente**. Vender, Mesas e Entrada ficam nos botões grandes do Início, e as mesas abertas aparecem logo abaixo deles.
+
+No **web**, Mesas fica no menu, junto de Vender: a grade de mesas e os produtos à esquerda, a conta da mesa escolhida à direita (no celular, a conta aparece logo abaixo da grade).
 
 No **web**, "Nova venda" e "Pagamento" ficam numa tela só (produtos à esquerda, carrinho e pagamento à direita), porque a tela é grande. No **app** são duas telas, para cada uma ter pouca coisa. Na tela de Estoque do web, o produto escolhido abre num painel ao lado da tabela.
 
@@ -146,9 +170,21 @@ Enquanto preenche, o **resumo** mostra: quantas unidades entram, custo por unida
 - **Mais vendidos:** quantidade, faturamento e lucro de cada produto.
 - **Por categoria** e **por forma de pagamento**, com a fatia de cada uma.
 
-### 3.7 Assistente e lembretes
+### 3.7 Mesas (conta por mesa)
 
-- **Assistente:** conversa em português. Ele usa as mesmas ações das telas (consultar estoque, registrar entrada e venda, lançar despesa, ajustar estoque, buscar financeiro e relatórios, criar lembretes) por meio de um servidor **MCP** e da API do **Gemini**. Mostra cada passo que fez e um atalho para conferir. Lista completa em [`ASSISTENTE.md`](ASSISTENTE.md).
+Para quem atende em mesas: o cliente senta, os pedidos vão sendo lançados e a conta é fechada no fim, de uma vez.
+
+- **Abrir:** toque numa mesa livre da grade (1 a 12) ou digite outro número ou um nome ("15", "Balcão", "João"). Não dá para abrir a mesma mesa duas vezes.
+- **Lançar pedidos:** "Adicionar pedido" (app) ou clique nos produtos (painel). **O item sai do estoque na hora**, porque a bebida já está na mesa. Não deixa lançar mais do que tem.
+- **Corrigir:** o − de cada item tira da conta e devolve ao estoque.
+- **Conta:** itens agrupados por produto, preço de cada um, total e há quanto tempo a mesa está aberta. O preço fica o da hora do pedido.
+- **Fechar:** dividir por pessoas (só mostra quanto dá para cada um), forma de pagamento e troco no dinheiro. A conta vira **uma venda** (entra no financeiro e nos relatórios, com "Mesa 10" na descrição) e a mesa fica livre.
+- **Cancelar mesa:** quando abriu por engano ou o cliente foi embora sem consumir. Tudo volta ao estoque e nada entra no caixa.
+- **Fechadas hoje:** lista na tela de Mesas, com hora, forma de pagamento e total.
+
+### 3.8 Assistente e lembretes
+
+- **Assistente:** conversa em português. Ele usa as mesmas ações das telas (consultar estoque, registrar entrada e venda, lançar pedidos nas mesas e fechar a conta, lançar despesa, ajustar estoque, buscar financeiro e relatórios, criar lembretes) por meio de um servidor **MCP** e da API do **Gemini**. Mostra cada passo que fez e um atalho para conferir. Lista completa em [`ASSISTENTE.md`](ASSISTENTE.md).
 - **Lembretes:** aparecem no Início (app e painel), do mais urgente para o mais distante; os atrasados ficam em amarelo. Um toque no ✓ conclui. Hoje são criados pelo assistente.
 
 ## 4. O que cada ação muda
@@ -163,6 +199,10 @@ Enquanto preenche, o **resumo** mostra: quantas unidades entram, custo por unida
 | Editar produto | nada (muda nome, preço, mínimo) | nada |
 | Nova movimentação | nada | + entrada ou − saída, na categoria escolhida |
 | Lembrete | nada | nada (só aparece no Início até ser concluído) |
+| Pedido na mesa | − quantidade pedida, na hora | nada ainda |
+| Tirar da mesa | + volta ao estoque | nada |
+| Fechar a conta da mesa | nada (já saiu nos pedidos) | + receita (na forma de pagamento), como uma venda |
+| Cancelar mesa | + tudo volta ao estoque | nada |
 
 O assistente não tem regras próprias: cada ferramenta dele faz exatamente uma das ações acima.
 
@@ -188,6 +228,9 @@ erDiagram
     ENTRADA ||--|| LANCAMENTO : "gera despesa"
     PRODUTO ||--o{ AJUSTE : "corrigido por"
     PRODUTO |o--o{ LEMBRETE : "pode ter"
+    COMANDA ||--o{ ITEM_COMANDA : "pedidos"
+    PRODUTO ||--o{ ITEM_COMANDA : "pedido em"
+    COMANDA |o--o| VENDA : "vira ao fechar"
 
     PRODUTO {
         texto nome
@@ -238,6 +281,18 @@ erDiagram
         data quando
         bool concluido
     }
+    COMANDA {
+        texto mesa "10, Balcão, João..."
+        data abertaEm
+        texto situacao "aberta, fechada ou cancelada"
+        data fechadaEm
+    }
+    ITEM_COMANDA {
+        int quantidade
+        centavos precoUnitario
+        centavos custoUnitario
+        data lancadoEm
+    }
 ```
 
 Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, Cigarros, Gelo e carvão, Petiscos, Outros.
@@ -253,6 +308,7 @@ Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, 
 | **3. Estoque** | Lista com situação e valor parado, editar produto e preço, ajuste por perda/consumo/contagem, histórico do produto | ✅ pronto (lote e validade ficam para depois) |
 | **4. Financeiro e relatórios** | Períodos, saldo, entradas e saídas, despesas da loja, recebido por forma, perdas; relatórios por dia, hora, produto, categoria e forma | ✅ pronto |
 | **4.1 Assistente com IA** | Conversa (Gemini) que consulta e registra tudo via servidor MCP: estoque, entradas, vendas, despesas, financeiro, relatórios e lembretes. O servidor MCP também roda no terminal para outros clientes (Gemini CLI etc.) | ✅ pronto (notificação dos lembretes e chave no servidor ficam para a etapa 2) |
+| **4.2 Mesas** | Conta por mesa: abrir, lançar pedidos (sai do estoque na hora), tirar, dividir, fechar com forma de pagamento e troco, cancelar; mesas abertas no Início; o assistente também lança e fecha mesas | ✅ pronto (número de mesas fixo em 12 na grade; dá para abrir qualquer outro número ou nome) |
 | **5. Caixa do dia** | **Abrir/fechar o caixa, sangria e reforço**, conferência do dinheiro da gaveta, taxa da maquininha | |
 | **6. Extras** | Leitor de código de barras pela câmera, desconto na venda, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, perfis dono/funcionário, publicar o app nas lojas | |
 

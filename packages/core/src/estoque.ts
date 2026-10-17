@@ -1,5 +1,6 @@
 import type { Centavos } from './dinheiro';
 import { motivoAjuste } from './catalogos';
+import { nomeDaMesa } from './comandas';
 import type {
   AjusteEstoque,
   CategoriaId,
@@ -297,7 +298,7 @@ export function montarAjuste(estado: Estado, dados: DadosAjuste, agora: Date = n
 export interface MovimentoProduto {
   id: string;
   data: string;
-  tipo: 'venda' | 'entrada' | 'ajuste';
+  tipo: 'venda' | 'entrada' | 'ajuste' | 'mesa';
   /** Positivo entrou, negativo saiu. */
   quantidade: number;
   descricao: string;
@@ -309,7 +310,28 @@ export function movimentosDoProduto(estado: Estado, produtoId: string, limite = 
   for (const venda of estado.vendas) {
     for (const item of venda.itens) {
       if (item.produtoId === produtoId) {
-        movimentos.push({ id: `${venda.id}-${produtoId}`, data: venda.data, tipo: 'venda', quantidade: -item.quantidade, descricao: 'Venda' });
+        movimentos.push({
+          id: `${venda.id}-${produtoId}-${item.precoUnitario}`,
+          data: venda.data,
+          tipo: 'venda',
+          quantidade: -item.quantidade,
+          descricao: venda.mesa ? `Conta da ${nomeDaMesa(venda.mesa)}` : 'Venda',
+        });
+      }
+    }
+  }
+  // Pedidos de mesas ainda abertas: já saíram do estoque, viram venda quando a conta fechar.
+  for (const comanda of estado.comandas) {
+    if (comanda.situacao !== 'aberta') continue;
+    for (const item of comanda.itens) {
+      if (item.produtoId === produtoId) {
+        movimentos.push({
+          id: item.id,
+          data: item.lancadoEm,
+          tipo: 'mesa',
+          quantidade: -item.quantidade,
+          descricao: `${nomeDaMesa(comanda.mesa)} (conta aberta)`,
+        });
       }
     }
   }

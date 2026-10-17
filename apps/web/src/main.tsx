@@ -10,6 +10,7 @@ import { Entrada } from './paginas/Entrada';
 import { Estoque } from './paginas/Estoque';
 import { Financeiro } from './paginas/Financeiro';
 import { Inicio } from './paginas/Inicio';
+import { Mesas } from './paginas/Mesas';
 import { Relatorios } from './paginas/Relatorios';
 import { Venda } from './paginas/Venda';
 import './estilos.css';
@@ -33,6 +34,7 @@ createRoot(document.getElementById('root')!).render(
           <Route element={<Layout />}>
             <Route index element={<Inicio />} />
             <Route path="venda" element={<Venda />} />
+            <Route path="mesas" element={<Mesas />} />
             <Route path="entrada" element={<Entrada />} />
             <Route path="estoque" element={<Estoque />} />
             <Route path="financeiro" element={<Financeiro />} />

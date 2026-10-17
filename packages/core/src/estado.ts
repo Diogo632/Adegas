@@ -1,5 +1,6 @@
 import { formaPagamento } from './catalogos';
-import type { AjusteEstoque, EntradaEstoque, Estado, Lancamento, Lembrete, Produto, Venda } from './tipos';
+import { nomeDaMesa } from './comandas';
+import type { AjusteEstoque, Comanda, EntradaEstoque, Estado, ItemComanda, Lancamento, Lembrete, Produto, Venda } from './tipos';
 import { novoCustoMedio } from './estoque';
 
 export type Acao =
@@ -11,9 +12,22 @@ export type Acao =
   | { tipo: 'excluir-lancamento'; id: string }
   | { tipo: 'criar-lembrete'; lembrete: Lembrete }
   | { tipo: 'concluir-lembrete'; id: string; data: string }
-  | { tipo: 'excluir-lembrete'; id: string };
+  | { tipo: 'excluir-lembrete'; id: string }
+  | { tipo: 'abrir-comanda'; comanda: Comanda }
+  | { tipo: 'lancar-na-comanda'; comandaId: string; itens: ItemComanda[] }
+  | { tipo: 'remover-da-comanda'; comandaId: string; produtoId: string; quantidade: number }
+  | { tipo: 'fechar-comanda'; comandaId: string; venda: Venda }
+  | { tipo: 'cancelar-comanda'; comandaId: string; data: string };
 
-export const ESTADO_VAZIO: Estado = { produtos: [], vendas: [], entradas: [], lancamentos: [], ajustes: [], lembretes: [] };
+export const ESTADO_VAZIO: Estado = {
+  produtos: [],
+  vendas: [],
+  entradas: [],
+  lancamentos: [],
+  ajustes: [],
+  lembretes: [],
+  comandas: [],
+};
 
 /**
  * Onde os dados da adega moram. Hoje é a memória do aparelho (React) ou um
@@ -78,7 +92,65 @@ export function reducer(estado: Estado, acao: Acao): Estado {
       };
     case 'excluir-lembrete':
       return { ...estado, lembretes: estado.lembretes.filter((l) => l.id !== acao.id) };
+    case 'abrir-comanda':
+      return { ...estado, comandas: [...estado.comandas, acao.comanda] };
+    case 'lancar-na-comanda':
+      // O pedido sai do estoque na hora: a bebida já está na mesa.
+      return {
+        ...mudarEstoque(estado, acao.itens.map((i) => [i.produtoId, -i.quantidade])),
+        comandas: estado.comandas.map((c) => (c.id === acao.comandaId ? { ...c, itens: [...c.itens, ...acao.itens] } : c)),
+      };
+    case 'remover-da-comanda':
+      return {
+        ...mudarEstoque(estado, [[acao.produtoId, acao.quantidade]]),
+        comandas: estado.comandas.map((c) =>
+          c.id === acao.comandaId ? { ...c, itens: tirarDosItens(c.itens, acao.produtoId, acao.quantidade) } : c,
+        ),
+      };
+    case 'fechar-comanda':
+      // Vira venda (receita no financeiro), sem mexer no estoque de novo.
+      return {
+        ...estado,
+        vendas: [acao.venda, ...estado.vendas],
+        lancamentos: [...lancamentosDaVenda(acao.venda), ...estado.lancamentos],
+        comandas: estado.comandas.map((c) =>
+          c.id === acao.comandaId ? { ...c, situacao: 'fechada', fechadaEm: acao.venda.data, vendaId: acao.venda.id } : c,
+        ),
+      };
+    case 'cancelar-comanda': {
+      const comanda = estado.comandas.find((c) => c.id === acao.comandaId && c.situacao === 'aberta');
+      if (!comanda) return estado;
+      return {
+        ...mudarEstoque(estado, comanda.itens.map((i) => [i.produtoId, i.quantidade])),
+        comandas: estado.comandas.map((c) => (c.id === comanda.id ? { ...c, situacao: 'cancelada', fechadaEm: acao.data } : c)),
+      };
+    }
   }
+}
+
+/** Soma (ou tira) unidades do estoque de vários produtos. */
+function mudarEstoque(estado: Estado, mudancas: [string, number][]): Estado {
+  const porProduto = new Map<string, number>();
+  for (const [id, qtd] of mudancas) porProduto.set(id, (porProduto.get(id) ?? 0) + qtd);
+  return {
+    ...estado,
+    produtos: estado.produtos.map((p) => (porProduto.has(p.id) ? { ...p, estoque: p.estoque + (porProduto.get(p.id) ?? 0) } : p)),
+  };
+}
+
+/** Tira unidades de um produto da conta, começando pelo pedido mais recente. */
+function tirarDosItens(itens: ItemComanda[], produtoId: string, quantidade: number): ItemComanda[] {
+  let falta = quantidade;
+  const resultado = [...itens];
+  for (let i = resultado.length - 1; i >= 0 && falta > 0; i--) {
+    const item = resultado[i];
+    if (item.produtoId !== produtoId) continue;
+    const tirar = Math.min(item.quantidade, falta);
+    falta -= tirar;
+    if (tirar === item.quantidade) resultado.splice(i, 1);
+    else resultado[i] = { ...item, quantidade: item.quantidade - tirar };
+  }
+  return resultado;
 }
 
 function aplicarVenda(estado: Estado, venda: Venda): Estado {
@@ -103,7 +175,7 @@ export function lancamentosDaVenda(venda: Venda): Lancamento[] {
     tipo: 'receita',
     origem: 'venda',
     categoria: 'vendas',
-    descricao: `Venda · ${qtdItens} ${qtdItens === 1 ? 'item' : 'itens'} · ${formaPagamento(pagamento.forma).nome}`,
+    descricao: `${venda.mesa ? nomeDaMesa(venda.mesa) : 'Venda'} · ${qtdItens} ${qtdItens === 1 ? 'item' : 'itens'} · ${formaPagamento(pagamento.forma).nome}`,
     valor: pagamento.valor,
     formaPagamento: pagamento.forma,
     referenciaId: venda.id,

@@ -1,12 +1,18 @@
 import {
   FORMAS_PAGAMENTO,
+  comandasAbertas,
   estoqueBaixo,
   formatarDataHora,
   formatarDinheiro,
   formaPagamento,
   formatarQuando,
   lembretesPendentes,
+  nomeDaMesa,
+  quantidadeNaComanda,
   resumoDoDia,
+  resumoMesas,
+  tempoAberta,
+  totalComanda,
   situacaoLembrete,
   saudacao,
   ultimosLancamentos,
@@ -15,12 +21,16 @@ import {
 import { ArrowDownLeft, ArrowUpRight, Bell, Check, PackagePlus, ShoppingBag, Sparkles, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router';
 import { Barra, Numero } from '../componentes/Animados';
+import { useAgora } from '../useAgora';
 import { ICONE_FORMA } from '../componentes/icones';
 
 export function Inicio() {
   const { estado, concluirLembrete } = useAdega();
   const resumo = resumoDoDia(estado);
   const lembretes = lembretesPendentes(estado).slice(0, 5);
+  const mesas = comandasAbertas(estado);
+  const emAberto = resumoMesas(estado).emAberto;
+  const agora = useAgora();
   const alertas = estoqueBaixo(estado.produtos);
   const movimentos = ultimosLancamentos(estado, 8);
   const maiorForma = Math.max(...Object.values(resumo.porFormaPagamento), 1);
@@ -74,6 +84,33 @@ export function Inicio() {
             {formatarDinheiro(Math.abs(resumo.saldo))}
           </small>
         </div>
+      </section>
+
+      <section className="cartao" data-entrada>
+        <div className="cartao-topo">
+          <h2>{mesas.length ? `Mesas abertas · ${formatarDinheiro(emAberto)}` : 'Mesas'}</h2>
+          <Link to="/mesas" className="link">
+            {mesas.length ? 'Ver mesas' : 'Abrir mesa'}
+          </Link>
+        </div>
+        {mesas.length === 0 ? (
+          <p className="suave">Nenhuma mesa aberta. Quando um cliente sentar, abra a conta da mesa e vá lançando os pedidos.</p>
+        ) : (
+          <div className="mesas-abertas">
+            {mesas.map((c) => (
+              <Link key={c.id} to={`/mesas?mesa=${c.id}`} className="mesa-chip">
+                <span className="selo-mesa">{/^\d+$/.test(c.mesa) ? c.mesa : c.mesa.slice(0, 2).toUpperCase()}</span>
+                <span className="lista-texto">
+                  <strong>{nomeDaMesa(c.mesa)}</strong>
+                  <small>
+                    {quantidadeNaComanda(c)} itens · {tempoAberta(c, agora)}
+                  </small>
+                </span>
+                <strong className="num">{formatarDinheiro(totalComanda(c))}</strong>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="grade-3">

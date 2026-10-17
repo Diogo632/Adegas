@@ -13,12 +13,13 @@ Sistema para adegas controlarem **estoque** (bebidas, cigarros, gelo...), **vend
 ```
 apps/
   mobile/   App (Expo + React Native) — abas Início, Estoque, Financeiro, Relatórios,
-            Assistente; Nova venda, Pagamento, Entrada de produto, Produto, Nova movimentação
-  web/      Painel web (Vite + React) — Início, Vender, Entrada de produto, Estoque,
+            Assistente; Nova venda, Pagamento, Mesas (conta, pedido, fechar), Entrada de
+            produto, Produto, Nova movimentação
+  web/      Painel web (Vite + React) — Início, Vender, Mesas, Entrada de produto, Estoque,
             Financeiro, Relatórios, Assistente
 packages/
   core/     Regras compartilhadas: produtos, estoque, ajustes, custo médio, vendas, troco,
-            financeiro, relatórios, lembretes
+            contas por mesa, financeiro, relatórios, lembretes
   ia/       Assistente: servidor MCP com tudo da plataforma + agente que usa o Gemini
 docs/
   FLUXO.md  Fluxo do sistema
@@ -67,11 +68,12 @@ Os dados ainda ficam só na memória: ao fechar ou recarregar, tudo volta para o
 
 - **Venda no dinheiro:** Nova venda → 2 Heineken + 1 Gelo → Pagamento → Dinheiro → R$ 50,00. O troco deve ser **R$ 19,00**. Volte ao início: o "Vendido hoje" sobe R$ 31,00 e o Gelo passa a ter 3 em estoque.
 - **Reposição:** no início, toque em **Repor** no Gelo → Unidade → 10 unidades a R$ 7,00 → Registrar. O estoque vai a 13 e o Gelo sai da lista de repor.
-- **Produto novo:** Entrada de produto → Produto novo → preencha nome, preço e custo. Ele aparece na tela de venda.
+- **Produto novo:** Entrada (no app; "Entrada de produto" no painel) → Produto novo → preencha nome, preço e custo. Ele aparece na tela de venda.
 - **Proteções:** tente vender mais do que tem em estoque, ou receber em dinheiro menos que o total. O sistema não deixa.
 - **Estoque:** abra o Gelo → Ajustar → Perda, 1 unidade → Salvar. O estoque cai 1 e a perda aparece no Financeiro.
 - **Financeiro:** Nova movimentação → Saída → Luz, água e internet → R$ 120,00. Ela entra no topo das movimentações e no "Para onde foi o dinheiro".
 - **Relatórios:** troque o período (Hoje, 7 dias, 30 dias) e passe o mouse (ou toque) nas colunas.
+- **Mesas:** no início, toque em **Mesas** → a mesa 10 já tem Coca, água e Skol. Abra → **Adicionar pedido** → 1 água → **Lançar**: o total sobe R$ 3,00 e a água sai do estoque. Toque no − para tirar. **Fechar conta** → dividir por 2 → Dinheiro → R$ 100 mostra o troco. A mesa fica livre e a conta aparece no Financeiro como "Mesa 10". Toque numa mesa livre para abrir outra, ou digite um nome ("Balcão").
 - **Assistente:** cole sua chave do Gemini (grátis em https://aistudio.google.com/apikey) na tela **Assistente** → peça "Chegaram 2 fardos de Skol por R$ 33 cada". Ele registra a entrada; toque em **Ver estoque**: a Skol subiu 24. Depois peça "Me lembre de pagar a luz amanhã às 10h" e veja o lembrete no Início. Detalhes em [`docs/ASSISTENTE.md`](docs/ASSISTENTE.md).
 
 ### Testes automáticos

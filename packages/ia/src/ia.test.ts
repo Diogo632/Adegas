@@ -147,6 +147,62 @@ describe('servidor MCP', () => {
   });
 });
 
+describe('mesas pelo MCP', () => {
+  it('a mesa 7 pediu coca, água e skol: abre a mesa, lança e tira do estoque', async () => {
+    const { loja, chamar } = await preparar();
+    const antes = estoqueDe(loja, 'skol-lata');
+    const r = await chamar('lancar_na_mesa', {
+      mesa: '7',
+      itens: [
+        { produto: 'coca', quantidade: 1 },
+        { produto: 'água', quantidade: 1 },
+        { produto: 'skol', quantidade: 1 },
+      ],
+    });
+    expect(r.erro).toBe(false);
+    expect(r.dados).toMatchObject({ mesa: 'Mesa 7', observacao: 'A mesa foi aberta agora.', total_da_mesa: 'R$ 20,50', itens_na_mesa: 3 });
+    expect(estoqueDe(loja, 'skol-lata')).toBe(antes - 1);
+
+    const mais = await chamar('lancar_na_mesa', { mesa: 'mesa 7', itens: [{ produto: 'skol', quantidade: 2 }] });
+    expect(mais.dados).toMatchObject({ total_da_mesa: 'R$ 29,50', itens_na_mesa: 5 });
+    expect(mais.dados!.observacao).toBeUndefined();
+
+    const conta = await chamar('consultar_mesa', { mesa: '7', dividir_por: 2 });
+    expect(conta.dados).toMatchObject({ mesa: 'Mesa 7', total: 'R$ 29,50', por_pessoa: 'R$ 14,75' });
+    expect(conta.dados!.pedidos.find((p: { produto: string }) => p.produto === 'Skol Lata 350ml').quantidade).toBe(3);
+  });
+
+  it('tira da mesa, fecha com troco e a conta entra no financeiro', async () => {
+    const { loja, chamar } = await preparar();
+    await chamar('lancar_na_mesa', { mesa: '7', itens: [{ produto: 'red bull', quantidade: 2 }] });
+    const tirou = await chamar('remover_da_mesa', { mesa: '7', produto: 'red bull' });
+    expect(tirou.dados).toMatchObject({ tirado: '1× Red Bull 250ml', total: 'R$ 12,00' });
+
+    const fechou = await chamar('fechar_mesa', { mesa: '7', forma_pagamento: 'dinheiro', valor_recebido: 20 });
+    expect(fechou.dados).toMatchObject({ total: 'R$ 12,00', troco: 'R$ 8,00', forma_pagamento: 'Dinheiro' });
+    expect(loja.estado().lancamentos[0]).toMatchObject({ descricao: 'Mesa 7 · 1 item · Dinheiro', valor: 1200 });
+    const lista = await chamar('listar_mesas');
+    expect(lista.dados!.abertas.map((m: { mesa: string }) => m.mesa)).toEqual(['Mesa 4', 'Mesa 10']);
+    expect(lista.dados!.fechadas_hoje).toBe(1);
+
+    const denovo = await chamar('fechar_mesa', { mesa: '7', forma_pagamento: 'pix' });
+    expect(denovo.erro).toBe(true);
+    expect(denovo.texto).toContain('Mesas abertas: Mesa 4, Mesa 10');
+  });
+
+  it('não abre mesa se faltar estoque e cancela devolvendo tudo', async () => {
+    const { loja, chamar } = await preparar();
+    const falta = await chamar('lancar_na_mesa', { mesa: '9', itens: [{ produto: 'red label', quantidade: 50 }] });
+    expect(falta.erro).toBe(true);
+    expect(loja.estado().comandas.some((c) => c.mesa === '9')).toBe(false);
+
+    const antes = estoqueDe(loja, 'heineken-ln');
+    const cancelou = await chamar('cancelar_mesa', { mesa: '4' });
+    expect(cancelou.dados).toMatchObject({ cancelado: true, mesa: 'Mesa 4' });
+    expect(estoqueDe(loja, 'heineken-ln')).toBe(antes + 6);
+  });
+});
+
 // ---------- Agente com um Gemini de mentira ----------
 
 function geminiFalso(respostas: ((pedido: PedidoGemini) => { status?: number; corpo: unknown })[]) {
@@ -184,7 +240,7 @@ describe('agente (Gemini + MCP)', () => {
     expect(primeiro.chave).toBe('chave-teste');
     expect(primeiro.corpo!.systemInstruction!.parts[0].text).toContain('segunda-feira, 12/10/2026, 14:00');
     const declaracoes = primeiro.corpo!.tools![0].functionDeclarations;
-    expect(declaracoes).toHaveLength(17);
+    expect(declaracoes).toHaveLength(24);
     // Ferramenta sem parâmetros vai sem "parameters" (o Gemini recusa objeto vazio).
     expect(declaracoes.find((d) => d.name === 'resumo_estoque')!.parameters).toBeUndefined();
 

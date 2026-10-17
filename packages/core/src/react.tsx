@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { montarComanda, montarFechamento, montarItensComanda, montarRemocaoComanda } from './comandas';
 import type { Acao, LojaAdega } from './estado';
 import { reducer } from './estado';
 import type { DadosAjuste, DadosEdicaoProduto, DadosEntrada } from './estoque';
@@ -9,7 +10,7 @@ import { montarLancamento } from './financeiro';
 import type { DadosLembrete } from './lembretes';
 import { montarLembrete } from './lembretes';
 import { estadoDeExemplo } from './exemplo';
-import type { AjusteEstoque, EntradaEstoque, Estado, Lancamento, Lembrete, Produto, Resultado, Venda } from './tipos';
+import type { AjusteEstoque, Comanda, EntradaEstoque, Estado, ItemComanda, Lancamento, Lembrete, Produto, Resultado, Venda } from './tipos';
 import type { DadosPagamento, ItemCarrinho } from './vendas';
 import { alterarQuantidade, montarVenda, quantidadeNoCarrinho } from './vendas';
 
@@ -29,6 +30,15 @@ interface ContextoAdega {
   criarLembrete(dados: DadosLembrete): Resultado<Lembrete>;
   concluirLembrete(id: string): void;
   excluirLembrete(id: string): void;
+  /** Abre a conta de uma mesa ("10", "Balcão"...). */
+  abrirComanda(mesa: string): Resultado<Comanda>;
+  /** Lança pedidos na conta; saem do estoque na hora. */
+  lancarNaComanda(comandaId: string, pedidos: ItemCarrinho[]): Resultado<ItemComanda[]>;
+  /** Tira da conta e devolve ao estoque. */
+  removerDaComanda(comandaId: string, produtoId: string, quantidade: number): Resultado<{ produtoId: string; quantidade: number }>;
+  fecharComanda(comandaId: string, pagamento: DadosPagamento): Resultado<Venda>;
+  /** Mesa que foi embora sem consumir (ou aberta por engano): tudo volta ao estoque. */
+  cancelarComanda(comandaId: string): Resultado<Comanda>;
   /** Acesso direto aos dados, para quem não é tela (o assistente, via MCP). */
   loja: LojaAdega;
 }
@@ -57,6 +67,17 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
   }, []);
 
   const loja = useMemo<LojaAdega>(() => ({ estado: () => estadoAtual.current, despachar }), [despachar]);
+
+  // O carrinho do balcão não pode ficar com mais do que sobrou depois de um pedido de mesa.
+  const conferirCarrinho = useCallback(() => {
+    const produtos = estadoAtual.current.produtos;
+    setCarrinho((c) =>
+      c.reduce<ItemCarrinho[]>((novo, item) => {
+        const produto = produtos.find((p) => p.id === item.produtoId);
+        return produto ? alterarQuantidade(novo, produto, Math.min(item.quantidade, produto.estoque)) : novo;
+      }, []),
+    );
+  }, []);
 
   const definirQuantidade = useCallback((produtoId: string, quantidade: number) => {
     const produto = estadoAtual.current.produtos.find((p) => p.id === produtoId);
@@ -121,6 +142,51 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
   );
   const excluirLembrete = useCallback((id: string) => despachar({ tipo: 'excluir-lembrete', id }), [despachar]);
 
+  const abrirComanda = useCallback(
+    (mesa: string): Resultado<Comanda> => {
+      const resultado = montarComanda(estadoAtual.current, { mesa });
+      if (resultado.ok) despachar({ tipo: 'abrir-comanda', comanda: resultado.valor });
+      return resultado;
+    },
+    [despachar],
+  );
+  const lancarNaComanda = useCallback(
+    (comandaId: string, pedidos: ItemCarrinho[]): Resultado<ItemComanda[]> => {
+      const resultado = montarItensComanda(estadoAtual.current, comandaId, pedidos);
+      if (resultado.ok) {
+        despachar({ tipo: 'lancar-na-comanda', comandaId, itens: resultado.valor });
+        conferirCarrinho();
+      }
+      return resultado;
+    },
+    [despachar, conferirCarrinho],
+  );
+  const removerDaComanda = useCallback(
+    (comandaId: string, produtoId: string, quantidade: number) => {
+      const resultado = montarRemocaoComanda(estadoAtual.current, comandaId, produtoId, quantidade);
+      if (resultado.ok) despachar({ tipo: 'remover-da-comanda', comandaId, ...resultado.valor });
+      return resultado;
+    },
+    [despachar],
+  );
+  const fecharComanda = useCallback(
+    (comandaId: string, pagamento: DadosPagamento): Resultado<Venda> => {
+      const resultado = montarFechamento(estadoAtual.current, comandaId, pagamento);
+      if (resultado.ok) despachar({ tipo: 'fechar-comanda', comandaId, venda: resultado.valor });
+      return resultado;
+    },
+    [despachar],
+  );
+  const cancelarComanda = useCallback(
+    (comandaId: string): Resultado<Comanda> => {
+      const comanda = estadoAtual.current.comandas.find((c) => c.id === comandaId && c.situacao === 'aberta');
+      if (!comanda) return { ok: false, erro: 'Conta não encontrada ou já fechada.' };
+      despachar({ tipo: 'cancelar-comanda', comandaId, data: new Date().toISOString() });
+      return { ok: true, valor: comanda };
+    },
+    [despachar],
+  );
+
   const valor = useMemo(
     () => ({
       estado,
@@ -136,6 +202,11 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
       criarLembrete,
       concluirLembrete,
       excluirLembrete,
+      abrirComanda,
+      lancarNaComanda,
+      removerDaComanda,
+      fecharComanda,
+      cancelarComanda,
       loja,
     }),
     [
@@ -152,6 +223,11 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
       criarLembrete,
       concluirLembrete,
       excluirLembrete,
+      abrirComanda,
+      lancarNaComanda,
+      removerDaComanda,
+      fecharComanda,
+      cancelarComanda,
       loja,
     ],
   );

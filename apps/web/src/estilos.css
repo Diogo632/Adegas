@@ -1628,6 +1628,232 @@ button:disabled {
   color: var(--receita);
 }
 
+/* ---------- Mesas ---------- */
+
+/* No computador a conta fica à direita; no celular, logo abaixo da grade de mesas. */
+.mesas-pagina {
+  grid-template-areas:
+    'topo caixa'
+    'produtos caixa'
+    'fechadas caixa';
+  grid-template-rows: auto auto 1fr;
+}
+
+.mesas-topo {
+  grid-area: topo;
+}
+
+.mesas-produtos {
+  grid-area: produtos;
+}
+
+.mesas-fechadas {
+  grid-area: fechadas;
+  min-width: 0;
+}
+
+.mesas-caixa {
+  grid-area: caixa;
+}
+
+@media (max-width: 1150px) {
+  .mesas-pagina {
+    grid-template-areas: 'topo' 'caixa' 'produtos' 'fechadas';
+    grid-template-rows: none;
+  }
+}
+
+.mesas-resumo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.mesas-resumo strong {
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mesas-resumo > span {
+  font-size: 13px;
+}
+
+.mesas-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px;
+}
+
+.mesa-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 84px;
+  padding: 10px 6px;
+  border-radius: var(--raio);
+  border: 1px solid var(--borda);
+  background: var(--superficie);
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.mesa-tile strong {
+  font-size: 24px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mesa-tile.nome strong {
+  font-size: 16px;
+}
+
+.mesa-tile small {
+  font-size: 12px;
+  color: var(--textoFraco);
+  font-variant-numeric: tabular-nums;
+}
+
+.mesa-tile:hover {
+  border-color: var(--bordaForte);
+  background: var(--superficieAlta);
+}
+
+.mesa-tile.ocupada {
+  background: var(--primariaSuave);
+  border-color: color-mix(in srgb, var(--primaria) 70%, transparent);
+}
+
+.mesa-tile.ocupada small {
+  color: var(--primariaClara);
+}
+
+.mesa-tile.selecionada {
+  border-color: var(--primariaClara);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primariaClara) 45%, transparent);
+}
+
+.mesa-outra {
+  display: flex;
+  gap: 10px;
+}
+
+.mesa-outra .campo {
+  flex: 1;
+  min-width: 0;
+}
+
+.selo-mesa {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--primariaSuave);
+  border: 1px solid var(--destaqueBorda);
+  color: var(--primariaClara);
+  font-weight: 650;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.link.perigo {
+  color: var(--despesa);
+}
+
+.botao.perigo {
+  background: var(--despesa);
+  border-color: var(--despesa);
+  color: var(--fundo);
+  box-shadow: none;
+}
+
+.botao.perigo:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--despesa) 85%, #fff);
+  box-shadow: none;
+}
+
+.confirmar-cancelar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: var(--raio);
+  border: 1px solid color-mix(in srgb, var(--despesa) 45%, transparent);
+  background: var(--despesaFundo);
+}
+
+.confirmar-cancelar p {
+  margin: 0;
+}
+
+.dividir {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--raio);
+  border: 1px solid var(--borda);
+  background: var(--superficieAlta);
+}
+
+.dividir > svg {
+  color: var(--primariaClara);
+  flex-shrink: 0;
+}
+
+.dividir-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dividir small {
+  font-size: 13px;
+}
+
+/* Início: mesas abertas */
+
+.mesas-abertas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: 12px;
+}
+
+.mesa-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--raio);
+  border: 1px solid var(--borda);
+  background: var(--superficieAlta);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.2s;
+}
+
+.mesa-chip:hover {
+  border-color: var(--primaria);
+}
+
+.mesa-chip .lista-texto small {
+  color: var(--textoSuave);
+  font-size: 13px;
+}
+
 /* ---------- Assistente ---------- */
 
 .aviso-previa {

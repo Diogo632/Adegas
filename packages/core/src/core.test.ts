@@ -31,6 +31,18 @@ import {
   situacaoLembrete,
   formatarQuando,
   criarLojaNaMemoria,
+  montarComanda,
+  montarItensComanda,
+  montarRemocaoComanda,
+  montarFechamento,
+  comandaDaMesa,
+  comandasAbertas,
+  linhasDaComanda,
+  totalComanda,
+  resumoMesas,
+  valorPorPessoa,
+  tempoAberta,
+  nomeDaMesa,
 } from './index';
 import type { Estado, Produto } from './index';
 
@@ -295,5 +307,115 @@ describe('lembretes', () => {
 
   it('exemplo já vem com lembretes', () => {
     expect(lembretesPendentes(estadoDeExemplo(agora)).length).toBeGreaterThan(0);
+  });
+});
+
+describe('contas por mesa', () => {
+  const agora = new Date(2026, 9, 12, 20, 0);
+  const coca: Produto = { id: 'coca', nome: 'Coca-Cola 2L', categoria: 'refrigerante', precoVenda: 1300, custoMedio: 850, estoque: 5, estoqueMinimo: 2 };
+  const agua: Produto = { id: 'agua', nome: 'Água 500ml', categoria: 'refrigerante', precoVenda: 300, custoMedio: 110, estoque: 10, estoqueMinimo: 2 };
+  const skol: Produto = { id: 'skol', nome: 'Skol Lata', categoria: 'cerveja', precoVenda: 450, custoMedio: 279, estoque: 12, estoqueMinimo: 24 };
+  const base = (): Estado => ({ ...ESTADO_VAZIO, produtos: [{ ...coca }, { ...agua }, { ...skol }] });
+  const ok = <T,>(r: { ok: true; valor: T } | { ok: false; erro: string }): T => {
+    if (!r.ok) throw new Error(r.erro);
+    return r.valor;
+  };
+  const estoque = (loja: ReturnType<typeof criarLojaNaMemoria>, id: string) => loja.estado().produtos.find((p) => p.id === id)!.estoque;
+
+  function mesa10() {
+    const loja = criarLojaNaMemoria(base());
+    const comanda = ok(montarComanda(loja.estado(), { mesa: 'Mesa 10' }, agora));
+    loja.despachar({ tipo: 'abrir-comanda', comanda });
+    const pedido = [
+      { produtoId: 'coca', quantidade: 1 },
+      { produtoId: 'agua', quantidade: 1 },
+      { produtoId: 'skol', quantidade: 1 },
+    ];
+    loja.despachar({ tipo: 'lancar-na-comanda', comandaId: comanda.id, itens: ok(montarItensComanda(loja.estado(), comanda.id, pedido, agora)) });
+    return { loja, comanda };
+  }
+
+  it('abre a mesa 10, lança coca, água e skol e tira do estoque na hora', () => {
+    const { loja, comanda } = mesa10();
+    expect(comanda.mesa).toBe('10');
+    expect(nomeDaMesa(comanda.mesa)).toBe('Mesa 10');
+    expect([estoque(loja, 'coca'), estoque(loja, 'agua'), estoque(loja, 'skol')]).toEqual([4, 9, 11]);
+    const conta = comandaDaMesa(loja.estado(), '10')!;
+    expect(totalComanda(conta)).toBe(2050);
+    expect(loja.estado().vendas).toHaveLength(0); // ainda não é venda
+
+    // Mais duas Skol depois: a conta agrupa por produto.
+    loja.despachar({ tipo: 'lancar-na-comanda', comandaId: conta.id, itens: ok(montarItensComanda(loja.estado(), conta.id, [{ produtoId: 'skol', quantidade: 2 }], agora)) });
+    const atual = comandaDaMesa(loja.estado(), 'mesa 10')!;
+    expect(linhasDaComanda(atual).map((l) => [l.produtoNome, l.quantidade, l.subtotal])).toEqual([
+      ['Coca-Cola 2L', 1, 1300],
+      ['Água 500ml', 1, 300],
+      ['Skol Lata', 3, 1350],
+    ]);
+    expect(resumoMesas(loja.estado())).toEqual({ abertas: 1, emAberto: 2950, itens: 5 });
+  });
+
+  it('não abre a mesma mesa duas vezes nem lança sem estoque', () => {
+    const { loja, comanda } = mesa10();
+    expect(montarComanda(loja.estado(), { mesa: '10' }).ok).toBe(false);
+    expect(montarComanda(loja.estado(), { mesa: '  ' }).ok).toBe(false);
+    const semEstoque = montarItensComanda(loja.estado(), comanda.id, [{ produtoId: 'coca', quantidade: 5 }]);
+    expect(semEstoque.ok).toBe(false);
+    if (!semEstoque.ok) expect(semEstoque.erro).toContain('restam 4');
+  });
+
+  it('tira da conta e devolve ao estoque', () => {
+    const { loja, comanda } = mesa10();
+    expect(montarRemocaoComanda(loja.estado(), comanda.id, 'skol', 2).ok).toBe(false);
+    loja.despachar({ tipo: 'remover-da-comanda', comandaId: comanda.id, ...ok(montarRemocaoComanda(loja.estado(), comanda.id, 'agua', 1)) });
+    expect(estoque(loja, 'agua')).toBe(10);
+    expect(totalComanda(comandaDaMesa(loja.estado(), '10')!)).toBe(1750);
+  });
+
+  it('fecha a conta: vira venda e entra no financeiro, sem tirar do estoque de novo', () => {
+    const { loja, comanda } = mesa10();
+    const venda = ok(montarFechamento(loja.estado(), comanda.id, { forma: 'dinheiro', valorRecebido: 5000 }, agora));
+    loja.despachar({ tipo: 'fechar-comanda', comandaId: comanda.id, venda });
+    expect(venda).toMatchObject({ total: 2050, troco: 2950, mesa: '10', comandaId: comanda.id, custoTotal: 1239 });
+    expect([estoque(loja, 'coca'), estoque(loja, 'agua'), estoque(loja, 'skol')]).toEqual([4, 9, 11]);
+    expect(loja.estado().lancamentos[0]).toMatchObject({ tipo: 'receita', valor: 2050, descricao: 'Mesa 10 · 3 itens · Dinheiro' });
+    expect(comandasAbertas(loja.estado())).toHaveLength(0);
+    expect(resumoDoDia(loja.estado(), agora).faturamento).toBe(2050);
+    expect(movimentosDoProduto(loja.estado(), 'skol')[0]).toMatchObject({ tipo: 'venda', quantidade: -1, descricao: 'Conta da Mesa 10' });
+    // A mesa pode ser aberta de novo para os próximos clientes.
+    expect(montarComanda(loja.estado(), { mesa: '10' }).ok).toBe(true);
+    // E a conta fechada não aceita mais pedidos.
+    expect(montarItensComanda(loja.estado(), comanda.id, [{ produtoId: 'agua', quantidade: 1 }]).ok).toBe(false);
+  });
+
+  it('não fecha conta vazia nem com dinheiro a menos', () => {
+    const { loja, comanda } = mesa10();
+    expect(montarFechamento(loja.estado(), comanda.id, { forma: 'dinheiro', valorRecebido: 1000 }).ok).toBe(false);
+    const vazia = ok(montarComanda(loja.estado(), { mesa: 'Balcão' }));
+    loja.despachar({ tipo: 'abrir-comanda', comanda: vazia });
+    expect(montarFechamento(loja.estado(), vazia.id, { forma: 'pix' }).ok).toBe(false);
+  });
+
+  it('cancelar devolve tudo ao estoque', () => {
+    const { loja, comanda } = mesa10();
+    loja.despachar({ tipo: 'cancelar-comanda', comandaId: comanda.id, data: agora.toISOString() });
+    expect([estoque(loja, 'coca'), estoque(loja, 'agua'), estoque(loja, 'skol')]).toEqual([5, 10, 12]);
+    expect(comandasAbertas(loja.estado())).toHaveLength(0);
+    expect(loja.estado().vendas).toHaveLength(0);
+  });
+
+  it('mostra a mesa aberta no histórico do produto, divide a conta e conta o tempo', () => {
+    const { loja, comanda } = mesa10();
+    expect(movimentosDoProduto(loja.estado(), 'coca')[0]).toMatchObject({ tipo: 'mesa', quantidade: -1, descricao: 'Mesa 10 (conta aberta)' });
+    expect(valorPorPessoa(2050, 3)).toBe(684);
+    expect(valorPorPessoa(2050, 1)).toBe(2050);
+    expect(tempoAberta(comanda, new Date(agora.getTime() + 25 * 60000))).toBe('há 25 min');
+    expect(tempoAberta(comanda, new Date(agora.getTime() + 65 * 60000))).toBe('há 1h 05');
+  });
+
+  it('exemplo já vem com mesas abertas', () => {
+    const exemplo = estadoDeExemplo(agora);
+    expect(comandasAbertas(exemplo).map((c) => c.mesa)).toEqual(['4', '10']);
+    expect(resumoMesas(exemplo).emAberto).toBeGreaterThan(0);
   });
 });

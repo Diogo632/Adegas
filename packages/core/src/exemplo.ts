@@ -1,4 +1,5 @@
 import { lancamentoDaEntrada, lancamentosDaVenda, reducer } from './estado';
+import { montarComanda, montarItensComanda } from './comandas';
 import { montarEntrada } from './estoque';
 import type {
   AjusteEstoque,
@@ -49,6 +50,7 @@ export function estadoDeExemplo(agora: Date = new Date()): Estado {
     ...historicoDeExemplo(agora),
     produtos: PRODUTOS.map((p) => ({ ...p })),
     lembretes: lembretesDeExemplo(agora),
+    comandas: [],
   };
   const horasAtras = (h: number) => new Date(agora.getTime() - h * 3_600_000);
 
@@ -72,8 +74,43 @@ export function estadoDeExemplo(agora: Date = new Date()): Estado {
     const venda = montarVenda(estado, carrinho, { forma: v.forma, valorRecebido: v.recebido }, horasAtras(v.horasAtras));
     if (venda.ok) estado = reducer(estado, { tipo: 'registrar-venda', venda: venda.valor });
   }
+
+  // Duas mesas ocupadas agora, com pedidos feitos em momentos diferentes.
+  for (const m of MESAS_ABERTAS) {
+    const conta = montarComanda(estado, { mesa: m.mesa }, horasAtras(m.abertaHaHoras));
+    if (!conta.ok) continue;
+    estado = reducer(estado, { tipo: 'abrir-comanda', comanda: conta.valor });
+    for (const pedido of m.pedidos) {
+      const itens = montarItensComanda(
+        estado,
+        conta.valor.id,
+        pedido.itens.map(([produtoId, quantidade]) => ({ produtoId, quantidade })),
+        horasAtras(pedido.horasAtras),
+      );
+      if (itens.ok) estado = reducer(estado, { tipo: 'lancar-na-comanda', comandaId: conta.valor.id, itens: itens.valor });
+    }
+  }
   return estado;
 }
+
+const MESAS_ABERTAS: { mesa: string; abertaHaHoras: number; pedidos: { horasAtras: number; itens: [string, number][] }[] }[] = [
+  {
+    mesa: '4',
+    abertaHaHoras: 1.2,
+    pedidos: [
+      { horasAtras: 1.15, itens: [['heineken-ln', 4], ['amendoim', 1]] },
+      { horasAtras: 0.4, itens: [['heineken-ln', 2]] },
+    ],
+  },
+  {
+    mesa: '10',
+    abertaHaHoras: 0.7,
+    pedidos: [
+      { horasAtras: 0.65, itens: [['coca-2l', 1], ['agua-500', 2], ['skol-lata', 3]] },
+      { horasAtras: 0.2, itens: [['skol-lata', 3]] },
+    ],
+  },
+];
 
 function lembretesDeExemplo(agora: Date): Lembrete[] {
   const dia = (dias: number, hora: number, minuto = 0) =>
@@ -156,7 +193,7 @@ const CONTAS: [number, CategoriaLancamento, string, number, FormaPagamento][] = 
   [4, 'outras-despesas', 'Sacolas e copos descartáveis', 6800, 'dinheiro'],
 ];
 
-function historicoDeExemplo(agora: Date): Omit<Estado, 'produtos' | 'lembretes'> {
+function historicoDeExemplo(agora: Date): Omit<Estado, 'produtos' | 'lembretes' | 'comandas'> {
   const sortear = sorteador(20261012);
   const produtos = new Map(PRODUTOS.map((p) => [p.id, p]));
   const vendas: Venda[] = [];

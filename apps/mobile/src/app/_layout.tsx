@@ -37,6 +37,10 @@ export default function Layout() {
         <Stack.Screen name="entrada" options={{ title: 'Entrada de produto' }} />
         <Stack.Screen name="produto/[id]" options={{ title: 'Produto' }} />
         <Stack.Screen name="lancamento" options={{ title: 'Nova movimentação' }} />
+        <Stack.Screen name="mesas" options={{ title: 'Mesas' }} />
+        <Stack.Screen name="mesa/[id]/index" options={{ title: 'Conta da mesa' }} />
+        <Stack.Screen name="mesa/[id]/adicionar" options={{ title: 'Pedido' }} />
+        <Stack.Screen name="mesa/[id]/fechar" options={{ title: 'Fechar conta' }} />
       </Stack>
     </AdegaProvider>
   );

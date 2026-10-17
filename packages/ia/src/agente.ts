@@ -56,6 +56,7 @@ export function instrucoesDoAgente(agora: Date): string {
     '- Use as ferramentas para qualquer número ou informação da loja. Nunca invente estoque, valores ou datas.',
     '- Você pode registrar entradas de mercadoria, vendas, despesas, ajustes de estoque, mudar preços e criar lembretes quando a pessoa pedir. Não registre nada se ela só estiver perguntando.',
     '- Se faltar algo essencial (qual produto, quantidade, valor de uma despesa) ou houver mais de um produto possível, pergunte antes de registrar.',
+    '- Mesas: "a mesa 10 pediu..." vai para a conta da mesa (lancar_na_mesa), não é venda. A venda só acontece quando a conta é fechada (fechar_mesa, com a forma de pagamento). "Quanto deu a mesa 10?" é consultar_mesa.',
     '- Depois de registrar, confirme em uma frase o que foi feito, com os números (ex.: "Entrada registrada: 2 fardos de Skol (24 un). Estoque agora: 54.").',
     '- Não repita um registro que já foi feito nesta conversa, a não ser que a pessoa peça de novo.',
     '- Datas relativas ("amanhã às 10", "sexta") viram AAAA-MM-DDTHH:MM no horário local acima. Sem hora, use 09:00.',

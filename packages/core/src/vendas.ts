@@ -76,6 +76,11 @@ export function sugestoesDeValorRecebido(total: Centavos): Centavos[] {
   return [...sugestoes].sort((a, b) => a - b);
 }
 
+/** No dinheiro, o cliente entregou menos que o total? (o botão de confirmar fica desligado) */
+export function faltaDinheiro(forma: FormaPagamento | null, recebido: Centavos | null, total: Centavos): boolean {
+  return forma === 'dinheiro' && recebido !== null && recebido < total;
+}
+
 /** Valida o carrinho e o pagamento e devolve a venda pronta. Não altera o estado. */
 export function montarVenda(
   estado: Estado,

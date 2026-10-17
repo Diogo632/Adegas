@@ -1,16 +1,14 @@
 import type { CategoriaId, FormaPagamento, Produto, Venda as VendaFeita } from '@adegas/core';
 import {
   CATEGORIAS,
-  FORMAS_PAGAMENTO,
   buscarProdutos,
-  centavosParaTexto,
+  faltaDinheiro,
   formaPagamento,
   formatarDinheiro,
   itensDoCarrinho,
   maisVendidos,
   paraCentavos,
   quantidadeNoCarrinho,
-  sugestoesDeValorRecebido,
   totalCarrinho,
   totalItens,
   useAdega,
@@ -22,7 +20,8 @@ import { surgir } from '../animacoes';
 import { Numero, SeloPulsante, Surgir } from '../componentes/Animados';
 import { Contador } from '../componentes/Contador';
 import { IconeQuadrado } from '../componentes/IconeQuadrado';
-import { ICONE_CATEGORIA, ICONE_FORMA } from '../componentes/icones';
+import { ICONE_CATEGORIA } from '../componentes/icones';
+import { Pagamento } from '../componentes/Pagamento';
 
 /** Frente de caixa: produtos à esquerda, carrinho e pagamento à direita. */
 export function Venda() {
@@ -38,8 +37,7 @@ export function Venda() {
   const destaques = !busca && !filtro ? maisVendidos(estado, 4) : [];
   const itens = itensDoCarrinho(estado.produtos, carrinho);
   const total = totalCarrinho(estado.produtos, carrinho);
-  const recebido = paraCentavos(recebidoTexto);
-  const faltaDinheiro = forma === 'dinheiro' && recebido !== null && recebido < total;
+  const falta = faltaDinheiro(forma, paraCentavos(recebidoTexto), total);
 
   function adicionar(produtoId: string) {
     setConcluida(null);
@@ -48,7 +46,7 @@ export function Venda() {
 
   function confirmar() {
     if (!forma) return;
-    const resultado = finalizarVenda({ forma, valorRecebido: forma === 'dinheiro' ? recebido : undefined });
+    const resultado = finalizarVenda({ forma, valorRecebido: forma === 'dinheiro' ? paraCentavos(recebidoTexto) : undefined });
     if (!resultado.ok) {
       setErro(resultado.erro);
       return;
@@ -184,66 +182,21 @@ export function Venda() {
           </strong>
         </div>
 
-        <h3 className="secao">Forma de pagamento</h3>
-        <div className="formas">
-          {FORMAS_PAGAMENTO.map((f) => {
-            const Icone = ICONE_FORMA[f.id];
-            return (
-              <button
-                key={f.id}
-                className={`forma ${forma === f.id ? 'ativa' : ''}`}
-                disabled={itens.length === 0}
-                onClick={() => {
-                  setForma(f.id);
-                  setErro(null);
-                }}
-              >
-                <Icone size={20} strokeWidth={1.6} />
-                {f.nome}
-              </button>
-            );
-          })}
-        </div>
-        {forma && <p className="suave dica">{formaPagamento(forma).dica}</p>}
-
-        {forma === 'dinheiro' && (
-          <div className="dinheiro">
-            <label className="rotulo">
-              Valor recebido
-              <div className="campo-prefixo">
-                <span>R$</span>
-                <input
-                  className="campo"
-                  inputMode="decimal"
-                  placeholder={centavosParaTexto(total)}
-                  value={recebidoTexto}
-                  onChange={(e) => setRecebidoTexto(e.target.value)}
-                />
-              </div>
-            </label>
-            <div className="chips">
-              {sugestoesDeValorRecebido(total).map((v) => (
-                <button
-                  key={v}
-                  className={`chip ${recebido === v ? 'ativo' : ''}`}
-                  onClick={() => setRecebidoTexto(centavosParaTexto(v))}
-                >
-                  {v === total ? 'Valor exato' : formatarDinheiro(v)}
-                </button>
-              ))}
-            </div>
-            <div className={`troco ${faltaDinheiro ? 'falta' : ''}`}>
-              {faltaDinheiro ? 'Faltam' : 'Troco'}
-              <strong>
-                <Numero valor={recebido === null ? 0 : Math.abs(recebido - total)} />
-              </strong>
-            </div>
-          </div>
-        )}
+        <Pagamento
+          total={total}
+          forma={forma}
+          onForma={(f) => {
+            setForma(f);
+            setErro(null);
+          }}
+          recebidoTexto={recebidoTexto}
+          onRecebido={setRecebidoTexto}
+          desabilitado={itens.length === 0}
+        />
 
         {erro && <p className="erro">{erro}</p>}
 
-        <button className="botao grande" disabled={!forma || itens.length === 0 || faltaDinheiro} onClick={confirmar}>
+        <button className="botao grande" disabled={!forma || itens.length === 0 || falta} onClick={confirmar}>
           {forma ? `Confirmar ${formatarDinheiro(total)}` : 'Escolha a forma de pagamento'}
         </button>
       </aside>

@@ -4,6 +4,9 @@ import {
   CATEGORIAS_LANCAMENTO,
   categoria,
   categoriaLancamento,
+  comandaDaMesa,
+  comandasAbertas,
+  comandasFechadasNoDia,
   estoqueBaixo,
   filtrarEstoque,
   formaPagamento,
@@ -13,28 +16,40 @@ import {
   intervaloDoPeriodo,
   lancamentosDoPeriodo,
   lembretesPendentes,
+  linhasDaComanda,
   margem,
   montarAjuste,
+  montarComanda,
   montarEdicaoProduto,
+  montarFechamento,
+  montarItensComanda,
   montarEntrada,
   montarLancamento,
   montarLembrete,
+  montarRemocaoComanda,
   montarVenda,
   motivoAjuste,
   movimentosDoProduto,
   noIntervalo,
+  nomeDaMesa,
   normalizar,
+  quantidadeNaComanda,
   relatorioVendas,
   resumoDoDia,
   resumoEstoque,
   resumoFinanceiro,
+  resumoMesas,
   situacaoLembrete,
   statusEstoque,
+  tempoAberta,
+  totalComanda,
+  valorPorPessoa,
 } from '@adegas/core';
 import type {
   CategoriaId,
   CategoriaLancamento,
   Centavos,
+  Comanda,
   Estado,
   FormaPagamento,
   Intervalo,
@@ -236,6 +251,44 @@ function dataHoraLocal(texto: string): Date {
     throw new ErroFerramenta('Data do lembrete inválida.');
   }
   return data;
+}
+
+const esquemaMesa = z.string().min(1).describe('Número da mesa (ex.: "10") ou nome da conta (ex.: "Balcão", "João").');
+const esquemaItens = z
+  .array(z.object({ produto: esquemaProduto, quantidade: z.number().int().min(1) }))
+  .min(1)
+  .describe('O que a mesa pediu.');
+
+function resumoComanda(c: Comanda, agora: Date) {
+  return {
+    mesa: nomeDaMesa(c.mesa),
+    pedidos: linhasDaComanda(c).map((l) => ({
+      produto: l.produtoNome,
+      quantidade: l.quantidade,
+      preco: reais(l.precoUnitario),
+      subtotal: reais(l.subtotal),
+    })),
+    itens: quantidadeNaComanda(c),
+    total: reais(totalComanda(c)),
+    aberta: tempoAberta(c, agora),
+  };
+}
+
+function acharComanda(estado: Estado, mesa: string): Comanda {
+  const comanda = comandaDaMesa(estado, mesa);
+  if (comanda) return comanda;
+  const abertas = comandasAbertas(estado).map((c) => nomeDaMesa(c.mesa));
+  throw new ErroFerramenta(
+    `${nomeDaMesa(mesa.trim())} não está aberta.` + (abertas.length ? ` Mesas abertas: ${abertas.join(', ')}.` : ' Nenhuma mesa aberta agora.'),
+  );
+}
+
+/** Produto pedido: primeiro entre os que já estão na conta (para tirar), depois no cadastro. */
+function acharProdutoNaComanda(estado: Estado, comanda: Comanda, termo: string): Produto {
+  const naConta = estado.produtos.filter((p) => comanda.itens.some((i) => i.produtoId === p.id));
+  const achados = buscarPorNome(naConta, termo);
+  if (achados.length === 1) return achados[0];
+  return acharProduto(estado, termo);
 }
 
 function confirmar<T>(resultado: { ok: true; valor: T } | { ok: false; erro: string }): T {
@@ -506,7 +559,9 @@ export const FERRAMENTAS: FerramentaAdega[] = [
   definir({
     nome: 'registrar_venda',
     titulo: 'Registrar venda',
-    descricao: 'Registra uma venda pelo preço de cadastro: baixa o estoque e lança a receita no financeiro.',
+    descricao:
+      'Registra uma venda de balcão, já paga: baixa o estoque e lança a receita no financeiro. ' +
+      'Pedido de mesa não é venda direta: use lancar_na_mesa e, no fim, fechar_mesa.',
     somenteLeitura: false,
     entrada: z.object({
       itens: z
@@ -545,6 +600,166 @@ export const FERRAMENTAS: FerramentaAdega[] = [
     },
   }),
 
+  // ----- Mesas (contas por mesa) -----
+  definir({
+    nome: 'listar_mesas',
+    titulo: 'Listar mesas',
+    descricao: 'Mesas com conta aberta agora (itens, total e há quanto tempo) e as contas fechadas hoje.',
+    somenteLeitura: true,
+    entrada: z.object({}),
+    executar(_args, { loja, agora }) {
+      const estado = loja.estado();
+      const r = resumoMesas(estado);
+      const fechadas = comandasFechadasNoDia(estado, agora());
+      return {
+        abertas: comandasAbertas(estado).map((c) => ({
+          mesa: nomeDaMesa(c.mesa),
+          itens: quantidadeNaComanda(c),
+          total: reais(totalComanda(c)),
+          aberta: tempoAberta(c, agora()),
+        })),
+        total_em_aberto: reais(r.emAberto),
+        fechadas_hoje: fechadas.length,
+        recebido_das_mesas_hoje: reais(fechadas.reduce((s, c) => s + totalComanda(c), 0)),
+      };
+    },
+  }),
+
+  definir({
+    nome: 'consultar_mesa',
+    titulo: 'Consultar mesa',
+    descricao: 'A conta de uma mesa: o que foi pedido, quantidades, total e há quanto tempo está aberta. Pode calcular quanto dá por pessoa.',
+    somenteLeitura: true,
+    entrada: z.object({
+      mesa: esquemaMesa,
+      dividir_por: z.number().int().min(2).max(50).optional().describe('Quantas pessoas vão dividir a conta.'),
+    }),
+    executar(args, { loja, agora }) {
+      const comanda = acharComanda(loja.estado(), args.mesa);
+      return {
+        ...resumoComanda(comanda, agora()),
+        ...(args.dividir_por ? { por_pessoa: reais(valorPorPessoa(totalComanda(comanda), args.dividir_por)), pessoas: args.dividir_por } : {}),
+      };
+    },
+  }),
+
+  definir({
+    nome: 'abrir_mesa',
+    titulo: 'Abrir mesa',
+    descricao: 'Abre a conta de uma mesa (cliente sentou). Para já lançar pedidos, use lancar_na_mesa, que abre sozinha.',
+    somenteLeitura: false,
+    entrada: z.object({ mesa: esquemaMesa }),
+    executar(args, { loja, agora }) {
+      const comanda = confirmar(montarComanda(loja.estado(), { mesa: args.mesa }, agora()));
+      loja.despachar({ tipo: 'abrir-comanda', comanda });
+      return { registrado: true, mesa: nomeDaMesa(comanda.mesa) };
+    },
+  }),
+
+  definir({
+    nome: 'lancar_na_mesa',
+    titulo: 'Lançar na mesa',
+    descricao:
+      'Lança pedidos na conta de uma mesa ("a mesa 10 pediu uma Coca e duas Skol"). Abre a mesa se ainda não estiver aberta. ' +
+      'Os itens saem do estoque na hora; o dinheiro só entra quando a conta for fechada.',
+    somenteLeitura: false,
+    entrada: z.object({ mesa: esquemaMesa, itens: esquemaItens }),
+    executar(args, { loja, agora }) {
+      let estado = loja.estado();
+      const pedidos = new Map<string, number>();
+      for (const item of args.itens) {
+        const p = acharProduto(estado, item.produto);
+        pedidos.set(p.id, (pedidos.get(p.id) ?? 0) + item.quantidade);
+      }
+      let comanda = comandaDaMesa(estado, args.mesa);
+      const abriuAgora = !comanda;
+      if (!comanda) {
+        const nova = confirmar(montarComanda(estado, { mesa: args.mesa }, agora()));
+        // Confere o estoque antes de abrir, para não deixar uma mesa vazia aberta por engano.
+        confirmar(montarItensComanda({ ...estado, comandas: [...estado.comandas, nova] }, nova.id, [...pedidos].map(([produtoId, quantidade]) => ({ produtoId, quantidade })), agora()));
+        loja.despachar({ tipo: 'abrir-comanda', comanda: nova });
+        estado = loja.estado();
+        comanda = nova;
+      }
+      const itens = confirmar(
+        montarItensComanda(estado, comanda.id, [...pedidos].map(([produtoId, quantidade]) => ({ produtoId, quantidade })), agora()),
+      );
+      loja.despachar({ tipo: 'lancar-na-comanda', comandaId: comanda.id, itens });
+      const atual = loja.estado().comandas.find((c) => c.id === comanda.id)!;
+      return {
+        registrado: true,
+        mesa: nomeDaMesa(atual.mesa),
+        ...(abriuAgora ? { observacao: 'A mesa foi aberta agora.' } : {}),
+        lancado: itens.map((i) => ({ produto: i.produtoNome, quantidade: i.quantidade, subtotal: reais(i.quantidade * i.precoUnitario) })),
+        total_da_mesa: reais(totalComanda(atual)),
+        itens_na_mesa: quantidadeNaComanda(atual),
+      };
+    },
+  }),
+
+  definir({
+    nome: 'remover_da_mesa',
+    titulo: 'Tirar da mesa',
+    descricao: 'Tira um produto da conta da mesa (pedido errado, desistiu). Volta para o estoque.',
+    somenteLeitura: false,
+    entrada: z.object({ mesa: esquemaMesa, produto: esquemaProduto, quantidade: z.number().int().min(1).optional().describe('Padrão: 1.') }),
+    executar(args, { loja, agora }) {
+      const estado = loja.estado();
+      const comanda = acharComanda(estado, args.mesa);
+      const produto = acharProdutoNaComanda(estado, comanda, args.produto);
+      const remocao = confirmar(montarRemocaoComanda(estado, comanda.id, produto.id, args.quantidade ?? 1));
+      loja.despachar({ tipo: 'remover-da-comanda', comandaId: comanda.id, ...remocao });
+      const atual = loja.estado().comandas.find((c) => c.id === comanda.id)!;
+      return { registrado: true, tirado: `${remocao.quantidade}× ${produto.nome}`, ...resumoComanda(atual, agora()) };
+    },
+  }),
+
+  definir({
+    nome: 'fechar_mesa',
+    titulo: 'Fechar mesa',
+    descricao: 'Fecha a conta da mesa com a forma de pagamento: vira venda e entra no financeiro. A mesa fica livre.',
+    somenteLeitura: false,
+    entrada: z.object({
+      mesa: esquemaMesa,
+      forma_pagamento: esquemaForma,
+      valor_recebido: esquemaReais('Só no dinheiro: quanto o cliente entregou, para calcular o troco.').optional(),
+    }),
+    executar(args, { loja, agora }) {
+      const estado = loja.estado();
+      const comanda = acharComanda(estado, args.mesa);
+      const venda = confirmar(
+        montarFechamento(
+          estado,
+          comanda.id,
+          { forma: args.forma_pagamento, valorRecebido: args.valor_recebido !== undefined ? paraCentavos(args.valor_recebido) : undefined },
+          agora(),
+        ),
+      );
+      loja.despachar({ tipo: 'fechar-comanda', comandaId: comanda.id, venda });
+      return {
+        registrado: true,
+        mesa: nomeDaMesa(comanda.mesa),
+        total: reais(venda.total),
+        forma_pagamento: formaPagamento(args.forma_pagamento).nome,
+        ...(venda.troco !== undefined ? { troco: reais(venda.troco) } : {}),
+        itens: quantidadeNaComanda(comanda),
+      };
+    },
+  }),
+
+  definir({
+    nome: 'cancelar_mesa',
+    titulo: 'Cancelar mesa',
+    descricao: 'Cancela a conta da mesa sem cobrar (abriu por engano, cliente foi embora sem consumir). Tudo o que foi lançado volta ao estoque.',
+    somenteLeitura: false,
+    entrada: z.object({ mesa: esquemaMesa }),
+    executar(args, { loja, agora }) {
+      const comanda = acharComanda(loja.estado(), args.mesa);
+      loja.despachar({ tipo: 'cancelar-comanda', comandaId: comanda.id, data: agora().toISOString() });
+      return { cancelado: true, mesa: nomeDaMesa(comanda.mesa), voltaram_ao_estoque: quantidadeNaComanda(comanda) };
+    },
+  }),
+
   // ----- Financeiro -----
   definir({
     nome: 'resumo_do_dia',
@@ -564,6 +779,8 @@ export const FERRAMENTAS: FerramentaAdega[] = [
         saldo: reais(r.saldo),
         recebido_por_forma: porForma(r.porFormaPagamento),
         produtos_abaixo_do_minimo: estoqueBaixo(estado.produtos).length,
+        mesas_abertas: resumoMesas(estado).abertas,
+        em_aberto_nas_mesas: reais(resumoMesas(estado).emAberto),
         lembretes_pendentes: lembretesPendentes(estado)
           .filter((l) => situacaoLembrete(l, agora()) !== 'proximo')
           .map((l) => resumoLembrete(l, agora())),

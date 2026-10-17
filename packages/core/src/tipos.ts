@@ -76,6 +76,9 @@ export interface Venda {
   /** Só no dinheiro: quanto o cliente entregou e quanto voltou de troco. */
   valorRecebido?: Centavos;
   troco?: Centavos;
+  /** Venda que veio do fechamento da conta de uma mesa. */
+  comandaId?: string;
+  mesa?: string;
 }
 
 export type TipoLancamento = 'receita' | 'despesa';
@@ -139,6 +142,34 @@ export interface Lembrete {
   produtoNome?: string;
 }
 
+/** Um pedido lançado na conta da mesa. Sai do estoque na hora em que é lançado. */
+export interface ItemComanda {
+  id: string;
+  produtoId: string;
+  produtoNome: string;
+  quantidade: number;
+  /** Preço na hora do pedido (se o preço mudar depois, a conta não muda). */
+  precoUnitario: Centavos;
+  custoUnitario: Centavos;
+  lancadoEm: string;
+}
+
+/**
+ * Conta de uma mesa (comanda): o cliente senta, os pedidos vão sendo lançados
+ * e, no fim, a conta é fechada de uma vez com a forma de pagamento.
+ */
+export interface Comanda {
+  id: string;
+  /** "10", "Balcão", "João"... */
+  mesa: string;
+  abertaEm: string;
+  situacao: 'aberta' | 'fechada' | 'cancelada';
+  itens: ItemComanda[];
+  fechadaEm?: string;
+  /** Venda gerada ao fechar. */
+  vendaId?: string;
+}
+
 export interface Estado {
   produtos: Produto[];
   vendas: Venda[];
@@ -146,6 +177,7 @@ export interface Estado {
   lancamentos: Lancamento[];
   ajustes: AjusteEstoque[];
   lembretes: Lembrete[];
+  comandas: Comanda[];
 }
 
 export type Resultado<T> = { ok: true; valor: T } | { ok: false; erro: string };

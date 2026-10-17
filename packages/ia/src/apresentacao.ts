@@ -1,16 +1,17 @@
+import { nomeDaMesa, normalizarMesa } from '@adegas/core';
 import type { PassoAgente } from './agente';
 
 /** Ideias de pergunta para quem abre o assistente pela primeira vez. */
 export const SUGESTOES = [
   'Quanto tem de Skol no estoque?',
-  'O que preciso repor?',
+  'A mesa 7 pediu uma Coca, uma água e uma Skol',
+  'Quanto deu a mesa 10?',
   'Chegaram 2 fardos de Heineken por R$ 42 cada',
   'Como foram as vendas nos últimos 7 dias?',
-  'Qual o saldo do mês?',
   'Me lembre de pagar a conta de luz amanhã às 10h',
 ];
 
-const ARGUMENTO_PRINCIPAL = ['produto', 'busca', 'texto', 'lembrete', 'categoria', 'descricao', 'periodo'];
+const ARGUMENTO_PRINCIPAL = ['mesa', 'produto', 'busca', 'texto', 'lembrete', 'categoria', 'descricao', 'periodo'];
 
 /** "Consultar produto · skol", "Registrar entrada · Heineken" */
 export function descreverPasso(passo: PassoAgente): string {
@@ -22,6 +23,7 @@ export function descreverPasso(passo: PassoAgente): string {
   if (!detalhe && typeof passo.argumentos.inicio === 'string') detalhe = `desde ${passo.argumentos.inicio}`;
   const nomesPeriodo: Record<string, string> = { hoje: 'hoje', '7d': '7 dias', '30d': '30 dias', mes: 'este mês' };
   if (chave === 'periodo') detalhe = nomesPeriodo[detalhe] ?? detalhe;
+  if (chave === 'mesa') detalhe = nomeDaMesa(normalizarMesa(detalhe));
   return detalhe ? `${passo.titulo} · ${detalhe}` : passo.titulo;
 }
 

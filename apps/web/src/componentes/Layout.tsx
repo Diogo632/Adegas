@@ -1,5 +1,5 @@
 import { formatarDiaExtenso } from '@adegas/core';
-import { Boxes, ChartColumn, LayoutDashboard, PackagePlus, ShoppingBag, Sparkles, Wallet, Wine } from 'lucide-react';
+import { Armchair, Boxes, ChartColumn, LayoutDashboard, PackagePlus, ShoppingBag, Sparkles, Wallet, Wine } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { animarEntradaDaTela } from '../animacoes';
@@ -7,6 +7,7 @@ import { animarEntradaDaTela } from '../animacoes';
 const OPERACAO = [
   { para: '/', rotulo: 'Início', icone: LayoutDashboard },
   { para: '/venda', rotulo: 'Vender', icone: ShoppingBag },
+  { para: '/mesas', rotulo: 'Mesas', icone: Armchair },
   { para: '/entrada', rotulo: 'Entrada de produto', icone: PackagePlus },
 ];
 

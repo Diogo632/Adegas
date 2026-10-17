@@ -1,5 +1,6 @@
 import {
   FORMAS_PAGAMENTO,
+  comandasAbertas,
   estoqueBaixo,
   formatarDataHora,
   formatarDiaExtenso,
@@ -7,18 +8,20 @@ import {
   formatarQuando,
   lembretesPendentes,
   resumoDoDia,
+  resumoMesas,
   situacaoLembrete,
   saudacao,
   ultimosLancamentos,
   useAdega,
 } from '@adegas/core';
 import { router } from 'expo-router';
-import { ArrowDownLeft, ArrowUpRight, Bell, Check, ChevronRight, PackagePlus, ShoppingBag, Sparkles, TriangleAlert } from 'lucide-react-native';
+import { Armchair, ArrowDownLeft, ArrowUpRight, Bell, Check, ChevronRight, PackagePlus, ShoppingBag, Sparkles, TriangleAlert } from 'lucide-react-native';
 import { Fragment } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Entrar, NumeroAnimado, Tocavel } from '../../components/animacoes';
 import { ICONE_FORMA } from '../../components/icones';
+import { LinhaMesa } from '../../components/mesas';
 import { Botao, Cartao, Divisor, Secao } from '../../components/ui';
 import { CORES, FONTE, RAIO, TEXTO } from '../../tema';
 
@@ -30,6 +33,8 @@ export default function Inicio() {
   const alertas = estoqueBaixo(estado.produtos);
   const movimentos = ultimosLancamentos(estado, 5);
   const lembretes = lembretesPendentes(estado).slice(0, 4);
+  const mesas = comandasAbertas(estado);
+  const resumoDasMesas = resumoMesas(estado);
 
   return (
     <ScrollView contentContainerStyle={[estilos.tela, { paddingTop: insets.top + 20 }]}>
@@ -67,7 +72,35 @@ export default function Inicio() {
 
       <Entrar atraso={160} style={{ gap: 10 }}>
         <Botao titulo="Nova venda" icone={ShoppingBag} onPress={() => router.push('/venda')} />
-        <Botao titulo="Entrada de produto" icone={PackagePlus} variante="contorno" onPress={() => router.push('/entrada')} />
+        <View style={estilos.botoesLado}>
+          <Botao titulo="Mesas" icone={Armchair} variante="contorno" onPress={() => router.push('/mesas')} style={{ flex: 1 }} />
+          <Botao titulo="Entrada" icone={PackagePlus} variante="contorno" onPress={() => router.push('/entrada')} style={{ flex: 1 }} />
+        </View>
+      </Entrar>
+
+      <Entrar atraso={180} style={{ gap: 16 }}>
+        <Secao
+          acao={
+            <Tocavel accessibilityRole="button" onPress={() => router.push('/mesas')} style={estilos.secaoAcao}>
+              <Text style={estilos.repor}>{mesas.length ? 'Ver todas' : 'Abrir mesa'}</Text>
+            </Tocavel>
+          }
+        >
+          {mesas.length ? `Mesas abertas · ${formatarDinheiro(resumoDasMesas.emAberto)}` : 'Mesas'}
+        </Secao>
+        <Cartao style={{ paddingVertical: 6, gap: 0 }}>
+          {mesas.length === 0 && (
+            <Text style={[TEXTO.legenda, { paddingVertical: 14 }]}>
+              Nenhuma mesa aberta. Quando um cliente sentar, abra a conta da mesa e vá lançando os pedidos.
+            </Text>
+          )}
+          {mesas.slice(0, 5).map((c, i) => (
+            <Fragment key={c.id}>
+              {i > 0 && <Divisor />}
+              <LinhaMesa comanda={c} agora={hoje} />
+            </Fragment>
+          ))}
+        </Cartao>
       </Entrar>
 
       <Entrar atraso={200} style={{ gap: 16 }}>
@@ -220,6 +253,7 @@ const estilos = StyleSheet.create({
   marcador: { width: 34, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   repor: { fontFamily: FONTE.semi, fontSize: 14, color: CORES.primariaClara },
   secaoAcao: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
+  botoesLado: { flexDirection: 'row', gap: 10 },
   feito: {
     width: 36,
     height: 36,

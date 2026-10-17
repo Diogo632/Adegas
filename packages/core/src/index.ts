@@ -1,4 +1,5 @@
 export * from './catalogos';
+export * from './comandas';
 export * from './dinheiro';
 export * from './estado';
 export * from './estoque';

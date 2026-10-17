@@ -15,13 +15,18 @@ const NATIVO = Platform.OS !== 'web';
 const SEM_INTERNET = Boolean((globalThis as { ADEGAS_PREVIA_SEM_INTERNET?: boolean }).ADEGAS_PREVIA_SEM_INTERNET);
 
 /** Depois que o assistente muda algo, um atalho para conferir na aba certa. */
-const ONDE_VER: Record<string, { rota: '/estoque' | '/financeiro' | '/'; rotulo: string }> = {
+const ONDE_VER: Record<string, { rota: '/estoque' | '/financeiro' | '/' | '/mesas'; rotulo: string }> = {
   registrar_entrada: { rota: '/estoque', rotulo: 'Ver estoque' },
   ajustar_estoque: { rota: '/estoque', rotulo: 'Ver estoque' },
   editar_produto: { rota: '/estoque', rotulo: 'Ver estoque' },
   registrar_venda: { rota: '/financeiro', rotulo: 'Ver financeiro' },
   registrar_lancamento: { rota: '/financeiro', rotulo: 'Ver financeiro' },
   excluir_lancamento: { rota: '/financeiro', rotulo: 'Ver financeiro' },
+  abrir_mesa: { rota: '/mesas', rotulo: 'Ver mesas' },
+  lancar_na_mesa: { rota: '/mesas', rotulo: 'Ver mesas' },
+  remover_da_mesa: { rota: '/mesas', rotulo: 'Ver mesas' },
+  fechar_mesa: { rota: '/mesas', rotulo: 'Ver mesas' },
+  cancelar_mesa: { rota: '/mesas', rotulo: 'Ver mesas' },
   criar_lembrete: { rota: '/', rotulo: 'Ver lembretes' },
   concluir_lembrete: { rota: '/', rotulo: 'Ver lembretes' },
   excluir_lembrete: { rota: '/', rotulo: 'Ver lembretes' },
@@ -192,7 +197,7 @@ function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; ao
       {!mensagem.pensando && atalhos.length > 0 && (
         <View style={{ flexDirection: 'row', gap: 18 }}>
           {atalhos.map((a) => (
-            <Text key={a.rota} style={estilos.link} onPress={() => router.navigate(a.rota)}>
+            <Text key={a.rota} style={estilos.link} onPress={() => (a.rota === '/mesas' ? router.push(a.rota) : router.navigate(a.rota))}>
               {a.rotulo} →
             </Text>
           ))}
