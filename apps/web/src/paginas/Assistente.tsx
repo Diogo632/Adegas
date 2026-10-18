@@ -1,4 +1,17 @@
-import { FERRAMENTAS, MODELO_PADRAO, SUGESTOES, blocosDeTexto, descreverPasso, useAssistente } from '@adegas/ia';
+import {
+  FERRAMENTAS,
+  GravadorNavegador,
+  MODELO_PADRAO,
+  NOME_DO_ASSISTENTE,
+  SUGESTOES,
+  arquivoParaAudio,
+  blocosDeTexto,
+  descreverPasso,
+  erroDeMicrofone,
+  formatarDuracao,
+  microfoneDisponivel,
+  useAssistente,
+} from '@adegas/ia';
 import type { MensagemAssistente, PassoAgente } from '@adegas/ia';
 import {
   ArrowUp,
@@ -8,6 +21,8 @@ import {
   EyeOff,
   KeyRound,
   LoaderCircle,
+  Mic,
+  Paperclip,
   PencilLine,
   Plug,
   RotateCcw,
@@ -15,6 +30,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
+import type { ChangeEvent } from 'react';
 import type { FormEvent, KeyboardEvent, ReactNode } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -44,6 +60,7 @@ const ONDE_VER: Record<string, { para: string; rotulo: string }> = {
 const SEM_INTERNET = Boolean((globalThis as { ADEGAS_PREVIA_SEM_INTERNET?: boolean }).ADEGAS_PREVIA_SEM_INTERNET);
 
 const CAPACIDADES = [
+  'Entende áudio: grave sua voz ou mande o áudio do WhatsApp',
   'Consulta o estoque de qualquer produto',
   'Registra entrada de mercadoria e vendas',
   'Lança pedidos nas mesas e fecha a conta',
@@ -54,11 +71,12 @@ const CAPACIDADES = [
 
 export function Assistente() {
   const [config, salvarConfig] = useConfigAssistente();
-  const { mensagens, enviando, enviar, novaConversa, modeloEmUso } = useAssistente(config);
+  const { mensagens, enviando, enviar, enviarAudio, novaConversa, modeloEmUso } = useAssistente(config);
   const [configurando, setConfigurando] = useState(!config.chave);
   const [texto, setTexto] = useState('');
   const conversa = useRef<HTMLDivElement>(null);
   const campo = useRef<HTMLTextAreaElement>(null);
+  const audio = useAudio(enviarAudio);
 
   // Rola até a mensagem nova (e acompanha os passos enquanto o assistente trabalha).
   useEffect(() => {
@@ -97,8 +115,8 @@ export function Assistente() {
     <div className="pagina assistente-pagina">
       <header className="cabecalho">
         <div>
-          <p className="sobretitulo">Inteligência artificial</p>
-          <h1>Assistente</h1>
+          <p className="sobretitulo">Assistente com inteligência artificial</p>
+          <h1>{NOME_DO_ASSISTENTE}</h1>
         </div>
         <div className="acoes">
           {mensagens.length > 0 && (
@@ -127,7 +145,7 @@ export function Assistente() {
         <p className="aviso-previa" role="note">
           <CircleAlert size={17} strokeWidth={2} />
           <span>
-            Esta prévia não pode acessar a internet, então o assistente não alcança o Gemini aqui. Para conversar com ele, abra a
+            Esta prévia não pode acessar a internet, então o {NOME_DO_ASSISTENTE} não alcança o Gemini aqui. Para conversar com ele, abra a
             prévia do GitHub Pages ou rode o projeto no computador.
           </span>
         </p>
@@ -139,9 +157,10 @@ export function Assistente() {
             {mensagens.length === 0 ? (
               <div className="chat-vazio">
                 <IconeQuadrado icone={Sparkles} tamanho={52} />
-                <h2>Pergunte sobre a sua adega</h2>
+                <h2>Pergunte ao {NOME_DO_ASSISTENTE}</h2>
                 <p className="suave">
-                  Ele consulta e registra no estoque, no financeiro e nos relatórios, e cria lembretes. Escreva do seu jeito.
+                  Ele consulta e registra no estoque, no financeiro e nos relatórios, e cria lembretes. Escreva do seu jeito ou mande um
+                  áudio.
                 </p>
                 <div className="chips sugestoes">
                   {SUGESTOES.map((s) => (
@@ -156,20 +175,66 @@ export function Assistente() {
             )}
           </div>
 
-          <form className="chat-entrada" onSubmit={aoEnviar}>
-            <textarea
-              ref={campo}
-              className="campo"
-              rows={1}
-              placeholder="Ex.: chegaram 3 fardos de Skol por R$ 33 cada"
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              onKeyDown={aoTeclar}
-              aria-label="Mensagem para o assistente"
-            />
-            <button type="submit" className="botao enviar" disabled={!texto.trim() || enviando} aria-label="Enviar">
-              {enviando ? <LoaderCircle size={19} className="girando" /> : <ArrowUp size={19} strokeWidth={2.2} />}
-            </button>
+          {audio.aviso && (
+            <p className="chat-aviso" role="alert">
+              <CircleAlert size={16} strokeWidth={2} /> {audio.aviso}
+            </p>
+          )}
+          <form className={`chat-entrada ${audio.gravando ? 'gravando' : ''}`} onSubmit={aoEnviar}>
+            {audio.gravando ? (
+              <div className="gravacao" role="status" aria-label={`Gravando áudio, ${formatarDuracao(audio.segundos)}`}>
+                <button type="button" className="botao contorno quadrado" onClick={audio.cancelar} aria-label="Cancelar gravação" title="Cancelar">
+                  <X size={18} strokeWidth={2} />
+                </button>
+                <span className="gravacao-ponto" aria-hidden />
+                <strong className="num">{formatarDuracao(audio.segundos)}</strong>
+                <span className="suave gravacao-dica">Fale o pedido e toque em enviar</span>
+              </div>
+            ) : (
+              <>
+                <label
+                  className={`botao contorno quadrado ${enviando || audio.preparando ? 'desligado' : ''}`}
+                  title="Mandar arquivo de áudio (ex.: áudio do WhatsApp)"
+                >
+                  <Paperclip size={18} strokeWidth={1.9} />
+                  <input
+                    type="file"
+                    accept="audio/*,.opus,.ogg,.m4a,.mp3,.wav,.aac,.flac"
+                    className="so-leitor"
+                    disabled={enviando || audio.preparando}
+                    onChange={audio.aoEscolherArquivo}
+                    aria-label="Mandar arquivo de áudio"
+                  />
+                </label>
+                <textarea
+                  ref={campo}
+                  className="campo"
+                  rows={1}
+                  placeholder="Ex.: chegaram 3 fardos de Skol por R$ 33 cada"
+                  value={texto}
+                  onChange={(e) => setTexto(e.target.value)}
+                  onKeyDown={aoTeclar}
+                  aria-label={`Mensagem para o ${NOME_DO_ASSISTENTE}`}
+                />
+              </>
+            )}
+            {audio.gravando ? (
+              <button type="button" className="botao enviar" onClick={audio.enviarGravacao} aria-label="Enviar áudio">
+                <ArrowUp size={19} strokeWidth={2.2} />
+              </button>
+            ) : enviando || audio.preparando ? (
+              <button type="button" className="botao enviar" disabled aria-label="Aguarde">
+                <LoaderCircle size={19} className="girando" />
+              </button>
+            ) : texto.trim() || !audio.microfone ? (
+              <button type="submit" className="botao enviar" disabled={!texto.trim()} aria-label="Enviar">
+                <ArrowUp size={19} strokeWidth={2.2} />
+              </button>
+            ) : (
+              <button type="button" className="botao enviar" onClick={audio.iniciar} aria-label="Gravar áudio" title="Gravar áudio">
+                <Mic size={19} strokeWidth={2.1} />
+              </button>
+            )}
           </form>
         </section>
 
@@ -199,6 +264,91 @@ export function Assistente() {
   );
 }
 
+/** Gravar o microfone e mandar arquivos de áudio para o Pop AI. */
+function useAudio(enviarAudio: ReturnType<typeof useAssistente>['enviarAudio']) {
+  const [gravando, setGravando] = useState(false);
+  const [segundos, setSegundos] = useState(0);
+  const [preparando, setPreparando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const gravador = useRef<GravadorNavegador | null>(null);
+  const [microfone] = useState(microfoneDisponivel);
+
+  async function enviarGravacao() {
+    const g = gravador.current;
+    if (!g?.gravando) return;
+    setGravando(false);
+    setPreparando(true);
+    try {
+      const audio = await g.parar();
+      if (!audio || (audio.duracao !== undefined && audio.duracao < 0.6)) {
+        setAviso('Áudio curto demais. Toque no microfone, fale e depois toque em enviar.');
+        return;
+      }
+      void enviarAudio(audio);
+    } catch {
+      setAviso('Não consegui preparar o áudio. Tente de novo.');
+    } finally {
+      setPreparando(false);
+    }
+  }
+  const enviarAoLimite = useRef(enviarGravacao);
+  useEffect(() => {
+    enviarAoLimite.current = enviarGravacao;
+  });
+
+  // Relógio da gravação; ao sair da tela, a gravação é descartada.
+  useEffect(() => {
+    if (!gravando) return;
+    const relogio = setInterval(() => setSegundos(gravador.current?.segundos ?? 0), 250);
+    return () => clearInterval(relogio);
+  }, [gravando]);
+  useEffect(() => () => gravador.current?.cancelar(), []);
+
+  async function iniciar() {
+    setAviso(null);
+    gravador.current ??= new GravadorNavegador(() => void enviarAoLimite.current());
+    try {
+      await gravador.current.iniciar();
+      setSegundos(0);
+      setGravando(true);
+    } catch (erro) {
+      setAviso(erroDeMicrofone(erro));
+    }
+  }
+
+  function cancelar() {
+    gravador.current?.cancelar();
+    setGravando(false);
+  }
+
+  async function aoEscolherArquivo(e: ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    e.target.value = '';
+    if (!arquivo) return;
+    setAviso(null);
+    setPreparando(true);
+    try {
+      void enviarAudio(await arquivoParaAudio(arquivo));
+    } catch (erro) {
+      setAviso(erro instanceof Error ? erro.message : 'Não consegui abrir esse áudio.');
+    } finally {
+      setPreparando(false);
+    }
+  }
+
+  return {
+    microfone,
+    gravando,
+    segundos,
+    preparando,
+    aviso,
+    iniciar,
+    cancelar,
+    enviarGravacao,
+    aoEscolherArquivo,
+  };
+}
+
 function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; aoConfigurar: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -206,6 +356,27 @@ function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; ao
   }, []);
 
   if (mensagem.autor === 'pessoa') {
+    if (mensagem.audio) {
+      const { duracao, nome } = mensagem.audio;
+      return (
+        <div ref={ref} className="msg pessoa com-audio">
+          <span className="msg-audio">
+            <Mic size={14} strokeWidth={2.1} />
+            {nome ?? 'Áudio'}
+            {duracao ? ` · ${formatarDuracao(duracao)}` : ''}
+          </span>
+          {mensagem.ouvindo ? (
+            <p className="ouvindo">
+              <LoaderCircle size={15} className="girando" /> Ouvindo o áudio…
+            </p>
+          ) : mensagem.texto ? (
+            <p>“{mensagem.texto}”</p>
+          ) : (
+            <p className="suave">Sem fala</p>
+          )}
+        </div>
+      );
+    }
     return (
       <div ref={ref} className="msg pessoa">
         <p>{mensagem.texto}</p>
@@ -223,7 +394,7 @@ function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; ao
       </span>
       <div className="msg-corpo">
         {passos.length > 0 && (
-          <ul className="passos" aria-label="O que o assistente fez">
+          <ul className="passos" aria-label={`O que o ${NOME_DO_ASSISTENTE} fez`}>
             {passos.map((p) => (
               <Passo key={p.id} passo={p} />
             ))}
@@ -333,7 +504,7 @@ function Configuracao({
         <div>
           <h2>Chave do Gemini</h2>
           <p className="suave">
-            O assistente usa a API do Gemini, do Google. Crie uma chave grátis em{' '}
+            O {NOME_DO_ASSISTENTE} usa a API do Gemini, do Google. Crie uma chave grátis em{' '}
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
               aistudio.google.com/apikey
             </a>{' '}

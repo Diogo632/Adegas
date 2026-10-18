@@ -79,6 +79,12 @@ export function motivoAjuste(id: MotivoAjuste): InfoMotivoAjuste {
   return MOTIVOS_AJUSTE.find((m) => m.id === id) ?? MOTIVOS_AJUSTE[0];
 }
 
+/** Nome da adega, que aparece na entrada, no menu e nas falas do assistente. */
+export const NOME_DA_LOJA = 'Pop';
+
+/** Nome do assistente com IA. */
+export const NOME_DO_ASSISTENTE = 'Pop AI';
+
 /**
  * Cores da marca, iguais no app e no web. Clima de cervejaria e choperia:
  * preto de fundo, branco no texto e amarelo-chope nos detalhes e na ação principal.

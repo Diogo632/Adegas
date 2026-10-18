@@ -22,6 +22,8 @@ export interface RespostaFuncao {
 export interface ParteGemini {
   text?: string;
   thought?: boolean;
+  /** Arquivo junto da mensagem (ex.: áudio), em base64. */
+  inlineData?: { mimeType: string; data: string };
   functionCall?: ChamadaFuncao;
   functionResponse?: RespostaFuncao;
   [outro: string]: unknown;
@@ -54,6 +56,7 @@ export interface PedidoGemini {
   contents: ConteudoGemini[];
   tools?: { functionDeclarations: DeclaracaoFuncao[] }[];
   toolConfig?: { functionCallingConfig: { mode: 'AUTO' | 'ANY' | 'NONE' } };
+  generationConfig?: { temperature?: number };
 }
 
 export interface RespostaGemini {
@@ -102,6 +105,12 @@ function explicar(status: number, detalhe: { mensagem: string; status?: string }
   const texto = detalhe.mensagem.toLowerCase();
   if (status === 400 && texto.includes('api key')) {
     return new ErroGemini('A chave do Gemini não é válida. Confira se a chave foi copiada inteira.', status);
+  }
+  if (status === 400 && texto.includes('mime')) {
+    return new ErroGemini('O Gemini não aceitou o formato desse áudio. Tente um áudio em MP3, WAV ou o áudio do WhatsApp.', status);
+  }
+  if (status === 400 && /too large|exceeds|payload/.test(texto)) {
+    return new ErroGemini('Esse áudio é grande demais para o Gemini. Mande um áudio mais curto.', status);
   }
   if (status === 401 || status === 403) {
     return new ErroGemini('A chave do Gemini não tem permissão. Gere uma nova chave no Google AI Studio.', status);

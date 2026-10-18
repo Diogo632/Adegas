@@ -1,20 +1,21 @@
 import {
   FORMAS_PAGAMENTO,
+  NOME_DO_ASSISTENTE,
   comandasAbertas,
   estoqueBaixo,
+  formaPagamento,
   formatarDataHora,
   formatarDinheiro,
-  formaPagamento,
   formatarQuando,
   lembretesPendentes,
   nomeDaMesa,
   quantidadeNaComanda,
   resumoDoDia,
   resumoMesas,
+  saudacao,
+  situacaoLembrete,
   tempoAberta,
   totalComanda,
-  situacaoLembrete,
-  saudacao,
   ultimosLancamentos,
   useAdega,
 } from '@adegas/core';
@@ -201,7 +202,7 @@ export function Inicio() {
           </div>
           {lembretes.length === 0 ? (
             <p className="suave">
-              {pode('assistente') ? 'Nada pendente. Peça ao assistente: “me lembre de pagar o fornecedor sexta às 10h”.' : 'Nada pendente.'}
+              {pode('assistente') ? `Nada pendente. Peça ao ${NOME_DO_ASSISTENTE}: “me lembre de pagar o fornecedor sexta às 10h”.` : 'Nada pendente.'}
             </p>
           ) : (
             <ul className="lista">

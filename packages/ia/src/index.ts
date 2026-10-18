@@ -1,5 +1,7 @@
 export * from './agente';
 export * from './apresentacao';
+export * from './audio';
+export * from './audio-navegador';
 export * from './ferramentas';
 export * from './gemini';
 export * from './local';

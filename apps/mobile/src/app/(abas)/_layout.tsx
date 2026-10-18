@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router/tabs';
 import { Boxes, ChartColumn, House, Sparkles, Wallet } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAdega } from '@adegas/core';
+import { NOME_DO_ASSISTENTE, useAdega } from '@adegas/core';
 import { CORES, FONTE } from '../../tema';
 
 export default function Abas() {
@@ -53,7 +53,7 @@ export default function Abas() {
         <Tabs.Screen
           name="assistente"
           options={{
-            title: 'Assistente',
+            title: NOME_DO_ASSISTENTE,
             tabBarIcon: ({ color, size }) => <Sparkles color={color} size={size} strokeWidth={1.75} />,
           }}
         />

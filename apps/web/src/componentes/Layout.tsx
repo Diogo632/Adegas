@@ -1,5 +1,5 @@
 import type { Permissao } from '@adegas/core';
-import { NOME_PAPEL, formatarDiaExtenso, iniciais, useAdega } from '@adegas/core';
+import { NOME_DA_LOJA, NOME_DO_ASSISTENTE, NOME_PAPEL, formatarDiaExtenso, iniciais, useAdega } from '@adegas/core';
 import type { LucideIcon } from 'lucide-react';
 import {
   Armchair,
@@ -62,7 +62,7 @@ export function Layout() {
             <Beer size={18} strokeWidth={2} />
           </span>
           <div>
-            <strong>Minha Adega</strong>
+            <strong>{NOME_DA_LOJA}</strong>
             <small>{formatarDiaExtenso(hoje)}</small>
           </div>
         </div>
@@ -82,7 +82,7 @@ export function Layout() {
             <>
               <span className="menu-rotulo">Inteligência</span>
               <NavLink to="/assistente" className="menu-item menu-ia">
-                <Sparkles size={18} strokeWidth={1.75} /> Assistente
+                <Sparkles size={18} strokeWidth={1.75} /> {NOME_DO_ASSISTENTE}
               </NavLink>
             </>
           )}

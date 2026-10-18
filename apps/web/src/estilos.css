@@ -2713,6 +2713,120 @@ button:disabled {
   border-radius: 14px;
 }
 
+/* Pop AI: áudio */
+
+.botao.quadrado {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.botao.quadrado.desligado {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Campo de arquivo escondido, mas ainda acessível pelo teclado e leitores de tela. */
+.so-leitor {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.botao.quadrado:has(.so-leitor:focus-visible) {
+  outline: 2px solid var(--primariaClara);
+  outline-offset: 2px;
+}
+
+.gravacao {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.gravacao strong {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.gravacao-ponto {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 99px;
+  background: var(--despesa);
+  animation: gravando 1.2s ease-in-out infinite;
+}
+
+@keyframes gravando {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+.gravacao-dica {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-entrada.gravando {
+  background: color-mix(in srgb, var(--despesa) 7%, var(--superficie));
+}
+
+.chat-aviso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--borda);
+  background: var(--alertaFundo);
+  color: var(--texto);
+  font-size: 14px;
+}
+
+.chat-aviso svg {
+  color: var(--alerta);
+  flex-shrink: 0;
+}
+
+.msg.pessoa.com-audio {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.msg-audio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--primariaClara);
+  overflow-wrap: anywhere;
+}
+
+.msg .ouvindo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--textoSuave);
+}
+
 .assistente-info h2 {
   margin-bottom: 12px;
 }
@@ -2950,7 +3064,8 @@ button:disabled {
   }
 
   .pensando span,
-  .girando {
+  .girando,
+  .gravacao-ponto {
     animation-duration: 2.4s;
   }
 }

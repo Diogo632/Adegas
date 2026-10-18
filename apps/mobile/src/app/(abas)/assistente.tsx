@@ -1,13 +1,28 @@
-import { SUGESTOES, blocosDeTexto, descreverPasso, useAssistente } from '@adegas/ia';
+import { NOME_DO_ASSISTENTE, SUGESTOES, blocosDeTexto, descreverPasso, formatarDuracao, useAssistente } from '@adegas/ia';
 import type { MensagemAssistente, PassoAgente } from '@adegas/ia';
 import { router } from 'expo-router';
-import { ArrowUp, Check, CircleAlert, ExternalLink, KeyRound, LoaderCircle, PencilLine, RotateCcw, Settings2, Sparkles, X } from 'lucide-react-native';
+import {
+  ArrowUp,
+  Check,
+  CircleAlert,
+  ExternalLink,
+  KeyRound,
+  LoaderCircle,
+  Mic,
+  Paperclip,
+  PencilLine,
+  RotateCcw,
+  Settings2,
+  Sparkles,
+  X,
+} from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Entrar, Tocavel, useMovimentoReduzido } from '../../components/animacoes';
 import { Botao, Cartao, IconeQuadrado, TituloAba } from '../../components/ui';
 import { useConfigAssistente } from '../../configAssistente';
+import { escolherArquivoDeAudio, useGravador } from '../../gravador';
 import { CORES, FONTE, RAIO, TEXTO } from '../../tema';
 
 const NATIVO = Platform.OS !== 'web';
@@ -35,9 +50,12 @@ const ONDE_VER: Record<string, { rota: '/estoque' | '/financeiro' | '/' | '/mesa
 export default function Assistente() {
   const insets = useSafeAreaInsets();
   const { config, salvar, carregado } = useConfigAssistente();
-  const { mensagens, enviando, enviar, novaConversa } = useAssistente(config);
+  const { mensagens, enviando, enviar, enviarAudio, novaConversa } = useAssistente(config);
   const [configurando, setConfigurando] = useState(false);
   const [texto, setTexto] = useState('');
+  const [preparando, setPreparando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const gravador = useGravador(() => void enviarGravacao());
   const lista = useRef<ScrollView>(null);
   const semChave = carregado && !config.chave;
   const mostrarConfig = configurando || semChave;
@@ -47,6 +65,44 @@ export default function Assistente() {
     void enviar(mensagem);
     setTexto('');
   };
+
+  async function iniciarGravacao() {
+    setAviso(null);
+    const erro = await gravador.iniciar();
+    if (erro) setAviso(erro);
+  }
+
+  async function enviarGravacao() {
+    if (!gravador.gravando) return;
+    setPreparando(true);
+    try {
+      const audio = await gravador.parar();
+      if (!audio || (audio.duracao !== undefined && audio.duracao < 0.6)) {
+        setAviso('Áudio curto demais. Toque no microfone, fale e depois toque em enviar.');
+        return;
+      }
+      void enviarAudio(audio);
+    } catch {
+      setAviso('Não consegui preparar o áudio. Tente de novo.');
+    } finally {
+      setPreparando(false);
+    }
+  }
+
+  async function mandarArquivo() {
+    setAviso(null);
+    try {
+      setPreparando(true);
+      const audio = await escolherArquivoDeAudio();
+      if (audio) void enviarAudio(audio);
+    } catch (erro) {
+      setAviso(erro instanceof Error ? erro.message : 'Não consegui abrir esse áudio.');
+    } finally {
+      setPreparando(false);
+    }
+  }
+
+  const ocupado = enviando || preparando;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -61,7 +117,7 @@ export default function Assistente() {
         }}
       >
         <View style={estilos.topo}>
-          <TituloAba sobretitulo="Inteligência artificial" titulo="Assistente" topo={insets.top} />
+          <TituloAba sobretitulo="Assistente com IA" titulo={NOME_DO_ASSISTENTE} topo={insets.top} />
           <View style={estilos.topoAcoes}>
             {mensagens.length > 0 && (
               <Tocavel accessibilityRole="button" accessibilityLabel="Nova conversa" onPress={novaConversa} style={estilos.iconeBotao}>
@@ -83,7 +139,7 @@ export default function Assistente() {
           <View style={estilos.avisoPrevia}>
             <CircleAlert size={18} color={CORES.alerta} strokeWidth={2} />
             <Text style={[TEXTO.legenda, { flex: 1, color: CORES.texto }]}>
-              Esta prévia não pode acessar a internet, então o assistente não alcança o Gemini aqui. Para conversar com ele, use a
+              Esta prévia não pode acessar a internet, então o {NOME_DO_ASSISTENTE} não alcança o Gemini aqui. Para conversar com ele, use a
               prévia do GitHub Pages ou o app no celular.
             </Text>
           </View>
@@ -103,13 +159,21 @@ export default function Assistente() {
         {mensagens.length === 0 ? (
           <Entrar atraso={80} style={estilos.vazio}>
             <IconeQuadrado icone={Sparkles} tamanho={52} />
-            <Text style={[TEXTO.titulo, { textAlign: 'center' }]}>Pergunte sobre a sua adega</Text>
+            <Text style={[TEXTO.titulo, { textAlign: 'center' }]}>Pergunte ao {NOME_DO_ASSISTENTE}</Text>
             <Text style={[TEXTO.legenda, { textAlign: 'center' }]}>
-              Ele consulta e registra no estoque, no financeiro e nos relatórios, e cria lembretes. Escreva do seu jeito.
+              Ele consulta e registra no estoque, no financeiro e nos relatórios, e cria lembretes. Escreva do seu jeito ou toque no
+              microfone e fale.
             </Text>
             <View style={estilos.sugestoes}>
               {SUGESTOES.map((s) => (
-                <Tocavel key={s} accessibilityRole="button" escala={0.97} onPress={() => mandar(s)} disabled={enviando} style={estilos.sugestao}>
+                <Tocavel
+                  key={s}
+                  accessibilityRole="button"
+                  escala={0.97}
+                  onPress={() => mandar(s)}
+                  disabled={enviando}
+                  style={estilos.sugestao}
+                >
                   <Text style={estilos.sugestaoTexto}>{s}</Text>
                 </Tocavel>
               ))}
@@ -120,45 +184,136 @@ export default function Assistente() {
         )}
       </ScrollView>
 
-      <View style={estilos.entrada}>
-        <TextInput
-          value={texto}
-          onChangeText={setTexto}
-          placeholder="Ex.: chegaram 3 fardos de Skol por R$ 33"
-          placeholderTextColor={CORES.textoFraco}
-          keyboardAppearance="dark"
-          selectionColor={CORES.primariaClara}
-          multiline
-          style={estilos.entradaCampo}
-          accessibilityLabel="Mensagem para o assistente"
-          onSubmitEditing={() => mandar(texto)}
-          submitBehavior="submit"
-          returnKeyType="send"
-          onKeyPress={(e) => {
-            // Na versão web, Enter envia e Shift+Enter quebra a linha (no celular, a tecla "enviar" do teclado).
-            const tecla = e.nativeEvent as { key: string; shiftKey?: boolean };
-            if (Platform.OS === 'web' && tecla.key === 'Enter' && !tecla.shiftKey) {
-              e.preventDefault();
-              mandar(texto);
-            }
-          }}
-        />
-        <Tocavel
-          accessibilityRole="button"
-          accessibilityLabel="Enviar"
-          onPress={() => mandar(texto)}
-          disabled={!texto.trim() || enviando}
-          escala={0.9}
-          style={[estilos.enviar, (!texto.trim() || enviando) && { opacity: 0.4 }]}
-        >
-          {enviando ? <Girando /> : <ArrowUp size={20} color={CORES.sobrePrimaria} strokeWidth={2.4} />}
-        </Tocavel>
+      {aviso && (
+        <View style={estilos.avisoAudio}>
+          <CircleAlert size={16} color={CORES.alerta} strokeWidth={2} />
+          <Text style={[TEXTO.legenda, { flex: 1, color: CORES.texto }]}>{aviso}</Text>
+          <Tocavel accessibilityLabel="Fechar aviso" onPress={() => setAviso(null)} style={{ padding: 2 }}>
+            <X size={16} color={CORES.textoSuave} />
+          </Tocavel>
+        </View>
+      )}
+      <View style={[estilos.entrada, gravador.gravando && estilos.entradaGravando]}>
+        {gravador.gravando ? (
+          <>
+            <Tocavel
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar gravação"
+              onPress={gravador.cancelar}
+              escala={0.9}
+              style={estilos.botaoQuadrado}
+            >
+              <X size={20} color={CORES.texto} strokeWidth={2} />
+            </Tocavel>
+            <View style={estilos.gravacao} accessibilityLabel={`Gravando áudio, ${formatarDuracao(gravador.segundos)}`}>
+              <PontoGravando />
+              <Text style={estilos.gravacaoTempo}>{formatarDuracao(gravador.segundos)}</Text>
+              <Text style={[TEXTO.legenda, { flex: 1 }]} numberOfLines={1}>
+                Fale o pedido
+              </Text>
+            </View>
+            <Tocavel
+              accessibilityRole="button"
+              accessibilityLabel="Enviar áudio"
+              onPress={() => void enviarGravacao()}
+              escala={0.9}
+              style={estilos.enviar}
+            >
+              <ArrowUp size={20} color={CORES.sobrePrimaria} strokeWidth={2.4} />
+            </Tocavel>
+          </>
+        ) : (
+          <>
+            <Tocavel
+              accessibilityRole="button"
+              accessibilityLabel="Mandar arquivo de áudio"
+              onPress={() => void mandarArquivo()}
+              disabled={ocupado}
+              escala={0.9}
+              style={[estilos.botaoQuadrado, ocupado && { opacity: 0.4 }]}
+            >
+              <Paperclip size={19} color={CORES.texto} strokeWidth={1.9} />
+            </Tocavel>
+            <TextInput
+              value={texto}
+              onChangeText={setTexto}
+              placeholder="Ex.: chegaram 3 fardos de Skol"
+              placeholderTextColor={CORES.textoFraco}
+              keyboardAppearance="dark"
+              selectionColor={CORES.primariaClara}
+              multiline
+              style={estilos.entradaCampo}
+              accessibilityLabel={`Mensagem para o ${NOME_DO_ASSISTENTE}`}
+              onSubmitEditing={() => mandar(texto)}
+              submitBehavior="submit"
+              returnKeyType="send"
+              onKeyPress={(e) => {
+                // Na versão web, Enter envia e Shift+Enter quebra a linha (no celular, a tecla "enviar" do teclado).
+                const tecla = e.nativeEvent as { key: string; shiftKey?: boolean };
+                if (Platform.OS === 'web' && tecla.key === 'Enter' && !tecla.shiftKey) {
+                  e.preventDefault();
+                  mandar(texto);
+                }
+              }}
+            />
+            {ocupado ? (
+              <View style={[estilos.enviar, { opacity: 0.4 }]} accessibilityLabel="Aguarde">
+                <Girando />
+              </View>
+            ) : texto.trim() || !gravador.disponivel ? (
+              <Tocavel
+                accessibilityRole="button"
+                accessibilityLabel="Enviar"
+                onPress={() => mandar(texto)}
+                disabled={!texto.trim()}
+                escala={0.9}
+                style={[estilos.enviar, !texto.trim() && { opacity: 0.4 }]}
+              >
+                <ArrowUp size={20} color={CORES.sobrePrimaria} strokeWidth={2.4} />
+              </Tocavel>
+            ) : (
+              <Tocavel
+                accessibilityRole="button"
+                accessibilityLabel="Gravar áudio"
+                onPress={() => void iniciarGravacao()}
+                escala={0.9}
+                style={estilos.enviar}
+              >
+                <Mic size={20} color={CORES.sobrePrimaria} strokeWidth={2.2} />
+              </Tocavel>
+            )}
+          </>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
 }
 
 function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; aoConfigurar: () => void }) {
+  if (mensagem.autor === 'pessoa' && mensagem.audio) {
+    const { duracao, nome } = mensagem.audio;
+    return (
+      <Entrar style={[estilos.balaoPessoa, { gap: 4 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Mic size={13} color={CORES.primariaClara} strokeWidth={2.2} />
+          <Text style={estilos.audioRotulo} numberOfLines={1}>
+            {nome ?? 'Áudio'}
+            {duracao ? ` · ${formatarDuracao(duracao)}` : ''}
+          </Text>
+        </View>
+        {mensagem.ouvindo ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Girando cor={CORES.textoSuave} tamanho={14} />
+            <Text style={TEXTO.legenda}>Ouvindo o áudio…</Text>
+          </View>
+        ) : (
+          <Text style={[TEXTO.corpo, { fontSize: 15 }, !mensagem.texto && { color: CORES.textoSuave }]}>
+            {mensagem.texto ? `“${mensagem.texto}”` : 'Sem fala'}
+          </Text>
+        )}
+      </Entrar>
+    );
+  }
   if (mensagem.autor === 'pessoa') {
     return (
       <Entrar style={estilos.balaoPessoa}>
@@ -167,7 +322,11 @@ function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; ao
     );
   }
   const passos = mensagem.passos ?? [];
-  const atalhos = [...new Map(passos.filter((p) => p.alterouDados && ONDE_VER[p.ferramenta]).map((p) => [ONDE_VER[p.ferramenta].rota, ONDE_VER[p.ferramenta]])).values()];
+  const atalhos = [
+    ...new Map(
+      passos.filter((p) => p.alterouDados && ONDE_VER[p.ferramenta]).map((p) => [ONDE_VER[p.ferramenta].rota, ONDE_VER[p.ferramenta]]),
+    ).values(),
+  ];
   return (
     <Entrar style={estilos.respostaAssistente}>
       {passos.length > 0 && (
@@ -259,6 +418,24 @@ function TextoFormatado({ texto }: { texto: string }) {
   );
 }
 
+/** Bolinha vermelha piscando enquanto grava. */
+function PontoGravando() {
+  const reduzido = useMovimentoReduzido();
+  const valor = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (reduzido) return;
+    const animacao = Animated.loop(
+      Animated.sequence([
+        Animated.timing(valor, { toValue: 0.3, duration: 600, easing: Easing.inOut(Easing.quad), useNativeDriver: NATIVO }),
+        Animated.timing(valor, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.quad), useNativeDriver: NATIVO }),
+      ]),
+    );
+    animacao.start();
+    return () => animacao.stop();
+  }, [valor, reduzido]);
+  return <Animated.View style={[estilos.pontoGravando, { opacity: valor }]} />;
+}
+
 /** Três pontinhos pulando enquanto o Gemini pensa. */
 function Pensando() {
   const reduzido = useMovimentoReduzido();
@@ -325,7 +502,9 @@ function Configuracao({
           <IconeQuadrado icone={KeyRound} tamanho={40} />
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={TEXTO.titulo}>Chave do Gemini</Text>
-            <Text style={TEXTO.legenda}>O assistente usa a API do Gemini, do Google. Crie uma chave grátis e cole aqui. Ela fica guardada só neste aparelho.</Text>
+            <Text style={TEXTO.legenda}>
+              O {NOME_DO_ASSISTENTE} usa a API do Gemini, do Google. Crie uma chave grátis e cole aqui. Ela fica guardada só neste aparelho.
+            </Text>
           </View>
           {aoFechar && (
             <Tocavel accessibilityLabel="Fechar" onPress={aoFechar} style={{ padding: 4 }}>
@@ -455,6 +634,31 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 12,
+  },
+  entradaGravando: { backgroundColor: CORES.despesaFundo },
+  botaoQuadrado: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: CORES.bordaForte,
+    backgroundColor: CORES.superficie,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gravacao: { flex: 1, minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 },
+  gravacaoTempo: { fontFamily: FONTE.semi, fontSize: 18, color: CORES.texto, fontVariant: ['tabular-nums'] },
+  pontoGravando: { width: 12, height: 12, borderRadius: 99, backgroundColor: CORES.despesa },
+  audioRotulo: { fontFamily: FONTE.semi, fontSize: 12, color: CORES.primariaClara, flexShrink: 1 },
+  avisoAudio: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: CORES.alertaFundo,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: CORES.borda,
   },
   enviar: {
     width: 46,

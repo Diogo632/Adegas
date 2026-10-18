@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { criarLojaNaMemoria, estadoDeExemplo, lembretesPendentes } from '@adegas/core';
 import { AgenteAdega } from './agente';
 import { blocosDeTexto, descreverPasso } from './apresentacao';
+import { SEM_FALA, codificarWav, formatarDuracao, misturarEReamostrar, paraBase64, tipoDoAudio } from './audio';
 import type { Buscar, ConteudoGemini, EsquemaGemini, PedidoGemini } from './gemini';
 import { paraEsquemaGemini } from './gemini';
 import { conectarNaMemoria } from './local';
@@ -349,6 +350,89 @@ describe('agente (Gemini + MCP)', () => {
     await expect(agente.enviar('oi')).rejects.toThrow('A chave do Gemini não é válida');
     await agente.enviar('oi');
     expect((pedidos[1].corpo!.contents as ConteudoGemini[]).map((c) => c.role)).toEqual(['user']);
+  });
+});
+
+describe('áudio', () => {
+  it('reconhece os formatos que o Gemini aceita, inclusive o áudio do WhatsApp', () => {
+    expect(tipoDoAudio('PTT-20261012-WA0001.opus')).toBe('audio/ogg');
+    expect(tipoDoAudio('AUD-20261012.OGG')).toBe('audio/ogg');
+    expect(tipoDoAudio('Gravação nova.m4a')).toBe('audio/mp4');
+    expect(tipoDoAudio('recado', 'audio/mpeg')).toBe('audio/mp3');
+    expect(tipoDoAudio(undefined, 'audio/webm;codecs=opus')).toBe('audio/webm');
+    expect(tipoDoAudio('ligacao.amr', 'audio/amr')).toBeNull();
+    expect(formatarDuracao(7.4)).toBe('0:07');
+    expect(formatarDuracao(102)).toBe('1:42');
+  });
+
+  it('gera base64 igual ao do Node', () => {
+    for (let n = 0; n < 6; n++) {
+      const bytes = Uint8Array.from({ length: n }, (_, i) => (i * 97 + 13) % 256);
+      expect(paraBase64(bytes)).toBe(Buffer.from(bytes).toString('base64'));
+    }
+    const grande = Uint8Array.from({ length: 20000 }, (_, i) => (i * 31 + (i >> 3)) % 256);
+    expect(paraBase64(grande)).toBe(Buffer.from(grande).toString('base64'));
+  });
+
+  it('monta um WAV mono de 16 bits a partir das amostras', () => {
+    const wav = codificarWav(Float32Array.from([0, 0.5, -1, 2]), 16000);
+    const b = Buffer.from(wav);
+    expect(b.toString('ascii', 0, 4)).toBe('RIFF');
+    expect(b.readUInt32LE(4)).toBe(36 + 8);
+    expect(b.toString('ascii', 8, 16)).toBe('WAVEfmt ');
+    expect([b.readUInt16LE(20), b.readUInt16LE(22), b.readUInt32LE(24), b.readUInt16LE(34)]).toEqual([1, 1, 16000, 16]);
+    expect(b.toString('ascii', 36, 40)).toBe('data');
+    expect(b.readUInt32LE(40)).toBe(8);
+    expect([b.readInt16LE(44), b.readInt16LE(46), b.readInt16LE(48), b.readInt16LE(50)]).toEqual([0, 16383, -32768, 32767]);
+  });
+
+  it('junta os canais e reduz para 16 kHz', () => {
+    const esquerda = new Float32Array(48000).fill(0.5);
+    const direita = new Float32Array(48000).fill(-0.1);
+    const mono = misturarEReamostrar([esquerda, direita], 48000, 16000);
+    expect(mono.length).toBe(16000);
+    expect(mono[1234]).toBeCloseTo(0.2);
+  });
+
+  it('o agente transcreve o áudio e responde à transcrição', async () => {
+    const { loja, conexao } = await preparar();
+    const antes = estoqueDe(loja, 'skol-lata');
+    const { buscar, pedidos } = geminiFalso([
+      () => modelo({ text: '“Chegaram 2 fardos de Skol por 33 reais cada.”' }),
+      () => modelo({ functionCall: { name: 'registrar_entrada', args: { produto: 'skol', embalagem: 'fardo', quantidade: 2, custo: 33 } } }),
+      () => modelo({ text: 'Entrada registrada.' }),
+    ]);
+    const agente = new AgenteAdega({ cliente: conexao.cliente, chave: 'k', buscar, agora: relogio });
+    const texto = await agente.ouvir({ dados: 'UklGRgAAAAA=', mimeType: 'audio/wav' });
+    expect(texto).toBe('Chegaram 2 fardos de Skol por 33 reais cada.');
+
+    // A transcrição vai só com o áudio e as instruções de transcrever, sem ferramentas.
+    const transcricao = pedidos[0].corpo!;
+    expect(transcricao.tools).toBeUndefined();
+    expect(transcricao.systemInstruction!.parts[0].text).toContain('Escreva exatamente o que foi falado');
+    expect(transcricao.contents[0].parts[0].inlineData).toEqual({ mimeType: 'audio/wav', data: 'UklGRgAAAAA=' });
+
+    const r = await agente.enviar(texto, { deAudio: true });
+    expect(r.texto).toBe('Entrada registrada.');
+    expect(estoqueDe(loja, 'skol-lata')).toBeGreaterThan(antes);
+    const conversa = pedidos[1].corpo!;
+    expect(conversa.contents).toHaveLength(1);
+    expect(conversa.contents[0].parts[0].text).toBe('[Áudio transcrito] Chegaram 2 fardos de Skol por 33 reais cada.');
+    expect(conversa.systemInstruction!.parts[0].text).toContain('Você é o Pop AI, o assistente da adega Pop');
+    expect(conversa.systemInstruction!.parts[0].text).toContain('vieram de um áudio');
+  });
+
+  it('avisa quando o áudio não tem fala e tenta outro nome de tipo se o Gemini recusar', async () => {
+    const { conexao } = await preparar();
+    const { buscar, pedidos } = geminiFalso([
+      () => modelo({ text: SEM_FALA }),
+      () => ({ status: 400, corpo: { error: { message: 'Unsupported MIME type: audio/mp4', status: 'INVALID_ARGUMENT' } } }),
+      () => modelo({ text: 'Fecha a mesa 10 no Pix.' }),
+    ]);
+    const agente = new AgenteAdega({ cliente: conexao.cliente, chave: 'k', buscar, agora: relogio });
+    expect(await agente.ouvir({ dados: 'AAAA', mimeType: 'audio/wav' })).toBe(SEM_FALA);
+    expect(await agente.ouvir({ dados: 'AAAA', mimeType: 'audio/mp4' })).toBe('Fecha a mesa 10 no Pix.');
+    expect(pedidos[2].corpo!.contents[0].parts[0].inlineData!.mimeType).toBe('audio/aac');
   });
 });
 

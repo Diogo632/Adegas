@@ -1,5 +1,8 @@
+import { NOME_DA_LOJA, NOME_DO_ASSISTENTE } from '@adegas/core';
 import type { Client } from '@modelcontextprotocol/client';
-import type { Buscar, ConteudoGemini, DeclaracaoFuncao, ParteGemini } from './gemini';
+import type { AudioParaEnviar } from './audio';
+import { SEM_FALA } from './audio';
+import type { Buscar, ConteudoGemini, DeclaracaoFuncao, ParteGemini, PedidoGemini } from './gemini';
 import { ErroGemini, MODELO_PADRAO, escolherModeloFlash, gerarConteudo, paraEsquemaGemini } from './gemini';
 
 export interface OpcoesAgente {
@@ -65,9 +68,14 @@ function sobreQuemUsa(quem?: QuemUsa): string[] {
   ];
 }
 
+/** Começo das mensagens que vieram de um áudio (o modelo recebe a transcrição). */
+export const PREFIXO_AUDIO = '[Áudio transcrito]';
+
+export { NOME_DO_ASSISTENTE };
+
 export function instrucoesDoAgente(agora: Date, quem?: QuemUsa): string {
   return [
-    'Você é o assistente da adega (loja de bebidas) dentro da plataforma Adegas. Fala português do Brasil, de forma curta, simpática e direta, como um gerente experiente.',
+    `Você é o ${NOME_DO_ASSISTENTE}, o assistente da adega ${NOME_DA_LOJA} (loja de bebidas). Fala português do Brasil, de forma curta, simpática e direta, como um gerente experiente. Se perguntarem seu nome, você é o ${NOME_DO_ASSISTENTE}.`,
     `Agora é ${agoraPorExtenso(agora)}.`,
     ...sobreQuemUsa(quem),
     '',
@@ -82,8 +90,20 @@ export function instrucoesDoAgente(agora: Date, quem?: QuemUsa): string {
     '- "Mês passado", "semana passada" etc.: calcule inicio e fim (AAAA-MM-DD) a partir da data de hoje.',
     '- Valores sempre em reais (R$ 12,50). Quantidades de estoque são em unidades.',
     '- Respostas para ler no celular: no máximo uns 6 itens em lista, com "- " no começo; use **negrito** só para o número principal. Sem tabelas e sem títulos.',
+    `- Mensagens que começam com "${PREFIXO_AUDIO}" vieram de um áudio: a pessoa falou, ou encaminhou o áudio de alguém (um fornecedor, um cliente). A transcrição pode errar nomes e números: se algo essencial parecer estranho, confirme antes de registrar. Se o áudio for um recado de outra pessoa e não estiver claro o que fazer, resuma em uma frase e pergunte.`,
   ].join('\n');
 }
+
+/** Instruções para só transcrever o áudio, sem responder. */
+export const INSTRUCOES_TRANSCRICAO = [
+  'Você transcreve áudios em português do Brasil para o sistema de uma adega (loja de bebidas).',
+  'Escreva exatamente o que foi falado, com pontuação. Números em algarismos ("3 fardos", "R$ 33,50", "mesa 10"). Nomes de bebidas como se escrevem (Skol, Heineken, Red Bull).',
+  'Não responda, não resuma e não comente o conteúdo: só a transcrição.',
+  `Se não houver fala que dê para entender, responda apenas ${SEM_FALA}`,
+].join('\n');
+
+/** Se o Gemini recusar o tipo do arquivo, o mesmo áudio com outro nome de tipo. */
+const TIPO_ALTERNATIVO: Record<string, string> = { 'audio/mp4': 'audio/aac', 'audio/webm': 'audio/ogg' };
 
 /**
  * O agente: conversa com o Gemini e, quando ele pede, chama as ferramentas do
@@ -127,12 +147,18 @@ export class AgenteAdega {
   private async perguntarAoGemini(sinal?: AbortSignal): Promise<ConteudoGemini> {
     const { declaracoes } = await this.carregarFerramentas();
     const agora = this.opcoes.agora?.() ?? new Date();
-    const pedido = {
-      systemInstruction: { parts: [{ text: instrucoesDoAgente(agora, this.opcoes.quemUsa) }] },
-      contents: this.historico,
-      tools: [{ functionDeclarations: declaracoes }],
-      toolConfig: { functionCallingConfig: { mode: 'AUTO' as const } },
-    };
+    return this.chamarGemini(
+      {
+        systemInstruction: { parts: [{ text: instrucoesDoAgente(agora, this.opcoes.quemUsa) }] },
+        contents: this.historico,
+        tools: [{ functionDeclarations: declaracoes }],
+        toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+      },
+      sinal,
+    );
+  }
+
+  private async chamarGemini(pedido: PedidoGemini, sinal?: AbortSignal): Promise<ConteudoGemini> {
     const opcoes = { chave: this.opcoes.chave, buscar: this.opcoes.buscar, sinal };
     try {
       return await gerarConteudo(pedido, { ...opcoes, modelo: this.modelo });
@@ -147,6 +173,39 @@ export class AgenteAdega {
       }
       throw erro;
     }
+  }
+
+  /**
+   * Transcreve um áudio (mensagem de voz ou áudio recebido de alguém). Devolve o
+   * texto falado, ou SEM_FALA. Não entra no histórico: quem chama manda a
+   * transcrição com enviar(texto, { deAudio: true }).
+   */
+  async ouvir(audio: Pick<AudioParaEnviar, 'dados' | 'mimeType'>, { sinal }: { sinal?: AbortSignal } = {}): Promise<string> {
+    const pedir = (mimeType: string) =>
+      this.chamarGemini(
+        {
+          systemInstruction: { parts: [{ text: INSTRUCOES_TRANSCRICAO }] },
+          contents: [{ role: 'user', parts: [{ inlineData: { mimeType, data: audio.dados } }, { text: 'Transcreva este áudio.' }] }],
+          generationConfig: { temperature: 0 },
+        },
+        sinal,
+      );
+    let resposta: ConteudoGemini;
+    try {
+      resposta = await pedir(audio.mimeType);
+    } catch (erro) {
+      const outro = TIPO_ALTERNATIVO[audio.mimeType];
+      if (!(erro instanceof ErroGemini && erro.status === 400 && outro && /formato/.test(erro.message))) throw erro;
+      resposta = await pedir(outro);
+    }
+    const texto = resposta.parts
+      .filter((p) => typeof p.text === 'string' && !p.thought)
+      .map((p) => p.text)
+      .join('')
+      .trim()
+      .replace(/^["“]|["”]$/g, '')
+      .trim();
+    return !texto || texto.toLowerCase().includes(SEM_FALA) ? SEM_FALA : texto;
   }
 
   private async executar(chamada: NonNullable<ParteGemini['functionCall']>, passo: PassoAgente): Promise<Record<string, unknown>> {
@@ -177,14 +236,15 @@ export class AgenteAdega {
   /**
    * Manda uma mensagem e devolve a resposta final. `aoMudar` é chamado a cada
    * ferramenta que começa ou termina, para a tela mostrar o andamento.
+   * `deAudio`: a mensagem é a transcrição de um áudio (ver ouvir()).
    */
   async enviar(
     mensagem: string,
-    { aoMudar, sinal }: { aoMudar?: (passos: PassoAgente[]) => void; sinal?: AbortSignal } = {},
+    { aoMudar, sinal, deAudio }: { aoMudar?: (passos: PassoAgente[]) => void; sinal?: AbortSignal; deAudio?: boolean } = {},
   ): Promise<RespostaAgente> {
     const tamanhoAntes = this.historico.length;
     const passos: PassoAgente[] = [];
-    this.historico.push({ role: 'user', parts: [{ text: mensagem }] });
+    this.historico.push({ role: 'user', parts: [{ text: deAudio ? `${PREFIXO_AUDIO} ${mensagem}` : mensagem }] });
 
     try {
       for (let rodada = 0; rodada < MAXIMO_RODADAS; rodada++) {

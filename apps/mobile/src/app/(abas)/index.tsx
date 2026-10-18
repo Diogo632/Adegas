@@ -1,5 +1,6 @@
 import {
   FORMAS_PAGAMENTO,
+  NOME_DO_ASSISTENTE,
   comandasAbertas,
   estoqueBaixo,
   formatarDataHora,
@@ -9,8 +10,8 @@ import {
   lembretesPendentes,
   resumoDoDia,
   resumoMesas,
-  situacaoLembrete,
   saudacao,
+  situacaoLembrete,
   ultimosLancamentos,
   useAdega,
 } from '@adegas/core';
@@ -133,10 +134,12 @@ export default function Inicio() {
       <Entrar atraso={200} style={{ gap: 16 }}>
         <Secao
           acao={
-            <Tocavel accessibilityRole="button" onPress={() => router.navigate('/assistente')} style={estilos.secaoAcao}>
-              <Sparkles size={14} color={CORES.primariaClara} strokeWidth={1.8} />
-              <Text style={estilos.repor}>Criar</Text>
-            </Tocavel>
+            pode('assistente') ? (
+              <Tocavel accessibilityRole="button" onPress={() => router.navigate('/assistente')} style={estilos.secaoAcao}>
+                <Sparkles size={14} color={CORES.primariaClara} strokeWidth={1.8} />
+                <Text style={estilos.repor}>Criar</Text>
+              </Tocavel>
+            ) : undefined
           }
         >
           Lembretes
@@ -144,7 +147,7 @@ export default function Inicio() {
         <Cartao style={{ paddingVertical: 6, gap: 0 }}>
           {lembretes.length === 0 && (
             <Text style={[TEXTO.legenda, { paddingVertical: 14 }]}>
-              Nada pendente. Peça ao assistente: “me lembre de pagar o fornecedor sexta às 10h”.
+              {pode('assistente') ? `Nada pendente. Peça ao ${NOME_DO_ASSISTENTE}: “me lembre de pagar o fornecedor sexta às 10h”.` : 'Nada pendente.'}
             </Text>
           )}
           {lembretes.map((l, i) => {

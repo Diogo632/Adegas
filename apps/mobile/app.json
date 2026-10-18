@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Adegas",
+    "name": "Pop",
     "slug": "adegas",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -24,7 +24,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "O Pop AI usa o microfone para ouvir seus pedidos por voz."
+        }
+      ]
     ],
     "scheme": "adegas",
     "backgroundColor": "#0B0B0A"

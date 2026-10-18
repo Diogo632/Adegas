@@ -1,5 +1,5 @@
 import type { Usuario } from '@adegas/core';
-import { NOME_PAPEL, PINS_DE_EXEMPLO, TAMANHO_PIN, useAdega, usuariosAtivos } from '@adegas/core';
+import { NOME_DA_LOJA, NOME_PAPEL, PINS_DE_EXEMPLO, TAMANHO_PIN, useAdega, usuariosAtivos } from '@adegas/core';
 import { Beer, ChevronLeft, Delete } from 'lucide-react-native';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Animated, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -25,7 +25,7 @@ export default function TelaEntrar() {
         <View style={estilos.logo}>
           <Beer size={30} color={CORES.sobrePrimaria} strokeWidth={2} />
         </View>
-        <Text style={TEXTO.tituloTela}>Minha Adega</Text>
+        <Text style={TEXTO.tituloTela}>{NOME_DA_LOJA}</Text>
         <Text style={TEXTO.legenda}>{escolhido ? `Olá, ${escolhido.nome}. Digite seu PIN.` : 'Quem está usando?'}</Text>
       </Entrar>
 

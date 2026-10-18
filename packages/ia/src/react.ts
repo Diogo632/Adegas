@@ -2,13 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PERMISSOES, permissoesDe, useAdega } from '@adegas/core';
 import type { PassoAgente } from './agente';
 import { AgenteAdega } from './agente';
+import type { AudioParaEnviar } from './audio';
+import { SEM_FALA, TAMANHO_MAXIMO_AUDIO } from './audio';
 import type { ConexaoMcp } from './local';
 import { conectarNaMemoria } from './local';
 
 export interface MensagemAssistente {
   id: string;
   autor: 'pessoa' | 'assistente';
+  /** Na mensagem de áudio, a transcrição (vazia enquanto o áudio é ouvido). */
   texto: string;
+  /** A mensagem foi um áudio (gravado ou arquivo). */
+  audio?: { duracao?: number; nome?: string };
+  /** Áudio sendo transcrito. */
+  ouvindo?: boolean;
   passos?: PassoAgente[];
   /** Ainda esperando o Gemini. */
   pensando?: boolean;
@@ -23,6 +30,8 @@ export interface ConfiguracaoAssistente {
 
 let contador = 0;
 const novoId = () => `m${Date.now().toString(36)}${(contador++).toString(36)}`;
+
+const FALTA_CHAVE = 'Falta a chave do Gemini. Toque em "Configurar" para colar a sua.';
 
 /**
  * Conversa com o assistente. As ferramentas agem nos mesmos dados das telas
@@ -55,18 +64,14 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
   const atualizar = (id: string, mudanca: Partial<MensagemAssistente>) =>
     setMensagens((lista) => lista.map((m) => (m.id === id ? { ...m, ...mudanca } : m)));
 
-  const enviar = useCallback(
-    async (texto: string) => {
-      const pergunta = texto.trim();
-      if (!pergunta || ocupado.current) return;
+  /** Põe a pergunta e a resposta "pensando" na conversa e roda o trabalho com o agente. */
+  const conversar = useCallback(
+    async (pergunta: MensagemAssistente, trabalho: (agente: AgenteAdega, sinal: AbortSignal, idResposta: string) => Promise<void>) => {
       const idResposta = novoId();
-      setMensagens((lista) => [
-        ...lista,
-        { id: novoId(), autor: 'pessoa', texto: pergunta },
-        { id: idResposta, autor: 'assistente', texto: '', passos: [], pensando: true },
-      ]);
+      setMensagens((lista) => [...lista, pergunta, { id: idResposta, autor: 'assistente', texto: '', passos: [], pensando: true }]);
       if (!chave.trim()) {
-        atualizar(idResposta, { pensando: false, erro: true, texto: 'Falta a chave do Gemini. Toque em "Configurar" para colar a sua.' });
+        atualizar(pergunta.id, { ouvindo: false });
+        atualizar(idResposta, { pensando: false, erro: true, texto: FALTA_CHAVE });
         return;
       }
 
@@ -87,14 +92,11 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
             : undefined;
           agente.current = { chave, modelo, agente: new AgenteAdega({ cliente, chave: chave.trim(), modelo, quemUsa }) };
         }
-        const resposta = await agente.current.agente.enviar(pergunta, {
-          sinal: controle.signal,
-          aoMudar: (passos) => atualizar(idResposta, { passos }),
-        });
+        await trabalho(agente.current.agente, controle.signal, idResposta);
         setModeloEmUso(agente.current.agente.modeloEmUso);
-        atualizar(idResposta, { pensando: false, texto: resposta.texto, passos: resposta.passos });
       } catch (erro) {
         if (controle.signal.aborted) return;
+        atualizar(pergunta.id, { ouvindo: false });
         atualizar(idResposta, {
           pensando: false,
           erro: true,
@@ -111,6 +113,61 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
     [chave, modelo, loja, permissoes?.join(','), usuario],
   );
 
+  const enviar = useCallback(
+    async (texto: string) => {
+      const pergunta = texto.trim();
+      if (!pergunta || ocupado.current) return;
+      await conversar({ id: novoId(), autor: 'pessoa', texto: pergunta }, async (agente, sinal, idResposta) => {
+        const resposta = await agente.enviar(pergunta, { sinal, aoMudar: (passos) => atualizar(idResposta, { passos }) });
+        atualizar(idResposta, { pensando: false, texto: resposta.texto, passos: resposta.passos });
+      });
+    },
+    [conversar],
+  );
+
+  /** Mensagem de voz ou áudio recebido: o Pop AI transcreve, mostra o que entendeu e responde. */
+  const enviarAudio = useCallback(
+    async (audio: AudioParaEnviar) => {
+      if (ocupado.current) return;
+      const idPessoa = novoId();
+      const pergunta: MensagemAssistente = {
+        id: idPessoa,
+        autor: 'pessoa',
+        texto: '',
+        audio: { duracao: audio.duracao, nome: audio.nome },
+        ouvindo: true,
+      };
+      if (audio.dados.length > TAMANHO_MAXIMO_AUDIO) {
+        const id = novoId();
+        setMensagens((lista) => [
+          ...lista,
+          { ...pergunta, ouvindo: false },
+          { id, autor: 'assistente', texto: 'Esse áudio é grande demais. Mande um áudio de até uns 10 minutos.', erro: true },
+        ]);
+        return;
+      }
+      await conversar(pergunta, async (agente, sinal, idResposta) => {
+        const transcricao = await agente.ouvir(audio, { sinal });
+        if (transcricao === SEM_FALA) {
+          atualizar(idPessoa, { ouvindo: false });
+          atualizar(idResposta, {
+            pensando: false,
+            texto: 'Não consegui ouvir nenhuma fala nesse áudio. Tente gravar de novo, mais perto do microfone.',
+          });
+          return;
+        }
+        atualizar(idPessoa, { ouvindo: false, texto: transcricao });
+        const resposta = await agente.enviar(transcricao, {
+          deAudio: true,
+          sinal,
+          aoMudar: (passos) => atualizar(idResposta, { passos }),
+        });
+        atualizar(idResposta, { pensando: false, texto: resposta.texto, passos: resposta.passos });
+      });
+    },
+    [conversar],
+  );
+
   const novaConversa = useCallback(() => {
     cancelar.current?.abort();
     cancelar.current = null;
@@ -121,5 +178,5 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
     setMensagens([]);
   }, []);
 
-  return { mensagens, enviando, enviar, novaConversa, modeloEmUso };
+  return { mensagens, enviando, enviar, enviarAudio, novaConversa, modeloEmUso };
 }

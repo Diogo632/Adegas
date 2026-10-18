@@ -9,7 +9,7 @@ Documento de referência do esqueleto: quais telas existem, o que cada uma faz e
 | 📱 **App** (`apps/mobile`) | Quem está no balcão | Vender, dar entrada em mercadoria, ver o resumo do dia. Botões grandes, poucas etapas. |
 | 💻 **Web** (`apps/web`) | Dono / gestão no computador | As mesmas ações, com mais informação na tela: frente de caixa com carrinho lateral, tabelas, histórico. Depois: relatórios. |
 | 🧠 **Núcleo** (`packages/core`) | App e web | As regras ficam escritas uma vez só: preço, estoque, custo médio, troco e lançamentos. App e web calculam igual. |
-| 🤖 **Assistente** (`packages/ia`) | App e web | Conversa com IA (Gemini). Consulta e registra tudo pela plataforma por meio de um **servidor MCP**. Detalhes em [`ASSISTENTE.md`](ASSISTENTE.md). |
+| 🤖 **Pop AI** (`packages/ia`) | App e web | O assistente: conversa com IA (Gemini), por texto ou **áudio**. Consulta e registra tudo pela plataforma por meio de um **servidor MCP**. Detalhes em [`ASSISTENTE.md`](ASSISTENTE.md). |
 | ☁️ **Banco na nuvem** (próxima etapa) | App e web | É por ele que app e web "conversam": uma venda feita no celular aparece no web na hora. |
 
 ```mermaid
@@ -93,7 +93,7 @@ flowchart TD
     Usuarios["👥 Usuários<br/>equipe, PIN e o que cada um pode"]
 ```
 
-No **app**, a barra de baixo tem até 5 abas: **Início, Estoque, Financeiro, Relatórios e Assistente** (cada pessoa vê só as que pode). Vender, Mesas e Entrada ficam nos botões grandes do Início, e as mesas abertas aparecem logo abaixo deles. Tocando no seu nome, no topo do Início, ficam **Usuários** (só administrador) e **Trocar usuário**.
+No **app**, a barra de baixo tem até 5 abas: **Início, Estoque, Financeiro, Relatórios e Pop AI** (cada pessoa vê só as que pode). Vender, Mesas e Entrada ficam nos botões grandes do Início, e as mesas abertas aparecem logo abaixo deles. Tocando no seu nome, no topo do Início, ficam **Usuários** (só administrador) e **Trocar usuário**.
 
 No **web**, Mesas fica no menu, junto de Vender: a grade de mesas e os produtos à esquerda, a conta da mesa escolhida à direita (no celular, a conta aparece logo abaixo da grade). Usuários fica no menu de Gestão (só administrador), e o nome de quem está usando fica no pé do menu, com o botão de trocar.
 
@@ -194,10 +194,13 @@ Para quem atende em mesas: o cliente senta, os pedidos vão sendo lançados e a 
 - **Cancelar mesa:** quando abriu por engano ou o cliente foi embora sem consumir. Tudo volta ao estoque e nada entra no caixa.
 - **Fechadas hoje:** lista na tela de Mesas, com hora, forma de pagamento e total.
 
-### 3.8 Assistente e lembretes
+### 3.8 Pop AI (assistente) e lembretes
 
-- **Assistente:** conversa em português. Ele usa as mesmas ações das telas (consultar estoque, registrar entrada e venda, lançar pedidos nas mesas e fechar a conta, lançar despesa, ajustar estoque, buscar financeiro e relatórios, criar lembretes) por meio de um servidor **MCP** e da API do **Gemini**. Mostra cada passo que fez e um atalho para conferir. Lista completa em [`ASSISTENTE.md`](ASSISTENTE.md).
-- **Lembretes:** aparecem no Início (app e painel), do mais urgente para o mais distante; os atrasados ficam em laranja. Um toque no ✓ conclui. Hoje são criados pelo assistente.
+O nome da adega aparece como **Pop** na entrada e no menu; o assistente se chama **Pop AI**.
+
+- **Pop AI:** conversa em português. Ele usa as mesmas ações das telas (consultar estoque, registrar entrada e venda, lançar pedidos nas mesas e fechar a conta, lançar despesa, ajustar estoque, buscar financeiro e relatórios, criar lembretes) por meio de um servidor **MCP** e da API do **Gemini**. Mostra cada passo que fez e um atalho para conferir. Lista completa em [`ASSISTENTE.md`](ASSISTENTE.md).
+- **Áudio:** com o campo vazio, o botão amarelo vira um **microfone**: toque, fale e toque na seta (o ✕ descarta). O **clipe** 📎 manda um arquivo de áudio salvo (ex.: o áudio do WhatsApp de um fornecedor). O Pop AI primeiro **transcreve** e mostra no balão o que entendeu, depois age como se você tivesse escrito aquilo. Gravação de até 5 minutos; arquivo de até uns 10 minutos.
+- **Lembretes:** aparecem no Início (app e painel), do mais urgente para o mais distante; os atrasados ficam em laranja. Um toque no ✓ conclui. Hoje são criados pelo Pop AI.
 - O assistente **só faz o que a pessoa logada pode fazer**: para um funcionário sem Financeiro, ele nem recebe as ferramentas de financeiro e relatórios, e não vê preço de custo nem margem.
 
 ### 3.9 Usuários e níveis de acesso
@@ -216,13 +219,13 @@ Dois níveis:
 | Registrar entrada | Chegada de mercadoria (vira despesa no financeiro) |
 | Ajustar estoque e preços | Perdas, contagem, editar produto e preço |
 | Financeiro e relatórios | Faturamento, custos, lucro, despesas e relatórios |
-| Usar o assistente | O assistente, limitado às permissões acima |
+| Usar o Pop AI | O assistente (texto e áudio), limitado às permissões acima |
 
-Funcionário novo já vem com **Vender, Atender mesas, Ver estoque e Usar o assistente**. Cadastro: nome, **PIN de 4 números** (guardado como "impressão digital", não o número) e as permissões. Quem sai da equipe tem o acesso desligado e o histórico continua. O sistema não deixa ficar sem nenhum administrador ativo, nem a pessoa tirar o próprio acesso.
+Funcionário novo já vem com **Vender, Atender mesas, Ver estoque e Usar o Pop AI**. Cadastro: nome, **PIN de 4 números** (guardado como "impressão digital", não o número) e as permissões. Quem sai da equipe tem o acesso desligado e o histórico continua. O sistema não deixa ficar sem nenhum administrador ativo, nem a pessoa tirar o próprio acesso.
 
 Cada venda, entrada, despesa, ajuste e pedido de mesa guarda **quem fez** (o nome de quem estava logado).
 
-> Os dados de exemplo vêm com **Dono** (administrador, PIN 1234), **Ana** (funcionária: vender, mesas, ver estoque e assistente; PIN 1111) e **Bruno** (funcionário que também corrige mesas e registra entrada; PIN 2222).
+> Os dados de exemplo vêm com **Dono** (administrador, PIN 1234), **Ana** (funcionária: vender, mesas, ver estoque e Pop AI; PIN 1111) e **Bruno** (funcionário que também corrige mesas e registra entrada; PIN 2222).
 
 ## 4. O que cada ação muda
 
@@ -360,6 +363,7 @@ Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, 
 | **4.1 Assistente com IA** | Conversa (Gemini) que consulta e registra tudo via servidor MCP: estoque, entradas, vendas, despesas, financeiro, relatórios e lembretes. O servidor MCP também roda no terminal para outros clientes (Gemini CLI etc.) | ✅ pronto (notificação dos lembretes e chave no servidor ficam para a etapa 2) |
 | **4.2 Mesas** | Conta por mesa: abrir, lançar pedidos (sai do estoque na hora), tirar, dividir, fechar com forma de pagamento e troco, cancelar; mesas abertas no Início; o assistente também lança e fecha mesas | ✅ pronto (número de mesas fixo em 12 na grade; dá para abrir qualquer outro número ou nome) |
 | **4.3 Usuários e acesso** | Entrar com nome e PIN; administrador × funcionário com permissões ligáveis; cadastro de funcionários; menus, telas e assistente respeitam a permissão; cada registro guarda quem fez. Mesas: pedido só entra pelo botão "Lançar na Mesa X" | ✅ pronto |
+| **4.4 Pop e áudio** | A adega passa a se chamar **Pop** e o assistente **Pop AI**. O Pop AI entende **áudio**: grava a voz no app e no painel, ou recebe um arquivo (áudio do WhatsApp, MP3, M4A...), transcreve com o Gemini, mostra o que entendeu e age | ✅ pronto (receber o áudio direto pelo "compartilhar" do WhatsApp precisa do app publicado nas lojas) |
 | **5. Caixa do dia** | **Abrir/fechar o caixa, sangria e reforço**, conferência do dinheiro da gaveta, taxa da maquininha | |
 | **6. Extras** | Leitor de código de barras pela câmera, desconto na venda, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, vendas por funcionário (comissão), publicar o app nas lojas | |
 

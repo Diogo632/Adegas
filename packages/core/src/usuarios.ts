@@ -1,3 +1,4 @@
+import { NOME_DO_ASSISTENTE } from './catalogos';
 import { hashDoPin } from './seguranca';
 import type { Estado, Papel, Permissao, Resultado, Usuario } from './tipos';
 import { gerarId, normalizar } from './util';
@@ -17,7 +18,7 @@ export const PERMISSOES: InfoPermissao[] = [
   { id: 'entrada', nome: 'Registrar entrada', dica: 'Chegada de mercadoria (vira despesa no financeiro).' },
   { id: 'ajustar_estoque', nome: 'Ajustar estoque e preços', dica: 'Perdas, contagem, editar produto e preço.' },
   { id: 'financeiro', nome: 'Financeiro e relatórios', dica: 'Faturamento, custos, lucro, despesas e relatórios.' },
-  { id: 'assistente', nome: 'Usar o assistente', dica: 'Ele só faz o que a pessoa já pode fazer.' },
+  { id: 'assistente', nome: `Usar o ${NOME_DO_ASSISTENTE}`, dica: 'O assistente só faz o que a pessoa já pode fazer.' },
 ];
 
 /** O que um funcionário novo já vem podendo. */

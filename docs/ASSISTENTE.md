@@ -1,6 +1,6 @@
-# Assistente com IA (Gemini + MCP)
+# Pop AI — assistente com IA (Gemini + MCP)
 
-O assistente é uma conversa dentro do app (aba **Assistente**) e do painel (menu **Assistente**). Você escreve do seu jeito e ele consulta ou registra na plataforma: estoque, entradas, vendas, contas das mesas, financeiro, relatórios e lembretes.
+O **Pop AI** é o assistente da adega **Pop**: uma conversa dentro do app (aba **Pop AI**) e do painel (menu **Pop AI**). Você escreve ou **fala** do seu jeito e ele consulta ou registra na plataforma: estoque, entradas, vendas, contas das mesas, financeiro, relatórios e lembretes.
 
 ## O que pedir
 
@@ -26,11 +26,22 @@ O assistente é uma conversa dentro do app (aba **Assistente**) e do painel (men
 
 Quando ele muda alguma coisa, aparece uma etiqueta verde com o que foi feito (ex.: "Registrar entrada · skol") e um atalho para conferir ("Ver estoque →"). Se faltar informação ou o nome servir para mais de um produto, ele pergunta antes de registrar.
 
+## Por áudio
+
+Tudo o que dá para escrever também dá para falar.
+
+- **Gravar:** com o campo de texto vazio, o botão amarelo é um **microfone**. Toque, fale ("a mesa 7 pediu uma Coca e duas Skol") e toque na **seta** para mandar. O **✕** descarta. A gravação para sozinha em 5 minutos.
+- **Mandar um arquivo:** o **clipe** 📎 abre os arquivos do aparelho. Serve para o áudio que um fornecedor mandou no WhatsApp (salve o áudio antes), recados gravados no celular, MP3, M4A, WAV, OGG/OPUS, AAC ou FLAC, de até uns 10 minutos.
+- **O que acontece:** o Pop AI primeiro **transcreve** o áudio e mostra no seu balão o que entendeu (“Chegaram 2 fardos de Skol por 33 reais cada”). Depois responde e registra como se você tivesse escrito aquilo. Se a transcrição errar um nome ou número importante, ele confirma antes. Se o áudio for um recado de outra pessoa e não estiver claro o que fazer, ele resume e pergunta.
+- **Microfone:** na primeira vez, o celular ou o navegador pergunta se pode usar o microfone; toque em **Permitir**. No navegador, o microfone só funciona em endereço seguro (a prévia do GitHub Pages e o `npm run web` servem).
+
+Por baixo: no navegador (painel e app aberto no navegador), a gravação e os arquivos são convertidos para **WAV mono de 16 kHz** antes de ir para o Gemini; no celular, o app grava em WAV (iPhone) ou AAC (Android). A transcrição é um pedido separado ao Gemini, só com o áudio e a instrução de transcrever; a conversa recebe a transcrição marcada como "[Áudio transcrito]". Assim o áudio não fica sendo reenviado a cada mensagem.
+
 ## Como ligar (uma vez em cada aparelho)
 
 1. Entre em **https://aistudio.google.com/apikey** com uma conta Google e toque em **Create API key** (Criar chave). Copie a chave (começa com `AIza…`).
-2. No app: aba **Assistente** → ícone de engrenagem → cole a chave → **Salvar**.
-   No painel: menu **Assistente** → **Configurar** → cole a chave → **Salvar**.
+2. No app: aba **Pop AI** → ícone de engrenagem → cole a chave → **Salvar**.
+   No painel: menu **Pop AI** → **Configurar** → cole a chave → **Salvar**.
 
 A chave fica guardada **só naquele aparelho** (no celular, no cofre do sistema; no navegador, no armazenamento do site). O plano gratuito do Gemini tem limite de uso por minuto e por dia; passando disso, o Google cobra na conta dele.
 
@@ -40,13 +51,14 @@ O modelo padrão é o **`gemini-3.8-flash`**. Se ele não existir para a sua cha
 
 ```mermaid
 flowchart LR
-    Pessoa(["Você"]) --> Tela["📱 App / 💻 Painel<br/>tela Assistente"]
+    Pessoa(["Você<br/>texto ou áudio"]) --> Tela["📱 App / 💻 Painel<br/>tela Pop AI"]
     Tela --> Agente["🤖 Agente"]
     Agente <-->|"pergunta + lista de ferramentas<br/>(API do Gemini)"| Gemini[("Gemini")]
     Agente <-->|"MCP<br/>(listar e chamar ferramentas)"| Servidor["🧰 Servidor MCP da Adegas<br/>24 ferramentas"]
     Servidor --> Dados[("Dados da adega<br/>os mesmos das telas")]
 ```
 
+0. Se a mensagem é um áudio, o Gemini primeiro só transcreve, e a tela mostra a transcrição.
 1. O agente manda para o Gemini a sua mensagem e a lista de ferramentas que o **servidor MCP** da Adegas oferece.
 2. O Gemini decide quais ferramentas usar (ex.: `consultar_produto` com "skol").
 3. O agente chama a ferramenta **pelo protocolo MCP**, recebe o resultado e devolve ao Gemini.
@@ -119,11 +131,13 @@ node --import tsx packages/ia/src/node/servidor-stdio.ts
 }
 ```
 
-**Assistente no terminal** (usa o Gemini e sobe o servidor MCP como outro processo):
+**Pop AI no terminal** (usa o Gemini e sobe o servidor MCP como outro processo):
 
 ```bash
 GEMINI_API_KEY=sua-chave npm run assistente
 ```
+
+Nele, `/audio caminho/do/arquivo.ogg` manda um áudio (mostra a transcrição e responde).
 
 ## Cuidados e limites de hoje
 
@@ -131,6 +145,8 @@ GEMINI_API_KEY=sua-chave npm run assistente
 - **Os dados ainda são de cada aparelho.** Até a etapa do banco na nuvem, o que o assistente registra no celular não aparece no painel de outro computador, e o servidor MCP do terminal usa o arquivo dele.
 - **A chave do Gemini fica no aparelho** e a conversa vai direto do aparelho para o Google. Para testar, isso é suficiente. Com o banco na nuvem, o certo é a chamada ao Gemini passar por um servidor nosso, para a chave não ficar nos celulares. O limite por permissão já existe hoje (veja acima).
 - Lembretes aparecem no Início, mas **ainda não tocam notificação** no celular.
+- **Áudio vai para o Google** como o texto: a gravação é enviada ao Gemini para transcrever e não fica guardada no aparelho.
+- Ainda não dá para mandar o áudio **direto do WhatsApp** pelo botão "Compartilhar": isso precisa do app publicado nas lojas (no Expo Go não dá). Por enquanto, salve o áudio e use o clipe 📎.
 - Nas prévias abertas dentro do Claude a página não tem acesso à internet, então lá o assistente mostra um aviso e não conversa. Ele funciona na prévia do GitHub Pages, no `npm run web` / `npm run app` e no Expo Go.
 
 ## Onde está no código
@@ -141,9 +157,13 @@ packages/ia/src/
   servidor.ts      servidor MCP (@modelcontextprotocol/server)
   local.ts         liga cliente e servidor MCP pela memória (app e painel)
   gemini.ts        chamada à API do Gemini (REST, sem SDK) e conversão dos esquemas
-  agente.ts        o agente: conversa, chama ferramentas, guarda o histórico
-  react.ts         useAssistente(), usado pelas telas
+  agente.ts        o agente: conversa, transcreve áudio, chama ferramentas, guarda o histórico
+  audio.ts         formatos de áudio aceitos, WAV e base64 (código puro)
+  audio-navegador.ts  gravação e conversão para WAV no navegador
+  react.ts         useAssistente() (enviar e enviarAudio), usado pelas telas
   node/            servidor stdio, arquivo de dados e assistente de terminal
 apps/web/src/paginas/Assistente.tsx
 apps/mobile/src/app/(abas)/assistente.tsx
+apps/mobile/src/gravador.ts       gravação no celular (expo-audio) e escolha de arquivo
+apps/mobile/src/gravador.web.ts   o mesmo na versão web do app
 ```
