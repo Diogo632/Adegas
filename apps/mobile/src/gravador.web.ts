@@ -1,5 +1,4 @@
-import type { AudioParaEnviar } from '@adegas/ia';
-import { GravadorNavegador, arquivoParaAudio, erroDeMicrofone, microfoneDisponivel } from '@adegas/ia';
+import { GravadorNavegador, erroDeMicrofone, microfoneDisponivel } from '@adegas/ia';
 import { useEffect, useRef, useState } from 'react';
 import type { Gravador } from './gravador';
 
@@ -44,27 +43,4 @@ export function useGravador(aoLimite: () => void): Gravador {
       gravador.cancelar();
     },
   };
-}
-
-/** Abre a janela de escolher arquivo do navegador. null = desistiu. */
-export function escolherArquivoDeAudio(): Promise<AudioParaEnviar | null> {
-  return new Promise((resolver, rejeitar) => {
-    const campo = document.createElement('input');
-    campo.type = 'file';
-    campo.accept = 'audio/*,.opus,.ogg,.m4a,.mp3,.wav,.aac,.flac';
-    campo.setAttribute('aria-label', 'Mandar arquivo de áudio');
-    campo.style.display = 'none';
-    campo.addEventListener('change', () => {
-      const arquivo = campo.files?.[0];
-      campo.remove();
-      if (!arquivo) return resolver(null);
-      arquivoParaAudio(arquivo).then(resolver, rejeitar);
-    });
-    campo.addEventListener('cancel', () => {
-      campo.remove();
-      resolver(null);
-    });
-    document.body.appendChild(campo);
-    campo.click();
-  });
 }

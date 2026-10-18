@@ -1,19 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PERMISSOES, permissoesDe, useAdega } from '@adegas/core';
-import type { PassoAgente } from './agente';
+import type { AnexoLido, PassoAgente } from './agente';
 import { AgenteAdega } from './agente';
+import type { AnexoParaEnviar, TipoAnexo } from './anexos';
 import type { AudioParaEnviar } from './audio';
 import { SEM_FALA, TAMANHO_MAXIMO_AUDIO } from './audio';
 import type { ConexaoMcp } from './local';
 import { conectarNaMemoria } from './local';
+
+/** Um arquivo mandado na conversa e o que o Pop AI leu nele. */
+export interface AnexoNaConversa {
+  nome: string;
+  tipo: TipoAnexo;
+  duracao?: number;
+  miniatura?: string;
+  /** Sendo lido (ou ouvido). */
+  lendo?: boolean;
+  /** O que foi lido, a transcrição do áudio ou o texto do arquivo. */
+  lido?: string;
+  legivel?: boolean;
+}
 
 export interface MensagemAssistente {
   id: string;
   autor: 'pessoa' | 'assistente';
   /** Na mensagem de áudio, a transcrição (vazia enquanto o áudio é ouvido). */
   texto: string;
-  /** A mensagem foi um áudio (gravado ou arquivo). */
+  /** A mensagem foi um áudio gravado. */
   audio?: { duracao?: number; nome?: string };
+  /** Arquivos mandados junto (fotos, PDFs, planilhas...). */
+  anexos?: AnexoNaConversa[];
   /** Áudio sendo transcrito. */
   ouvindo?: boolean;
   passos?: PassoAgente[];
@@ -31,7 +47,7 @@ export interface ConfiguracaoAssistente {
 let contador = 0;
 const novoId = () => `m${Date.now().toString(36)}${(contador++).toString(36)}`;
 
-const FALTA_CHAVE = 'Falta a chave do Gemini. Toque em "Configurar" para colar a sua.';
+const FALTA_CHAVE = 'O Pop AI ainda não foi configurado neste sistema. Avise o administrador.';
 
 /**
  * Conversa com o assistente. As ferramentas agem nos mesmos dados das telas
@@ -44,7 +60,6 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
   const chaveDoUsuario = usuario ? `${usuario.id}:${usuario.papel}:${permissoesDe(usuario).join(',')}` : '';
   const [mensagens, setMensagens] = useState<MensagemAssistente[]>([]);
   const [enviando, setEnviando] = useState(false);
-  const [modeloEmUso, setModeloEmUso] = useState<string | null>(null);
 
   const conexao = useRef<Promise<ConexaoMcp> | null>(null);
   const agente = useRef<{ chave: string; modelo?: string; agente: AgenteAdega } | null>(null);
@@ -93,7 +108,6 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
           agente.current = { chave, modelo, agente: new AgenteAdega({ cliente, chave: chave.trim(), modelo, quemUsa }) };
         }
         await trabalho(agente.current.agente, controle.signal, idResposta);
-        setModeloEmUso(agente.current.agente.modeloEmUso);
       } catch (erro) {
         if (controle.signal.aborted) return;
         atualizar(pergunta.id, { ouvindo: false });
@@ -168,6 +182,43 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
     [conversar],
   );
 
+  /** Mensagem com arquivos: o Pop AI lê cada um, mostra o que leu e responde com tudo junto. */
+  const enviarComAnexos = useCallback(
+    async (texto: string, anexos: AnexoParaEnviar[]) => {
+      if (ocupado.current) return;
+      if (!anexos.length) return enviar(texto);
+      const idPessoa = novoId();
+      const pergunta: MensagemAssistente = {
+        id: idPessoa,
+        autor: 'pessoa',
+        texto: texto.trim(),
+        anexos: anexos.map((a) => ({ nome: a.nome, tipo: a.tipo, duracao: a.duracao, miniatura: a.miniatura, lendo: true })),
+      };
+      const mudarAnexo = (i: number, mudanca: Partial<AnexoNaConversa>) =>
+        setMensagens((lista) =>
+          lista.map((m) => (m.id === idPessoa ? { ...m, anexos: m.anexos?.map((a, j) => (j === i ? { ...a, ...mudanca } : a)) } : m)),
+        );
+      await conversar(pergunta, async (agente, sinal, idResposta) => {
+        const lidos: AnexoLido[] = [];
+        try {
+          for (const [i, anexo] of anexos.entries()) {
+            const lido = await agente.ler(anexo, { sinal });
+            mudarAnexo(i, { lendo: false, lido: lido.conteudo, legivel: lido.legivel });
+            lidos.push(lido);
+          }
+        } catch (erro) {
+          setMensagens((lista) =>
+            lista.map((m) => (m.id === idPessoa ? { ...m, anexos: m.anexos?.map((a) => ({ ...a, lendo: false })) } : m)),
+          );
+          throw erro;
+        }
+        const resposta = await agente.enviar(texto, { anexos: lidos, sinal, aoMudar: (passos) => atualizar(idResposta, { passos }) });
+        atualizar(idResposta, { pensando: false, texto: resposta.texto, passos: resposta.passos });
+      });
+    },
+    [conversar, enviar],
+  );
+
   const novaConversa = useCallback(() => {
     cancelar.current?.abort();
     cancelar.current = null;
@@ -178,5 +229,5 @@ export function useAssistente({ chave, modelo }: ConfiguracaoAssistente) {
     setMensagens([]);
   }, []);
 
-  return { mensagens, enviando, enviar, enviarAudio, novaConversa, modeloEmUso };
+  return { mensagens, enviando, enviar, enviarAudio, enviarComAnexos, novaConversa, configurado: chave.trim().length > 0 };
 }

@@ -2,7 +2,8 @@
  * Conversa com o Pop AI pelo terminal. Ele sobe o servidor MCP da Adegas
  * como outro processo e fala com ele pelo protocolo MCP (stdio), usando o Gemini.
  * Uso: GEMINI_API_KEY=sua-chave npm run assistente
- * "/audio caminho/do/arquivo.ogg" manda um áudio (ex.: o áudio do WhatsApp).
+ * "/arquivo caminho" manda um arquivo: foto, PDF, planilha, documento, vídeo ou
+ * áudio (ex.: o áudio do WhatsApp). "/audio caminho" faz o mesmo.
  */
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
@@ -10,9 +11,11 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/client/stdio';
+import type { AnexoLido } from '../agente';
 import { AgenteAdega, NOME_DO_ASSISTENTE } from '../agente';
+import type { AnexoParaEnviar } from '../anexos';
+import { NOME_DO_TIPO, classificarArquivo, conferirTamanho, textoDoArquivo } from '../anexos';
 import { descreverPasso } from '../apresentacao';
-import { SEM_FALA, tipoDoAudio } from '../audio';
 import { CAMINHO_PADRAO } from './arquivo';
 
 const chave = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
@@ -34,23 +37,24 @@ await cliente.connect(transporte);
 const agente = new AgenteAdega({ cliente, chave, modelo: process.env.GEMINI_MODELO });
 const { tools } = await cliente.listTools();
 console.log(`${NOME_DO_ASSISTENTE}, assistente da adega Pop (${tools.length} ferramentas via MCP · dados em ${CAMINHO_PADRAO})`);
-console.log('Escreva sua pergunta. "/audio arquivo" manda um áudio, "nova" começa outra conversa, "sair" fecha.\n');
+console.log('Escreva sua pergunta. "/arquivo caminho" manda uma foto, PDF, planilha ou áudio, "nova" começa outra conversa, "sair" fecha.\n');
 
-/** "/audio caminho" → transcrição do áudio (ou null se não deu). */
-async function ouvirArquivo(caminho: string): Promise<string | null> {
-  const mimeType = tipoDoAudio(caminho);
-  if (!mimeType) {
-    console.log('\n(erro) Formato de áudio desconhecido. Use MP3, WAV, OGG/OPUS (WhatsApp), M4A, AAC ou FLAC.\n');
-    return null;
+/** "/arquivo caminho" → o que o Pop AI leu no arquivo. */
+async function lerArquivo(caminho: string): Promise<AnexoLido> {
+  const nome = basename(caminho);
+  const { tipo, mimeType } = classificarArquivo(nome);
+  const bytes = await readFile(caminho);
+  let anexo: AnexoParaEnviar;
+  if (tipo === 'texto' || tipo === 'planilha' || tipo === 'documento') {
+    anexo = { nome, tipo, mimeType, texto: textoDoArquivo(nome, tipo, new Uint8Array(bytes)) };
+  } else {
+    conferirTamanho(nome, bytes.length);
+    anexo = { nome, tipo, mimeType, dados: bytes.toString('base64') };
   }
-  const dados = (await readFile(caminho)).toString('base64');
-  const texto = await agente.ouvir({ dados, mimeType });
-  if (texto === SEM_FALA) {
-    console.log('\n(não ouvi nenhuma fala nesse áudio)\n');
-    return null;
-  }
-  console.log(`  🎤 ${basename(caminho)}: "${texto}"`);
-  return texto;
+  const lido = await agente.ler(anexo);
+  const previa = lido.conteudo.length > 400 ? `${lido.conteudo.slice(0, 400)}…` : lido.conteudo;
+  console.log(`  📎 ${nome} (${NOME_DO_TIPO[tipo]}): ${lido.legivel ? previa : 'não deu para ler'}`);
+  return lido;
 }
 
 const leitor = createInterface({ input: process.stdin, output: process.stdout });
@@ -65,15 +69,11 @@ for await (const linha of leitor) {
     console.log('(conversa nova)\n');
   } else if (pergunta) {
     try {
-      const audio = /^\/audio\s+(.+)$/i.exec(pergunta);
-      const mensagem = audio ? await ouvirArquivo(audio[1].trim().replace(/^["']|["']$/g, '')) : pergunta;
-      if (mensagem === null) {
-        leitor.prompt();
-        continue;
-      }
+      const comando = /^\/(?:arquivo|audio)\s+(.+)$/i.exec(pergunta);
+      const anexos = comando ? [await lerArquivo(comando[1].trim().replace(/^["']|["']$/g, ''))] : undefined;
       let mostrados = 0;
-      const resposta = await agente.enviar(mensagem, {
-        deAudio: Boolean(audio),
+      const resposta = await agente.enviar(comando ? '' : pergunta, {
+        anexos,
         aoMudar: (passos) => {
           for (const passo of passos.slice(mostrados)) {
             if (passo.situacao === 'rodando') continue;

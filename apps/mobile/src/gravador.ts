@@ -9,7 +9,6 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { getDocumentAsync } from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { useEffect, useRef, useState } from 'react';
 
@@ -34,9 +33,6 @@ const GRAVACAO: RecordingOptions = {
   },
   web: {},
 };
-
-/** Arquivos maiores que isso passam do limite do Gemini (20 MB por pedido, já em base64). */
-const TAMANHO_MAXIMO_ARQUIVO = 10 * 1024 * 1024;
 
 export interface Gravador {
   /** O aparelho consegue gravar. */
@@ -113,15 +109,4 @@ export function useGravador(aoLimite: () => void): Gravador {
       });
     },
   };
-}
-
-/** Escolhe um áudio salvo no celular (ex.: áudio do WhatsApp). null = desistiu. */
-export async function escolherArquivoDeAudio(): Promise<AudioParaEnviar | null> {
-  const r = await getDocumentAsync({ type: ['audio/*', 'application/ogg'], copyToCacheDirectory: true });
-  if (r.canceled || !r.assets[0]) return null;
-  const { uri, name, mimeType, size } = r.assets[0];
-  const tipo = tipoDoAudio(name, mimeType);
-  if (!tipo) throw new Error('Esse formato de áudio não serve. Mande MP3, WAV, M4A, AAC ou o áudio do WhatsApp.');
-  if (size && size > TAMANHO_MAXIMO_ARQUIVO) throw new Error('Esse áudio é grande demais. Mande um áudio de até uns 10 minutos.');
-  return { dados: await lerEApagar(uri), mimeType: tipo, nome: name };
 }

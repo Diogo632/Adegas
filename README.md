@@ -2,7 +2,7 @@
 
 Sistema para adegas controlarem **estoque** (bebidas, cigarros, gelo...), **vendas**, **contas por mesa** e **financeiro**, com um **app** para o dia a dia no balcão e um **painel web** para a gestão. Os dois usam as mesmas regras. Cada pessoa da equipe entra com o próprio **PIN**, e o dono escolhe o que cada funcionário pode fazer.
 
-A adega dos dados de exemplo se chama **Pop**, e o assistente com IA é o **Pop AI**: ele entende texto e **áudio** (mensagem de voz gravada na hora ou o áudio do WhatsApp).
+A adega dos dados de exemplo se chama **Pop**, e o assistente com IA é o **Pop AI**: ele entende texto, **áudio** (mensagem de voz ou o áudio do WhatsApp) e **arquivos** (foto da nota fiscal, PDF de boleto, planilha de preços, documentos, vídeos).
 
 📄 **Fluxo completo das telas, regras e próximas etapas:** [`docs/FLUXO.md`](docs/FLUXO.md)
 
@@ -59,8 +59,9 @@ O andamento fica na aba **Actions**: verde = testes passaram e a prévia foi atu
    npm install
    ```
 
-3. **Painel web:** rode `npm run web` e abra http://localhost:5173 no navegador.
-4. **App no celular:**
+3. **Pop AI (opcional):** copie `apps/web/.env.example` para `apps/web/.env.local` e `apps/mobile/.env.example` para `apps/mobile/.env.local`, e cole a sua chave do Gemini (grátis em https://aistudio.google.com/apikey). Esses arquivos não vão para o GitHub. Detalhes em [`docs/ASSISTENTE.md`](docs/ASSISTENTE.md#como-ligar-configuração-interna-só-no-código).
+4. **Painel web:** rode `npm run web` e abra http://localhost:5173 no navegador.
+5. **App no celular:**
    - instale o aplicativo **Expo Go** no celular (Play Store ou App Store);
    - deixe o celular e o computador **no mesmo Wi-Fi**;
    - rode `npm run app` no computador e escaneie o QR code que aparece (no Android, pelo próprio Expo Go; no iPhone, pela câmera).
@@ -69,7 +70,7 @@ Os dados ainda ficam só na memória: ao fechar ou recarregar, tudo volta para o
 
 ### Roteiro rápido
 
-- **Entrar:** ao abrir, toque em quem está usando e digite o PIN. Nos dados de exemplo: **Dono 1234** (administrador, vê tudo), **Ana 1111** e **Bruno 2222** (funcionários). Faça o roteiro abaixo como **Dono**.
+- **Entrar:** ao abrir, toque em quem está usando e digite o PIN. Nos dados de exemplo: **Admin 1234** (administrador, vê tudo), **Ana 1111** e **Bruno 2222** (funcionários). Faça o roteiro abaixo como **Admin**.
 - **Venda no dinheiro:** Nova venda → 2 Heineken + 1 Gelo → Pagamento → Dinheiro → R$ 50,00. O troco deve ser **R$ 19,00**. Volte ao início: o "Vendido hoje" sobe R$ 31,00 e o Gelo passa a ter 3 em estoque.
 - **Reposição:** no início, toque em **Repor** no Gelo → Unidade → 10 unidades a R$ 7,00 → Registrar. O estoque vai a 13 e o Gelo sai da lista de repor.
 - **Produto novo:** Entrada (no app; "Entrada de produto" no painel) → Produto novo → preencha nome, preço e custo. Ele aparece na tela de venda.
@@ -79,9 +80,10 @@ Os dados ainda ficam só na memória: ao fechar ou recarregar, tudo volta para o
 - **Relatórios:** troque o período (Hoje, 7 dias, 30 dias) e passe o mouse (ou toque) nas colunas.
 - **Mesas:** no início, toque em **Mesas** → a mesa 10 já tem Coca, água e Skol. Abra → **Adicionar pedido na Mesa 10** → 1 água → **Lançar na Mesa 10**: o total sobe R$ 3,00 e a água sai do estoque. No painel, clicar nos produtos só monta o pedido ("Pedido novo · Mesa 10"); ele entra na conta ao clicar em **Lançar na Mesa 10**. Toque no − para tirar. **Fechar conta** → dividir por 2 → Dinheiro → R$ 100 mostra o troco. A mesa fica livre e a conta aparece no Financeiro como "Mesa 10". Toque numa mesa livre para abrir outra, ou digite um nome ("Balcão").
 - **Níveis de acesso:** **Trocar usuário** (no app, toque no seu nome no topo do Início; no painel, no pé do menu) → **Ana, 1111**. Ela não vê Financeiro, Relatórios, Entrada, preço de custo, nem o − e o "Cancelar mesa" das mesas. Abra **Mesas** e lance um pedido: funciona.
-- **Cadastrar funcionário:** entre como **Dono** → **Usuários** (no app, toque no seu nome no Início) → **Cadastrar funcionário** → nome "Carla", PIN 3333, deixe ligado só **Atender mesas** → Cadastrar. Troque de usuário e entre como Carla: ela só vê o Início e as Mesas.
-- **Pop AI:** cole sua chave do Gemini (grátis em https://aistudio.google.com/apikey) na tela **Pop AI** → peça "Chegaram 2 fardos de Skol por R$ 33 cada". Ele registra a entrada; toque em **Ver estoque**: a Skol subiu 24. Depois peça "Me lembre de pagar a luz amanhã às 10h" e veja o lembrete no Início. Detalhes em [`docs/ASSISTENTE.md`](docs/ASSISTENTE.md).
-- **Áudio:** na tela **Pop AI**, toque no **microfone** (o botão amarelo, quando o campo está vazio), fale "a mesa 7 pediu uma Coca e duas Skol" e toque na **seta**. O balão mostra o que ele entendeu ("“a mesa 7 pediu…”") e ele lança na mesa. O **clipe** 📎 manda um arquivo de áudio salvo, como o áudio do WhatsApp de um fornecedor. No navegador, permita o microfone quando ele pedir.
+- **Cadastrar funcionário:** entre como **Admin** → **Usuários** (no app, toque no seu nome no Início) → **Cadastrar funcionário** → nome "Carla", PIN 3333, deixe ligado só **Atender mesas** → Cadastrar. Troque de usuário e entre como Carla: ela só vê o Início e as Mesas.
+- **Pop AI** (com a chave configurada, veja o passo 3 acima): na tela **Pop AI**, peça "Chegaram 2 fardos de Skol por R$ 33 cada". Ele registra a entrada; toque em **Ver estoque**: a Skol subiu 24. Depois peça "Me lembre de pagar a luz amanhã às 10h" e veja o lembrete no Início. Detalhes em [`docs/ASSISTENTE.md`](docs/ASSISTENTE.md).
+- **Áudio:** na tela **Pop AI**, toque no **microfone** (o botão amarelo, quando o campo está vazio), fale "a mesa 7 pediu uma Coca e duas Skol" e toque na **seta**. O balão mostra o que ele entendeu ("“a mesa 7 pediu…”") e ele lança na mesa. No navegador, permita o microfone quando ele pedir.
+- **Arquivos:** toque no **clipe** 📎 (no app: Câmera, Fotos ou Arquivo; no painel dá também para arrastar ou colar um print) → escolha a foto de uma nota fiscal, um PDF ou uma planilha → escreva "registra essa nota" (ou nada) → enviar. No balão aparece **"O que o Pop AI leu"**; sem pedido, ele só diz o que é e pergunta o que fazer.
 
 ### Testes automáticos
 
@@ -90,6 +92,6 @@ npm test           # testes das regras (packages/core) e do assistente (packages
 npm run typecheck  # checagem de tipos de tudo
 ```
 
-`npm run mcp` sobe o servidor MCP da Adegas no terminal e `GEMINI_API_KEY=sua-chave npm run assistente` conversa com o Pop AI pelo terminal (nele, `/audio arquivo.ogg` manda um áudio; veja [`docs/ASSISTENTE.md`](docs/ASSISTENTE.md)).
+`npm run mcp` sobe o servidor MCP da Adegas no terminal e `GEMINI_API_KEY=sua-chave npm run assistente` conversa com o Pop AI pelo terminal (nele, `/arquivo nota.pdf` manda um arquivo; veja [`docs/ASSISTENTE.md`](docs/ASSISTENTE.md)).
 
 `npm run previa` monta na pasta `site/` a mesma prévia publicada no GitHub (página inicial, painel e app).

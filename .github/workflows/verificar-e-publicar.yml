@@ -50,6 +50,10 @@ jobs:
           BASE: /${{ github.event.repository.name }}
           CI: '1'
           EXPO_NO_TELEMETRY: '1'
+          # Chave do Pop AI (opcional): Settings → Secrets and variables → Actions → GEMINI_API_KEY.
+          # Atenção: na prévia pública, qualquer pessoa consegue ver a chave no código da página.
+          VITE_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EXPO_PUBLIC_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - name: Enviar para a branch gh-pages
         working-directory: site
         env:

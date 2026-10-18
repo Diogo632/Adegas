@@ -30,6 +30,13 @@
         {
           "microphonePermission": "O Pop AI usa o microfone para ouvir seus pedidos por voz."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Pop AI lê as fotos que você escolher, como notas fiscais e listas de preço.",
+          "cameraPermission": "O Pop AI usa a câmera para fotografar notas fiscais, boletos e produtos."
+        }
       ]
     ],
     "scheme": "adegas",

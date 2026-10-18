@@ -497,10 +497,10 @@ describe('usuários e acesso', () => {
     expect(estado.lancamentos[0].operador).toBe('Ana');
   });
 
-  it('exemplo vem com o dono e dois funcionários', () => {
+  it('exemplo vem com o Admin e dois funcionários', () => {
     const exemplo = estadoDeExemplo(new Date(2026, 9, 12, 20, 0));
     expect(exemplo.usuarios.map((u) => [u.nome, u.papel])).toEqual([
-      ['Dono', 'admin'],
+      ['Admin', 'admin'],
       ['Ana', 'funcionario'],
       ['Bruno', 'funcionario'],
     ]);

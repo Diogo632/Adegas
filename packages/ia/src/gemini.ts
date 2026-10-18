@@ -104,7 +104,7 @@ async function lerErro(resposta: { status: number; text(): Promise<string> }): P
 function explicar(status: number, detalhe: { mensagem: string; status?: string }, modelo: string): ErroGemini {
   const texto = detalhe.mensagem.toLowerCase();
   if (status === 400 && texto.includes('api key')) {
-    return new ErroGemini('A chave do Gemini não é válida. Confira se a chave foi copiada inteira.', status);
+    return new ErroGemini('A chave do Gemini configurada no sistema não é válida. Avise o administrador.', status);
   }
   if (status === 400 && texto.includes('mime')) {
     return new ErroGemini('O Gemini não aceitou o formato desse áudio. Tente um áudio em MP3, WAV ou o áudio do WhatsApp.', status);
@@ -113,7 +113,7 @@ function explicar(status: number, detalhe: { mensagem: string; status?: string }
     return new ErroGemini('Esse áudio é grande demais para o Gemini. Mande um áudio mais curto.', status);
   }
   if (status === 401 || status === 403) {
-    return new ErroGemini('A chave do Gemini não tem permissão. Gere uma nova chave no Google AI Studio.', status);
+    return new ErroGemini('A chave do Gemini configurada no sistema não tem permissão. Avise o administrador.', status);
   }
   if (status === 404) return new ErroGemini(`O modelo "${modelo}" não está disponível para esta chave.`, status);
   if (status === 429) return new ErroGemini('Limite de uso do Gemini atingido. Espere um minuto e tente de novo.', status);

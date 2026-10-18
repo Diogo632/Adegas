@@ -97,13 +97,13 @@ export function estadoDeExemplo(agora: Date = new Date()): Estado {
 
 /** Quem usa o exemplo. Os PINs aparecem na tela de entrada enquanto os dados forem de exemplo. */
 export const PINS_DE_EXEMPLO = [
-  { nome: 'Dono', pin: '1234' },
+  { nome: 'Admin', pin: '1234' },
   { nome: 'Ana', pin: '1111' },
   { nome: 'Bruno', pin: '2222' },
 ];
 
 const USUARIOS_DE_EXEMPLO = [
-  usuarioInicial('u-dono', 'Dono', 'admin', '1234'),
+  usuarioInicial('u-dono', 'Admin', 'admin', '1234'),
   // Atende o balcão e as mesas.
   usuarioInicial('u-ana', 'Ana', 'funcionario', '1111', ['vender', 'mesas', 'estoque', 'assistente']),
   // Gerente da noite: também recebe mercadoria e corrige mesas.

@@ -1,5 +1,7 @@
 import { NOME_DA_LOJA, NOME_DO_ASSISTENTE } from '@adegas/core';
 import type { Client } from '@modelcontextprotocol/client';
+import type { AnexoParaEnviar, TipoAnexo } from './anexos';
+import { ILEGIVEL, LIMITE_TEXTO_ANEXO, NOME_DO_TIPO } from './anexos';
 import type { AudioParaEnviar } from './audio';
 import { SEM_FALA } from './audio';
 import type { Buscar, ConteudoGemini, DeclaracaoFuncao, ParteGemini, PedidoGemini } from './gemini';
@@ -90,6 +92,7 @@ export function instrucoesDoAgente(agora: Date, quem?: QuemUsa): string {
     '- "Mês passado", "semana passada" etc.: calcule inicio e fim (AAAA-MM-DD) a partir da data de hoje.',
     '- Valores sempre em reais (R$ 12,50). Quantidades de estoque são em unidades.',
     '- Respostas para ler no celular: no máximo uns 6 itens em lista, com "- " no começo; use **negrito** só para o número principal. Sem tabelas e sem títulos.',
+    '- Anexos: a pessoa pode mandar fotos, PDFs, planilhas, documentos, vídeos e áudios. O conteúdo chega já lido, entre "[Anexo ...]" e "[Fim do anexo ...]". Use esse conteúdo para responder e, quando ela pedir, para registrar (ex.: entrada de uma nota fiscal item por item, despesa de um boleto, preços de uma lista). Se ela mandou só o anexo, diga em 1 ou 2 frases o que é (tipo, de quem, valor total) e pergunte o que fazer: não registre nada sem pedido. A leitura de foto pode errar números: confira se os itens somam o total e, se não baterem, avise antes de registrar.',
     `- Mensagens que começam com "${PREFIXO_AUDIO}" vieram de um áudio: a pessoa falou, ou encaminhou o áudio de alguém (um fornecedor, um cliente). A transcrição pode errar nomes e números: se algo essencial parecer estranho, confirme antes de registrar. Se o áudio for um recado de outra pessoa e não estiver claro o que fazer, resuma em uma frase e pergunte.`,
   ].join('\n');
 }
@@ -101,6 +104,40 @@ export const INSTRUCOES_TRANSCRICAO = [
   'Não responda, não resuma e não comente o conteúdo: só a transcrição.',
   `Se não houver fala que dê para entender, responda apenas ${SEM_FALA}`,
 ].join('\n');
+
+/** Instruções para ler um arquivo (foto, PDF, vídeo) e passar o conteúdo para a conversa. */
+export const INSTRUCOES_LEITURA = [
+  'Você lê arquivos (fotos, PDFs, vídeos) enviados ao sistema de uma adega (loja de bebidas), para outro assistente usar.',
+  'Escreva em português do Brasil tudo o que importa no arquivo, sem responder, sem opinar e sem tomar decisões:',
+  '- Primeiro, em uma linha, o que é (ex.: "Nota fiscal da Distribuidora X, 12/10/2026", "Boleto", "Lista de preços", "Comprovante de Pix", "Foto da prateleira de cervejas").',
+  '- Depois, todo o texto que aparece, com números, valores, datas, nomes e códigos exatos.',
+  '- Notas, pedidos, cupons e listas de preço: um item por linha, com produto, quantidade, embalagem (unidade, fardo, caixa), valor unitário e total. No fim: totais, descontos, impostos, forma de pagamento e vencimento.',
+  '- Foto de produtos ou do estoque: quais produtos aparecem e quantos dá para contar.',
+  '- Vídeo: o que acontece e o que é falado.',
+  '- Documento longo: transcreva por inteiro o que tem produtos, números, valores, datas e nomes; resuma o resto.',
+  `- Parte que não dá para ler: escreva ${ILEGIVEL} no lugar. Se nada der para ler, responda apenas ${ILEGIVEL}`,
+].join('\n');
+
+/** Um anexo depois de lido: o que vai para a conversa. */
+export interface AnexoLido {
+  nome: string;
+  tipo: TipoAnexo;
+  /** Texto lido, transcrição do áudio ou texto tirado do arquivo. */
+  conteudo: string;
+  legivel: boolean;
+}
+
+/** A mensagem da pessoa com o conteúdo dos anexos, do jeito que o modelo recebe. */
+export function mensagemComAnexos(texto: string, anexos: AnexoLido[]): string {
+  const partes = anexos.map((a, i) => {
+    const cabeca = `[Anexo ${i + 1}: "${a.nome}" (${NOME_DO_TIPO[a.tipo]})`;
+    if (!a.legivel) return `${cabeca} — não deu para ler]`;
+    const conteudo = a.conteudo.length > LIMITE_TEXTO_ANEXO ? `${a.conteudo.slice(0, LIMITE_TEXTO_ANEXO)}\n[...]` : a.conteudo;
+    return `${cabeca} — ${a.tipo === 'audio' ? 'transcrição' : 'conteúdo'}]\n${conteudo}\n[Fim do anexo ${i + 1}]`;
+  });
+  partes.push(texto.trim() ? `Mensagem da pessoa: ${texto.trim()}` : 'A pessoa mandou só o anexo, sem escrever nada.');
+  return partes.join('\n\n');
+}
 
 /** Se o Gemini recusar o tipo do arquivo, o mesmo áudio com outro nome de tipo. */
 const TIPO_ALTERNATIVO: Record<string, string> = { 'audio/mp4': 'audio/aac', 'audio/webm': 'audio/ogg' };
@@ -208,6 +245,39 @@ export class AgenteAdega {
     return !texto || texto.toLowerCase().includes(SEM_FALA) ? SEM_FALA : texto;
   }
 
+  /**
+   * Lê um anexo: o Gemini transcreve o áudio ou lê a foto, o PDF e o vídeo; texto,
+   * planilha e documento já vêm com o texto tirado no aparelho.
+   */
+  async ler(anexo: AnexoParaEnviar, { sinal }: { sinal?: AbortSignal } = {}): Promise<AnexoLido> {
+    const lido = (conteudo: string, legivel = true): AnexoLido => ({ nome: anexo.nome, tipo: anexo.tipo, conteudo, legivel });
+    if (anexo.texto !== undefined) return lido(anexo.texto, anexo.texto.trim().length > 0);
+    if (!anexo.dados) return lido('', false);
+    if (anexo.tipo === 'audio') {
+      const texto = await this.ouvir({ dados: anexo.dados, mimeType: anexo.mimeType }, { sinal });
+      return texto === SEM_FALA ? lido('', false) : lido(texto);
+    }
+    const resposta = await this.chamarGemini(
+      {
+        systemInstruction: { parts: [{ text: INSTRUCOES_LEITURA }] },
+        contents: [
+          {
+            role: 'user',
+            parts: [{ inlineData: { mimeType: anexo.mimeType, data: anexo.dados } }, { text: `Leia este arquivo: "${anexo.nome}".` }],
+          },
+        ],
+        generationConfig: { temperature: 0 },
+      },
+      sinal,
+    );
+    const texto = resposta.parts
+      .filter((p) => typeof p.text === 'string' && !p.thought)
+      .map((p) => p.text)
+      .join('')
+      .trim();
+    return !texto || texto === ILEGIVEL ? lido('', false) : lido(texto);
+  }
+
   private async executar(chamada: NonNullable<ParteGemini['functionCall']>, passo: PassoAgente): Promise<Record<string, unknown>> {
     try {
       const resultado = await this.opcoes.cliente.callTool({ name: chamada.name, arguments: chamada.args ?? {} });
@@ -237,14 +307,21 @@ export class AgenteAdega {
    * Manda uma mensagem e devolve a resposta final. `aoMudar` é chamado a cada
    * ferramenta que começa ou termina, para a tela mostrar o andamento.
    * `deAudio`: a mensagem é a transcrição de um áudio (ver ouvir()).
+   * `anexos`: arquivos já lidos (ver ler()), que vão junto da mensagem.
    */
   async enviar(
     mensagem: string,
-    { aoMudar, sinal, deAudio }: { aoMudar?: (passos: PassoAgente[]) => void; sinal?: AbortSignal; deAudio?: boolean } = {},
+    {
+      aoMudar,
+      sinal,
+      deAudio,
+      anexos,
+    }: { aoMudar?: (passos: PassoAgente[]) => void; sinal?: AbortSignal; deAudio?: boolean; anexos?: AnexoLido[] } = {},
   ): Promise<RespostaAgente> {
     const tamanhoAntes = this.historico.length;
     const passos: PassoAgente[] = [];
-    this.historico.push({ role: 'user', parts: [{ text: deAudio ? `${PREFIXO_AUDIO} ${mensagem}` : mensagem }] });
+    const texto = anexos?.length ? mensagemComAnexos(mensagem, anexos) : deAudio ? `${PREFIXO_AUDIO} ${mensagem}` : mensagem;
+    this.historico.push({ role: 'user', parts: [{ text: texto }] });
 
     try {
       for (let rodada = 0; rodada < MAXIMO_RODADAS; rodada++) {

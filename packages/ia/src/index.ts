@@ -1,4 +1,6 @@
 export * from './agente';
+export * from './anexos';
+export * from './anexos-navegador';
 export * from './apresentacao';
 export * from './audio';
 export * from './audio-navegador';

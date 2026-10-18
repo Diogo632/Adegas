@@ -1,42 +1,42 @@
 import {
-  FERRAMENTAS,
   GravadorNavegador,
-  MODELO_PADRAO,
+  MAXIMO_ANEXOS,
   NOME_DO_ASSISTENTE,
+  NOME_DO_TIPO,
   SUGESTOES,
-  arquivoParaAudio,
   blocosDeTexto,
   descreverPasso,
   erroDeMicrofone,
   formatarDuracao,
   microfoneDisponivel,
+  prepararArquivos,
   useAssistente,
 } from '@adegas/ia';
-import type { MensagemAssistente, PassoAgente } from '@adegas/ia';
+import type { AnexoNaConversa, AnexoParaEnviar, MensagemAssistente, PassoAgente, TipoAnexo } from '@adegas/ia';
+import type { LucideIcon } from 'lucide-react';
 import {
   ArrowUp,
   Check,
   CircleAlert,
-  Eye,
-  EyeOff,
-  KeyRound,
+  File as IconeArquivo,
+  FileText,
+  Film,
+  Image,
   LoaderCircle,
   Mic,
   Paperclip,
   PencilLine,
-  Plug,
   RotateCcw,
-  Settings2,
+  Sheet,
   Sparkles,
   X,
 } from 'lucide-react';
-import type { ChangeEvent } from 'react';
-import type { FormEvent, KeyboardEvent, ReactNode } from 'react';
+import type { ChangeEvent, ClipboardEvent, DragEvent, FormEvent, KeyboardEvent, ReactNode } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { surgir } from '../animacoes';
 import { IconeQuadrado } from '../componentes/IconeQuadrado';
-import { useConfigAssistente } from '../configAssistente';
+import { CONFIG_POP_AI } from '../configAssistente';
 
 /** Depois que o assistente muda algo, um atalho para conferir na tela certa. */
 const ONDE_VER: Record<string, { para: string; rotulo: string }> = {
@@ -60,6 +60,7 @@ const ONDE_VER: Record<string, { para: string; rotulo: string }> = {
 const SEM_INTERNET = Boolean((globalThis as { ADEGAS_PREVIA_SEM_INTERNET?: boolean }).ADEGAS_PREVIA_SEM_INTERNET);
 
 const CAPACIDADES = [
+  'Lê fotos, PDFs, planilhas e documentos: nota fiscal, boleto, lista de preços',
   'Entende áudio: grave sua voz ou mande o áudio do WhatsApp',
   'Consulta o estoque de qualquer produto',
   'Registra entrada de mercadoria e vendas',
@@ -69,14 +70,28 @@ const CAPACIDADES = [
   'Cria e conclui lembretes',
 ];
 
+const ICONE_ANEXO: Record<TipoAnexo, LucideIcon> = {
+  audio: Mic,
+  imagem: Image,
+  pdf: FileText,
+  video: Film,
+  texto: FileText,
+  planilha: Sheet,
+  documento: IconeArquivo,
+};
+
 export function Assistente() {
-  const [config, salvarConfig] = useConfigAssistente();
-  const { mensagens, enviando, enviar, enviarAudio, novaConversa, modeloEmUso } = useAssistente(config);
-  const [configurando, setConfigurando] = useState(!config.chave);
+  const { mensagens, enviando, enviar, enviarAudio, enviarComAnexos, novaConversa, configurado } = useAssistente(CONFIG_POP_AI);
   const [texto, setTexto] = useState('');
+  const [anexos, setAnexos] = useState<AnexoParaEnviar[]>([]);
+  const [preparando, setPreparando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [arrastando, setArrastando] = useState(false);
   const conversa = useRef<HTMLDivElement>(null);
   const campo = useRef<HTMLTextAreaElement>(null);
-  const audio = useAudio(enviarAudio);
+  const audio = useAudio(enviarAudio, setAviso);
+  const ocupado = enviando || preparando || audio.preparando;
+  const temConteudo = texto.trim().length > 0 || anexos.length > 0;
 
   // Rola até a mensagem nova (e acompanha os passos enquanto o assistente trabalha).
   useEffect(() => {
@@ -93,10 +108,46 @@ export function Assistente() {
   }, [texto]);
 
   const mandar = (mensagem: string) => {
-    if (!mensagem.trim() || enviando) return;
-    void enviar(mensagem);
+    if ((!mensagem.trim() && !anexos.length) || ocupado) return;
+    if (anexos.length) void enviarComAnexos(mensagem, anexos);
+    else void enviar(mensagem);
     setTexto('');
+    setAnexos([]);
+    setAviso(null);
     campo.current?.focus();
+  };
+
+  async function anexar(arquivos: File[]) {
+    if (!arquivos.length) return;
+    setAviso(null);
+    setPreparando(true);
+    try {
+      const r = await prepararArquivos(arquivos, anexos.length);
+      setAnexos((atuais) => [...atuais, ...r.anexos].slice(0, MAXIMO_ANEXOS));
+      if (r.erros.length) setAviso(r.erros.join(' '));
+    } finally {
+      setPreparando(false);
+    }
+  }
+
+  const aoEscolher = (e: ChangeEvent<HTMLInputElement>) => {
+    const arquivos = [...(e.target.files ?? [])];
+    e.target.value = '';
+    void anexar(arquivos);
+  };
+
+  // Ctrl+V de um print ou de um arquivo copiado também anexa.
+  const aoColar = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const arquivos = [...e.clipboardData.files];
+    if (!arquivos.length) return;
+    e.preventDefault();
+    void anexar(arquivos);
+  };
+
+  const aoSoltar = (e: DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    setArrastando(false);
+    void anexar([...e.dataTransfer.files]);
   };
 
   const aoEnviar = (e: FormEvent) => {
@@ -118,30 +169,16 @@ export function Assistente() {
           <p className="sobretitulo">Assistente com inteligência artificial</p>
           <h1>{NOME_DO_ASSISTENTE}</h1>
         </div>
-        <div className="acoes">
-          {mensagens.length > 0 && (
+        {mensagens.length > 0 && (
+          <div className="acoes">
             <button type="button" className="botao contorno" onClick={novaConversa}>
               <RotateCcw size={17} strokeWidth={1.75} /> Nova conversa
             </button>
-          )}
-          <button type="button" className="botao contorno" onClick={() => setConfigurando((v) => !v)} aria-expanded={configurando}>
-            <Settings2 size={17} strokeWidth={1.75} /> Configurar
-          </button>
-        </div>
+          </div>
+        )}
       </header>
 
-      {configurando && (
-        <Configuracao
-          inicial={config}
-          aoSalvar={(nova) => {
-            salvarConfig(nova);
-            if (nova.chave.trim()) setConfigurando(false);
-          }}
-          aoFechar={config.chave ? () => setConfigurando(false) : undefined}
-        />
-      )}
-
-      {SEM_INTERNET && (
+      {SEM_INTERNET ? (
         <p className="aviso-previa" role="note">
           <CircleAlert size={17} strokeWidth={2} />
           <span>
@@ -149,36 +186,76 @@ export function Assistente() {
             prévia do GitHub Pages ou rode o projeto no computador.
           </span>
         </p>
+      ) : (
+        !configurado && (
+          <p className="aviso-previa" role="note">
+            <CircleAlert size={17} strokeWidth={2} />
+            <span>O {NOME_DO_ASSISTENTE} ainda não foi configurado neste sistema. Avise o administrador.</span>
+          </p>
+        )
       )}
 
       <div className="assistente-grade">
-        <section className="cartao chat" data-entrada>
+        <section
+          className={`cartao chat ${arrastando ? 'arrastando' : ''}`}
+          data-entrada
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes('Files')) return;
+            e.preventDefault();
+            setArrastando(true);
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setArrastando(false);
+          }}
+          onDrop={aoSoltar}
+        >
           <div className="chat-conversa" ref={conversa} aria-live="polite">
             {mensagens.length === 0 ? (
               <div className="chat-vazio">
                 <IconeQuadrado icone={Sparkles} tamanho={52} />
                 <h2>Pergunte ao {NOME_DO_ASSISTENTE}</h2>
                 <p className="suave">
-                  Ele consulta e registra no estoque, no financeiro e nos relatórios, e cria lembretes. Escreva do seu jeito ou mande um
-                  áudio.
+                  Ele consulta e registra no estoque, no financeiro e nos relatórios, e cria lembretes. Escreva, mande um áudio, uma foto ou
+                  um documento (pode arrastar o arquivo para cá).
                 </p>
                 <div className="chips sugestoes">
                   {SUGESTOES.map((s) => (
-                    <button key={s} type="button" className="chip" onClick={() => mandar(s)} disabled={enviando}>
+                    <button key={s} type="button" className="chip" onClick={() => mandar(s)} disabled={ocupado}>
                       {s}
                     </button>
                   ))}
                 </div>
               </div>
             ) : (
-              mensagens.map((m) => <Mensagem key={m.id} mensagem={m} aoConfigurar={() => setConfigurando(true)} />)
+              mensagens.map((m) => <Mensagem key={m.id} mensagem={m} />)
             )}
           </div>
 
-          {audio.aviso && (
+          {(aviso || audio.aviso) && (
             <p className="chat-aviso" role="alert">
-              <CircleAlert size={16} strokeWidth={2} /> {audio.aviso}
+              <CircleAlert size={16} strokeWidth={2} /> {aviso ?? audio.aviso}
             </p>
+          )}
+          {anexos.length > 0 && (
+            <ul className="anexos-pendentes" aria-label="Arquivos para mandar">
+              {anexos.map((a, i) => {
+                const Icone = ICONE_ANEXO[a.tipo];
+                return (
+                  <li key={`${a.nome}-${i}`} className="anexo-chip">
+                    {a.miniatura ? <img src={a.miniatura} alt="" /> : <Icone size={16} strokeWidth={1.9} />}
+                    <span className="anexo-chip-nome">{a.nome}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAnexos((lista) => lista.filter((_, j) => j !== i))}
+                      aria-label={`Tirar ${a.nome}`}
+                      title="Tirar"
+                    >
+                      <X size={14} strokeWidth={2.2} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
           <form className={`chat-entrada ${audio.gravando ? 'gravando' : ''}`} onSubmit={aoEnviar}>
             {audio.gravando ? (
@@ -193,27 +270,28 @@ export function Assistente() {
             ) : (
               <>
                 <label
-                  className={`botao contorno quadrado ${enviando || audio.preparando ? 'desligado' : ''}`}
-                  title="Mandar arquivo de áudio (ex.: áudio do WhatsApp)"
+                  className={`botao contorno quadrado ${ocupado || anexos.length >= MAXIMO_ANEXOS ? 'desligado' : ''}`}
+                  title="Mandar arquivo: foto, PDF, planilha, documento, vídeo ou áudio"
                 >
-                  <Paperclip size={18} strokeWidth={1.9} />
+                  {preparando ? <LoaderCircle size={18} className="girando" /> : <Paperclip size={18} strokeWidth={1.9} />}
                   <input
                     type="file"
-                    accept="audio/*,.opus,.ogg,.m4a,.mp3,.wav,.aac,.flac"
+                    multiple
                     className="so-leitor"
-                    disabled={enviando || audio.preparando}
-                    onChange={audio.aoEscolherArquivo}
-                    aria-label="Mandar arquivo de áudio"
+                    disabled={ocupado || anexos.length >= MAXIMO_ANEXOS}
+                    onChange={aoEscolher}
+                    aria-label="Mandar arquivo"
                   />
                 </label>
                 <textarea
                   ref={campo}
                   className="campo"
                   rows={1}
-                  placeholder="Ex.: chegaram 3 fardos de Skol por R$ 33 cada"
+                  placeholder={anexos.length ? 'Escreva o que fazer com o arquivo (opcional)' : 'Ex.: chegaram 3 fardos de Skol por R$ 33 cada'}
                   value={texto}
                   onChange={(e) => setTexto(e.target.value)}
                   onKeyDown={aoTeclar}
+                  onPaste={aoColar}
                   aria-label={`Mensagem para o ${NOME_DO_ASSISTENTE}`}
                 />
               </>
@@ -226,12 +304,12 @@ export function Assistente() {
               <button type="button" className="botao enviar" disabled aria-label="Aguarde">
                 <LoaderCircle size={19} className="girando" />
               </button>
-            ) : texto.trim() || !audio.microfone ? (
-              <button type="submit" className="botao enviar" disabled={!texto.trim()} aria-label="Enviar">
+            ) : temConteudo || !audio.microfone ? (
+              <button type="submit" className="botao enviar" disabled={!temConteudo || preparando} aria-label="Enviar">
                 <ArrowUp size={19} strokeWidth={2.2} />
               </button>
             ) : (
-              <button type="button" className="botao enviar" onClick={audio.iniciar} aria-label="Gravar áudio" title="Gravar áudio">
+              <button type="button" className="botao enviar" onClick={audio.iniciar} disabled={preparando} aria-label="Gravar áudio" title="Gravar áudio">
                 <Mic size={19} strokeWidth={2.1} />
               </button>
             )}
@@ -247,14 +325,6 @@ export function Assistente() {
               </li>
             ))}
           </ul>
-          <div className="assistente-tecnico">
-            <span>
-              <Plug size={15} strokeWidth={1.8} /> {FERRAMENTAS.length} ferramentas via MCP
-            </span>
-            <span>
-              <Sparkles size={15} strokeWidth={1.8} /> {modeloEmUso ?? (config.modelo || MODELO_PADRAO)}
-            </span>
-          </div>
           <p className="suave pequeno">
             O que ele registra entra na hora no estoque, no financeiro e nos relatórios. Confira sempre a resposta antes de seguir.
           </p>
@@ -264,8 +334,8 @@ export function Assistente() {
   );
 }
 
-/** Gravar o microfone e mandar arquivos de áudio para o Pop AI. */
-function useAudio(enviarAudio: ReturnType<typeof useAssistente>['enviarAudio']) {
+/** Gravar o microfone e mandar como mensagem de voz. */
+function useAudio(enviarAudio: ReturnType<typeof useAssistente>['enviarAudio'], limparOutroAviso: (aviso: null) => void) {
   const [gravando, setGravando] = useState(false);
   const [segundos, setSegundos] = useState(0);
   const [preparando, setPreparando] = useState(false);
@@ -306,6 +376,7 @@ function useAudio(enviarAudio: ReturnType<typeof useAssistente>['enviarAudio']) 
 
   async function iniciar() {
     setAviso(null);
+    limparOutroAviso(null);
     gravador.current ??= new GravadorNavegador(() => void enviarAoLimite.current());
     try {
       await gravador.current.iniciar();
@@ -321,35 +392,10 @@ function useAudio(enviarAudio: ReturnType<typeof useAssistente>['enviarAudio']) 
     setGravando(false);
   }
 
-  async function aoEscolherArquivo(e: ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0];
-    e.target.value = '';
-    if (!arquivo) return;
-    setAviso(null);
-    setPreparando(true);
-    try {
-      void enviarAudio(await arquivoParaAudio(arquivo));
-    } catch (erro) {
-      setAviso(erro instanceof Error ? erro.message : 'Não consegui abrir esse áudio.');
-    } finally {
-      setPreparando(false);
-    }
-  }
-
-  return {
-    microfone,
-    gravando,
-    segundos,
-    preparando,
-    aviso,
-    iniciar,
-    cancelar,
-    enviarGravacao,
-    aoEscolherArquivo,
-  };
+  return { microfone, gravando, segundos, preparando, aviso, iniciar, cancelar, enviarGravacao };
 }
 
-function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; aoConfigurar: () => void }) {
+function Mensagem({ mensagem }: { mensagem: MensagemAssistente }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (ref.current) surgir(ref.current);
@@ -378,8 +424,9 @@ function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; ao
       );
     }
     return (
-      <div ref={ref} className="msg pessoa">
-        <p>{mensagem.texto}</p>
+      <div ref={ref} className={`msg pessoa ${mensagem.anexos ? 'com-anexos' : ''}`}>
+        {mensagem.anexos?.map((a, i) => <AnexoNaMensagem key={i} anexo={a} />)}
+        {mensagem.texto && <p>{mensagem.texto}</p>}
       </div>
     );
   }
@@ -410,11 +457,6 @@ function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; ao
           <div className="msg-erro">
             <CircleAlert size={17} strokeWidth={2} />
             <p>{mensagem.texto}</p>
-            {/chave|Configurar/i.test(mensagem.texto) && (
-              <button type="button" className="link" onClick={aoConfigurar}>
-                Configurar
-              </button>
-            )}
           </div>
         ) : (
           <TextoFormatado texto={mensagem.texto} />
@@ -429,6 +471,48 @@ function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; ao
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Um arquivo no balão da pessoa, com o que o Pop AI leu nele. */
+function AnexoNaMensagem({ anexo }: { anexo: AnexoNaConversa }) {
+  const Icone = ICONE_ANEXO[anexo.tipo];
+  const audio = anexo.tipo === 'audio';
+  return (
+    <div className="anexo-msg">
+      <div className="anexo-cabeca">
+        {anexo.miniatura ? (
+          <img className="anexo-mini" src={anexo.miniatura} alt="" />
+        ) : (
+          <span className="anexo-icone">
+            <Icone size={16} strokeWidth={1.9} />
+          </span>
+        )}
+        <span className="lista-texto">
+          <strong>{anexo.nome}</strong>
+          <small>
+            {NOME_DO_TIPO[anexo.tipo]}
+            {anexo.duracao ? ` · ${formatarDuracao(anexo.duracao)}` : ''}
+          </small>
+        </span>
+      </div>
+      {anexo.lendo ? (
+        <p className="ouvindo">
+          <LoaderCircle size={15} className="girando" /> {audio ? 'Ouvindo o áudio…' : 'Lendo o arquivo…'}
+        </p>
+      ) : anexo.legivel === false ? (
+        <p className="suave">{audio ? 'Não deu para ouvir fala nesse áudio.' : 'Não deu para ler esse arquivo.'}</p>
+      ) : anexo.lido ? (
+        audio ? (
+          <p>“{anexo.lido}”</p>
+        ) : (
+          <details className="anexo-lido">
+            <summary>O que o {NOME_DO_ASSISTENTE} leu</summary>
+            <p>{anexo.lido}</p>
+          </details>
+        )
+      ) : null}
     </div>
   );
 }
@@ -471,85 +555,4 @@ function TextoFormatado({ texto }: { texto: string }) {
   });
   fecharLista();
   return <div className="msg-texto">{itens}</div>;
-}
-
-function Configuracao({
-  inicial,
-  aoSalvar,
-  aoFechar,
-}: {
-  inicial: { chave: string; modelo: string };
-  aoSalvar: (config: { chave: string; modelo: string }) => void;
-  aoFechar?: () => void;
-}) {
-  const [chave, setChave] = useState(inicial.chave);
-  const [modelo, setModelo] = useState(inicial.modelo);
-  const [mostrar, setMostrar] = useState(false);
-  const ref = useRef<HTMLFormElement>(null);
-  useLayoutEffect(() => {
-    if (ref.current) surgir(ref.current);
-  }, []);
-
-  return (
-    <form
-      ref={ref}
-      className="cartao config-ia"
-      onSubmit={(e) => {
-        e.preventDefault();
-        aoSalvar({ chave, modelo });
-      }}
-    >
-      <div className="config-ia-topo">
-        <IconeQuadrado icone={KeyRound} />
-        <div>
-          <h2>Chave do Gemini</h2>
-          <p className="suave">
-            O {NOME_DO_ASSISTENTE} usa a API do Gemini, do Google. Crie uma chave grátis em{' '}
-            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
-              aistudio.google.com/apikey
-            </a>{' '}
-            e cole aqui. Ela fica salva só neste navegador.
-          </p>
-        </div>
-        {aoFechar && (
-          <button type="button" className="link fechar" onClick={aoFechar} aria-label="Fechar">
-            <X size={18} />
-          </button>
-        )}
-      </div>
-      <div className="config-ia-campos">
-        <label className="rotulo">
-          Chave da API
-          <span className="campo-senha">
-            <input
-              className="campo"
-              type={mostrar ? 'text' : 'password'}
-              value={chave}
-              onChange={(e) => setChave(e.target.value)}
-              placeholder="Cole a chave aqui (começa com AIza…)"
-              autoComplete="off"
-              spellCheck={false}
-            />
-            <button type="button" className="link" onClick={() => setMostrar((v) => !v)} aria-label={mostrar ? 'Esconder chave' : 'Mostrar chave'}>
-              {mostrar ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </span>
-        </label>
-        <label className="rotulo">
-          Modelo (opcional)
-          <input className="campo" value={modelo} onChange={(e) => setModelo(e.target.value)} placeholder={MODELO_PADRAO} spellCheck={false} />
-        </label>
-      </div>
-      <div className="acoes">
-        <button type="submit" className="botao">
-          Salvar
-        </button>
-        {inicial.chave && (
-          <button type="button" className="botao contorno" onClick={() => aoSalvar({ chave: '', modelo: '' })}>
-            Remover chave
-          </button>
-        )}
-      </div>
-    </form>
-  );
 }

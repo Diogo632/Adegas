@@ -1,28 +1,45 @@
-import { NOME_DO_ASSISTENTE, SUGESTOES, blocosDeTexto, descreverPasso, formatarDuracao, useAssistente } from '@adegas/ia';
-import type { MensagemAssistente, PassoAgente } from '@adegas/ia';
+import {
+  MAXIMO_ANEXOS,
+  NOME_DO_ASSISTENTE,
+  NOME_DO_TIPO,
+  SUGESTOES,
+  blocosDeTexto,
+  descreverPasso,
+  formatarDuracao,
+  useAssistente,
+} from '@adegas/ia';
+import type { AnexoNaConversa, AnexoParaEnviar, MensagemAssistente, PassoAgente, TipoAnexo } from '@adegas/ia';
 import { router } from 'expo-router';
+import type { LucideIcon } from 'lucide-react-native';
 import {
   ArrowUp,
+  Camera,
   Check,
+  ChevronDown,
   CircleAlert,
-  ExternalLink,
-  KeyRound,
+  File as IconeArquivo,
+  FileText,
+  Film,
+  Image as IconeImagem,
+  Images,
   LoaderCircle,
   Mic,
   Paperclip,
   PencilLine,
   RotateCcw,
-  Settings2,
+  Sheet,
   Sparkles,
   X,
 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Easing, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { Escolha } from '../../anexos';
+import { escolherArquivos, escolherFotos, tirarFoto } from '../../anexos';
 import { Entrar, Tocavel, useMovimentoReduzido } from '../../components/animacoes';
-import { Botao, Cartao, IconeQuadrado, TituloAba } from '../../components/ui';
-import { useConfigAssistente } from '../../configAssistente';
-import { escolherArquivoDeAudio, useGravador } from '../../gravador';
+import { IconeQuadrado, TituloAba } from '../../components/ui';
+import { CONFIG_POP_AI } from '../../configAssistente';
+import { useGravador } from '../../gravador';
 import { CORES, FONTE, RAIO, TEXTO } from '../../tema';
 
 const NATIVO = Platform.OS !== 'web';
@@ -47,24 +64,53 @@ const ONDE_VER: Record<string, { rota: '/estoque' | '/financeiro' | '/' | '/mesa
   excluir_lembrete: { rota: '/', rotulo: 'Ver lembretes' },
 };
 
+const ICONE_ANEXO: Record<TipoAnexo, LucideIcon> = {
+  audio: Mic,
+  imagem: IconeImagem,
+  pdf: FileText,
+  video: Film,
+  texto: FileText,
+  planilha: Sheet,
+  documento: IconeArquivo,
+};
+
 export default function Assistente() {
   const insets = useSafeAreaInsets();
-  const { config, salvar, carregado } = useConfigAssistente();
-  const { mensagens, enviando, enviar, enviarAudio, novaConversa } = useAssistente(config);
-  const [configurando, setConfigurando] = useState(false);
+  const { mensagens, enviando, enviar, enviarAudio, enviarComAnexos, novaConversa, configurado } = useAssistente(CONFIG_POP_AI);
   const [texto, setTexto] = useState('');
+  const [anexos, setAnexos] = useState<AnexoParaEnviar[]>([]);
+  const [menuAnexo, setMenuAnexo] = useState(false);
   const [preparando, setPreparando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const gravador = useGravador(() => void enviarGravacao());
   const lista = useRef<ScrollView>(null);
-  const semChave = carregado && !config.chave;
-  const mostrarConfig = configurando || semChave;
+  const temConteudo = texto.trim().length > 0 || anexos.length > 0;
+  const ocupado = enviando || preparando;
 
   const mandar = (mensagem: string) => {
-    if (!mensagem.trim() || enviando) return;
-    void enviar(mensagem);
+    if ((!mensagem.trim() && !anexos.length) || ocupado) return;
+    if (anexos.length) void enviarComAnexos(mensagem, anexos);
+    else void enviar(mensagem);
     setTexto('');
+    setAnexos([]);
+    setAviso(null);
   };
+
+  /** Câmera, galeria ou arquivos: o que deu certo vira anexo, o resto vira aviso. */
+  async function anexar(escolher: (jaAnexados: number) => Promise<Escolha>) {
+    setMenuAnexo(false);
+    setAviso(null);
+    setPreparando(true);
+    try {
+      const r = await escolher(anexos.length);
+      setAnexos((atuais) => [...atuais, ...r.anexos].slice(0, MAXIMO_ANEXOS));
+      if (r.erros.length) setAviso(r.erros.join(' '));
+    } catch {
+      setAviso('Não consegui abrir esse arquivo.');
+    } finally {
+      setPreparando(false);
+    }
+  }
 
   async function iniciarGravacao() {
     setAviso(null);
@@ -89,20 +135,6 @@ export default function Assistente() {
     }
   }
 
-  async function mandarArquivo() {
-    setAviso(null);
-    try {
-      setPreparando(true);
-      const audio = await escolherArquivoDeAudio();
-      if (audio) void enviarAudio(audio);
-    } catch (erro) {
-      setAviso(erro instanceof Error ? erro.message : 'Não consegui abrir esse áudio.');
-    } finally {
-      setPreparando(false);
-    }
-  }
-
-  const ocupado = enviando || preparando;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -124,16 +156,17 @@ export default function Assistente() {
                 <RotateCcw size={19} color={CORES.texto} strokeWidth={1.8} />
               </Tocavel>
             )}
-            <Tocavel
-              accessibilityRole="button"
-              accessibilityLabel="Configurar"
-              onPress={() => setConfigurando((v) => !v)}
-              style={[estilos.iconeBotao, mostrarConfig && { borderColor: CORES.primariaClara }]}
-            >
-              <Settings2 size={19} color={CORES.texto} strokeWidth={1.8} />
-            </Tocavel>
           </View>
         </View>
+
+        {!SEM_INTERNET && !configurado && (
+          <View style={estilos.avisoPrevia}>
+            <CircleAlert size={18} color={CORES.alerta} strokeWidth={2} />
+            <Text style={[TEXTO.legenda, { flex: 1, color: CORES.texto }]}>
+              O {NOME_DO_ASSISTENTE} ainda não foi configurado neste sistema. Avise o administrador.
+            </Text>
+          </View>
+        )}
 
         {SEM_INTERNET && (
           <View style={estilos.avisoPrevia}>
@@ -145,24 +178,13 @@ export default function Assistente() {
           </View>
         )}
 
-        {mostrarConfig && (
-          <Configuracao
-            inicial={config}
-            aoSalvar={(nova) => {
-              salvar(nova);
-              if (nova.chave.trim()) setConfigurando(false);
-            }}
-            aoFechar={config.chave ? () => setConfigurando(false) : undefined}
-          />
-        )}
-
         {mensagens.length === 0 ? (
           <Entrar atraso={80} style={estilos.vazio}>
             <IconeQuadrado icone={Sparkles} tamanho={52} />
             <Text style={[TEXTO.titulo, { textAlign: 'center' }]}>Pergunte ao {NOME_DO_ASSISTENTE}</Text>
             <Text style={[TEXTO.legenda, { textAlign: 'center' }]}>
-              Ele consulta e registra no estoque, no financeiro e nos relatórios, e cria lembretes. Escreva do seu jeito ou toque no
-              microfone e fale.
+              Ele consulta e registra no estoque, no financeiro e nos relatórios, e cria lembretes. Escreva, fale no microfone ou mande uma
+              foto, um PDF ou uma planilha pelo clipe.
             </Text>
             <View style={estilos.sugestoes}>
               {SUGESTOES.map((s) => (
@@ -180,7 +202,7 @@ export default function Assistente() {
             </View>
           </Entrar>
         ) : (
-          mensagens.map((m) => <Mensagem key={m.id} mensagem={m} aoConfigurar={() => setConfigurando(true)} />)
+          mensagens.map((m) => <Mensagem key={m.id} mensagem={m} />)
         )}
       </ScrollView>
 
@@ -191,6 +213,61 @@ export default function Assistente() {
           <Tocavel accessibilityLabel="Fechar aviso" onPress={() => setAviso(null)} style={{ padding: 2 }}>
             <X size={16} color={CORES.textoSuave} />
           </Tocavel>
+        </View>
+      )}
+      {anexos.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={estilos.anexosPendentes}
+          style={estilos.anexosFaixa}
+        >
+          {anexos.map((a, i) => {
+            const Icone = ICONE_ANEXO[a.tipo];
+            return (
+              <View key={`${a.nome}-${i}`} style={estilos.anexoChip}>
+                {a.miniatura ? (
+                  <Image source={{ uri: a.miniatura }} style={estilos.anexoChipMini} />
+                ) : (
+                  <Icone size={16} color={CORES.primariaClara} strokeWidth={1.9} />
+                )}
+                <Text style={estilos.anexoChipNome} numberOfLines={1}>
+                  {a.nome}
+                </Text>
+                <Tocavel
+                  accessibilityRole="button"
+                  accessibilityLabel={`Tirar ${a.nome}`}
+                  onPress={() => setAnexos((l) => l.filter((_, j) => j !== i))}
+                  style={{ padding: 4 }}
+                >
+                  <X size={14} color={CORES.textoSuave} strokeWidth={2.2} />
+                </Tocavel>
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
+      {menuAnexo && !gravador.gravando && (
+        <View style={estilos.menuAnexo}>
+          {(
+            [
+              ['Câmera', Camera, tirarFoto],
+              ['Fotos', Images, escolherFotos],
+              ['Arquivo', IconeArquivo, escolherArquivos],
+            ] as const
+          ).map(([rotulo, Icone, escolher]) => (
+            <Tocavel
+              key={rotulo}
+              accessibilityRole="button"
+              accessibilityLabel={rotulo === 'Arquivo' ? 'Escolher arquivo' : rotulo === 'Fotos' ? 'Escolher fotos' : 'Tirar foto'}
+              onPress={() => void anexar(escolher)}
+              escala={0.95}
+              style={estilos.menuAnexoBotao}
+            >
+              <Icone size={20} color={CORES.primariaClara} strokeWidth={1.9} />
+              <Text style={estilos.menuAnexoTexto}>{rotulo}</Text>
+            </Tocavel>
+          ))}
         </View>
       )}
       <View style={[estilos.entrada, gravador.gravando && estilos.entradaGravando]}>
@@ -226,18 +303,29 @@ export default function Assistente() {
           <>
             <Tocavel
               accessibilityRole="button"
-              accessibilityLabel="Mandar arquivo de áudio"
-              onPress={() => void mandarArquivo()}
-              disabled={ocupado}
+              accessibilityLabel="Mandar arquivo"
+              accessibilityState={{ expanded: menuAnexo }}
+              onPress={() => setMenuAnexo((v) => !v)}
+              disabled={ocupado || anexos.length >= MAXIMO_ANEXOS}
               escala={0.9}
-              style={[estilos.botaoQuadrado, ocupado && { opacity: 0.4 }]}
+              style={[
+                estilos.botaoQuadrado,
+                menuAnexo && { borderColor: CORES.primariaClara },
+                (ocupado || anexos.length >= MAXIMO_ANEXOS) && { opacity: 0.4 },
+              ]}
             >
-              <Paperclip size={19} color={CORES.texto} strokeWidth={1.9} />
+              {preparando ? (
+                <Girando cor={CORES.texto} tamanho={19} />
+              ) : menuAnexo ? (
+                <ChevronDown size={19} color={CORES.primariaClara} strokeWidth={2} />
+              ) : (
+                <Paperclip size={19} color={CORES.texto} strokeWidth={1.9} />
+              )}
             </Tocavel>
             <TextInput
               value={texto}
               onChangeText={setTexto}
-              placeholder="Ex.: chegaram 3 fardos de Skol"
+              placeholder={anexos.length ? 'O que fazer com o arquivo?' : 'Escreva para o Pop AI'}
               placeholderTextColor={CORES.textoFraco}
               keyboardAppearance="dark"
               selectionColor={CORES.primariaClara}
@@ -260,14 +348,14 @@ export default function Assistente() {
               <View style={[estilos.enviar, { opacity: 0.4 }]} accessibilityLabel="Aguarde">
                 <Girando />
               </View>
-            ) : texto.trim() || !gravador.disponivel ? (
+            ) : temConteudo || !gravador.disponivel ? (
               <Tocavel
                 accessibilityRole="button"
                 accessibilityLabel="Enviar"
                 onPress={() => mandar(texto)}
-                disabled={!texto.trim()}
+                disabled={!temConteudo}
                 escala={0.9}
-                style={[estilos.enviar, !texto.trim() && { opacity: 0.4 }]}
+                style={[estilos.enviar, !temConteudo && { opacity: 0.4 }]}
               >
                 <ArrowUp size={20} color={CORES.sobrePrimaria} strokeWidth={2.4} />
               </Tocavel>
@@ -289,7 +377,7 @@ export default function Assistente() {
   );
 }
 
-function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; aoConfigurar: () => void }) {
+function Mensagem({ mensagem }: { mensagem: MensagemAssistente }) {
   if (mensagem.autor === 'pessoa' && mensagem.audio) {
     const { duracao, nome } = mensagem.audio;
     return (
@@ -316,8 +404,11 @@ function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; ao
   }
   if (mensagem.autor === 'pessoa') {
     return (
-      <Entrar style={estilos.balaoPessoa}>
-        <Text style={[TEXTO.corpo, { fontSize: 15 }]}>{mensagem.texto}</Text>
+      <Entrar style={[estilos.balaoPessoa, mensagem.anexos && { gap: 8 }]}>
+        {mensagem.anexos?.map((a, i) => (
+          <AnexoNaMensagem key={i} anexo={a} />
+        ))}
+        {mensagem.texto ? <Text style={[TEXTO.corpo, { fontSize: 15 }]}>{mensagem.texto}</Text> : null}
       </Entrar>
     );
   }
@@ -341,14 +432,7 @@ function Mensagem({ mensagem, aoConfigurar }: { mensagem: MensagemAssistente; ao
       ) : mensagem.erro ? (
         <View style={estilos.erro}>
           <CircleAlert size={18} color={CORES.despesa} strokeWidth={2} />
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text style={[TEXTO.corpo, { fontSize: 15 }]}>{mensagem.texto}</Text>
-            {/chave|Configurar/i.test(mensagem.texto) && (
-              <Text style={estilos.link} onPress={aoConfigurar}>
-                Configurar
-              </Text>
-            )}
-          </View>
+          <Text style={[TEXTO.corpo, { flex: 1, fontSize: 15 }]}>{mensagem.texto}</Text>
         </View>
       ) : (
         <TextoFormatado texto={mensagem.texto} />
@@ -484,72 +568,57 @@ function Girando({ cor = CORES.sobrePrimaria, tamanho = 20 }: { cor?: string; ta
   );
 }
 
-function Configuracao({
-  inicial,
-  aoSalvar,
-  aoFechar,
-}: {
-  inicial: { chave: string; modelo: string };
-  aoSalvar: (config: { chave: string; modelo: string }) => void;
-  aoFechar?: () => void;
-}) {
-  const [chave, setChave] = useState(inicial.chave);
-  const [modelo, setModelo] = useState(inicial.modelo);
+/** Um arquivo no balão da pessoa, com o que o Pop AI leu nele (toque para ver tudo). */
+function AnexoNaMensagem({ anexo }: { anexo: AnexoNaConversa }) {
+  const [aberto, setAberto] = useState(false);
+  const Icone = ICONE_ANEXO[anexo.tipo];
+  const audio = anexo.tipo === 'audio';
   return (
-    <Entrar>
-      <Cartao style={{ borderColor: CORES.destaqueBorda, gap: 14 }}>
-        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-          <IconeQuadrado icone={KeyRound} tamanho={40} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={TEXTO.titulo}>Chave do Gemini</Text>
-            <Text style={TEXTO.legenda}>
-              O {NOME_DO_ASSISTENTE} usa a API do Gemini, do Google. Crie uma chave grátis e cole aqui. Ela fica guardada só neste aparelho.
-            </Text>
+    <View style={estilos.anexoMsg}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        {anexo.miniatura ? (
+          <Image source={{ uri: anexo.miniatura }} style={estilos.anexoMini} />
+        ) : (
+          <View style={estilos.anexoIcone}>
+            <Icone size={16} color={CORES.primariaClara} strokeWidth={1.9} />
           </View>
-          {aoFechar && (
-            <Tocavel accessibilityLabel="Fechar" onPress={aoFechar} style={{ padding: 4 }}>
-              <X size={20} color={CORES.textoSuave} />
-            </Tocavel>
-          )}
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={[TEXTO.corpoForte, { fontSize: 14 }]} numberOfLines={1}>
+            {anexo.nome}
+          </Text>
+          <Text style={[TEXTO.legenda, { fontSize: 12 }]}>
+            {NOME_DO_TIPO[anexo.tipo]}
+            {anexo.duracao ? ` · ${formatarDuracao(anexo.duracao)}` : ''}
+          </Text>
         </View>
-        <Tocavel accessibilityRole="link" onPress={() => Linking.openURL('https://aistudio.google.com/apikey')} style={estilos.linkLinha}>
-          <ExternalLink size={16} color={CORES.primariaClara} strokeWidth={2} />
-          <Text style={estilos.link}>Criar chave no Google AI Studio</Text>
-        </Tocavel>
-        <View style={{ gap: 8 }}>
-          <Text style={estilos.rotulo}>Chave da API</Text>
-          <TextInput
-            value={chave}
-            onChangeText={setChave}
-            placeholder="Cole a chave aqui (começa com AIza…)"
-            placeholderTextColor={CORES.textoFraco}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardAppearance="dark"
-            selectionColor={CORES.primariaClara}
-            style={estilos.campo}
-            accessibilityLabel="Chave da API"
-          />
+      </View>
+      {anexo.lendo ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Girando cor={CORES.textoSuave} tamanho={14} />
+          <Text style={TEXTO.legenda}>{audio ? 'Ouvindo o áudio…' : 'Lendo o arquivo…'}</Text>
         </View>
-        <View style={{ gap: 8 }}>
-          <Text style={estilos.rotulo}>Modelo (opcional)</Text>
-          <TextInput
-            value={modelo}
-            onChangeText={setModelo}
-            placeholder="gemini-3.8-flash"
-            placeholderTextColor={CORES.textoFraco}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardAppearance="dark"
-            selectionColor={CORES.primariaClara}
-            style={estilos.campo}
-          />
-        </View>
-        <Botao titulo="Salvar" onPress={() => aoSalvar({ chave, modelo })} desabilitado={!chave.trim()} />
-        {inicial.chave ? <Botao titulo="Remover chave" variante="contorno" onPress={() => aoSalvar({ chave: '', modelo: '' })} /> : null}
-      </Cartao>
-    </Entrar>
+      ) : anexo.legivel === false ? (
+        <Text style={TEXTO.legenda}>{audio ? 'Não deu para ouvir fala nesse áudio.' : 'Não deu para ler esse arquivo.'}</Text>
+      ) : anexo.lido ? (
+        audio ? (
+          <Text style={[TEXTO.corpo, { fontSize: 15 }]}>“{anexo.lido}”</Text>
+        ) : (
+          <Tocavel
+            accessibilityRole="button"
+            accessibilityState={{ expanded: aberto }}
+            onPress={() => setAberto((v) => !v)}
+            escala={0.99}
+            style={{ gap: 4 }}
+          >
+            <Text style={estilos.anexoLidoTitulo}>
+              {aberto ? 'Esconder' : `O que o ${NOME_DO_ASSISTENTE} leu`} {aberto ? '▴' : '▾'}
+            </Text>
+            {aberto && <Text style={estilos.anexoLidoTexto}>{anexo.lido}</Text>}
+          </Tocavel>
+        )
+      ) : null}
+    </View>
   );
 }
 
@@ -607,7 +676,6 @@ const estilos = StyleSheet.create({
   passoTexto: { fontFamily: FONTE.regular, fontSize: 12.5, color: CORES.textoSuave, flexShrink: 1 },
   erro: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   link: { fontFamily: FONTE.semi, fontSize: 15, color: CORES.primariaClara },
-  linkLinha: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start' },
   pensando: { flexDirection: 'row', gap: 5, paddingVertical: 8 },
   ponto: { width: 7, height: 7, borderRadius: 99, backgroundColor: CORES.primariaClara },
   entrada: {
@@ -668,7 +736,6 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rotulo: { fontFamily: FONTE.media, fontSize: 13, color: CORES.textoSuave },
   avisoPrevia: {
     flexDirection: 'row',
     gap: 10,
@@ -679,15 +746,60 @@ const estilos = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#5C4716',
   },
-  campo: {
+  anexosFaixa: { flexGrow: 0, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: CORES.borda, backgroundColor: CORES.fundo },
+  anexosPendentes: { gap: 8, paddingHorizontal: 16, paddingTop: 10 },
+  anexoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    maxWidth: 220,
+    paddingVertical: 4,
+    paddingLeft: 6,
+    paddingRight: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: CORES.destaqueBorda,
+    backgroundColor: CORES.primariaSuave,
+  },
+  anexoChipMini: { width: 28, height: 28, borderRadius: 6 },
+  anexoChipNome: { flexShrink: 1, fontFamily: FONTE.media, fontSize: 13, color: CORES.texto },
+  menuAnexo: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: CORES.borda,
+    backgroundColor: CORES.fundo,
+  },
+  menuAnexoBotao: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: RAIO.medio,
     borderWidth: 1,
     borderColor: CORES.borda,
-    borderRadius: 12,
-    backgroundColor: CORES.superficieAlta,
-    color: CORES.texto,
-    fontFamily: FONTE.regular,
-    fontSize: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: CORES.superficie,
   },
+  menuAnexoTexto: { fontFamily: FONTE.media, fontSize: 13, color: CORES.texto },
+  anexoMsg: {
+    gap: 6,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: CORES.destaqueBorda,
+    backgroundColor: 'rgba(11, 11, 10, 0.45)',
+  },
+  anexoMini: { width: 44, height: 44, borderRadius: 8 },
+  anexoIcone: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: CORES.primariaSuave,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anexoLidoTitulo: { fontFamily: FONTE.semi, fontSize: 13, color: CORES.primariaClara },
+  anexoLidoTexto: { fontFamily: FONTE.regular, fontSize: 13, lineHeight: 19, color: CORES.textoSuave },
 });

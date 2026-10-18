@@ -3,6 +3,8 @@ import { criarLojaNaMemoria, estadoDeExemplo, lembretesPendentes } from '@adegas
 import { AgenteAdega } from './agente';
 import { blocosDeTexto, descreverPasso } from './apresentacao';
 import { SEM_FALA, codificarWav, formatarDuracao, misturarEReamostrar, paraBase64, tipoDoAudio } from './audio';
+import { strToU8, zipSync } from 'fflate';
+import { ILEGIVEL, classificarArquivo, deBase64, deTexto, textoDoArquivo, textoDoOffice } from './anexos';
 import type { Buscar, ConteudoGemini, EsquemaGemini, PedidoGemini } from './gemini';
 import { paraEsquemaGemini } from './gemini';
 import { conectarNaMemoria } from './local';
@@ -347,7 +349,7 @@ describe('agente (Gemini + MCP)', () => {
       () => modelo({ text: 'Agora foi.' }),
     ]);
     const agente = new AgenteAdega({ cliente: conexao.cliente, chave: 'errada', buscar, agora: relogio });
-    await expect(agente.enviar('oi')).rejects.toThrow('A chave do Gemini não é válida');
+    await expect(agente.enviar('oi')).rejects.toThrow('A chave do Gemini configurada no sistema não é válida');
     await agente.enviar('oi');
     expect((pedidos[1].corpo!.contents as ConteudoGemini[]).map((c) => c.role)).toEqual(['user']);
   });
@@ -433,6 +435,105 @@ describe('áudio', () => {
     expect(await agente.ouvir({ dados: 'AAAA', mimeType: 'audio/wav' })).toBe(SEM_FALA);
     expect(await agente.ouvir({ dados: 'AAAA', mimeType: 'audio/mp4' })).toBe('Fecha a mesa 10 no Pix.');
     expect(pedidos[2].corpo!.contents[0].parts[0].inlineData!.mimeType).toBe('audio/aac');
+  });
+});
+
+describe('arquivos', () => {
+  it('reconhece fotos, PDFs, planilhas, documentos, vídeos e áudios', () => {
+    const tipo = (nome: string, mime?: string) => {
+      const r = classificarArquivo(nome, mime);
+      return `${r.tipo} ${r.mimeType}`;
+    };
+    expect(tipo('NOTA.JPG')).toBe('imagem image/jpeg');
+    expect(tipo('IMG_2041.HEIC')).toBe('imagem image/heic');
+    expect(tipo('boleto.pdf')).toBe('pdf application/pdf');
+    expect(tipo('entrega.MOV')).toBe('video video/mov');
+    expect(tipo('PTT-20261012-WA0001.opus')).toBe('audio audio/ogg');
+    expect(tipo('precos.xlsx').split(' ')[0]).toBe('planilha');
+    expect(tipo('lista.csv').split(' ')[0]).toBe('planilha');
+    expect(tipo('contrato.docx').split(' ')[0]).toBe('documento');
+    expect(tipo('recado.txt')).toBe('texto text/plain');
+    expect(tipo('sem-extensao', 'image/png')).toBe('imagem image/png');
+    expect(() => classificarArquivo('antigo.xls')).toThrow('formato novo (.xlsx)');
+    expect(() => classificarArquivo('programa.exe')).toThrow('Ainda não sei ler arquivos .exe');
+  });
+
+  it('decodifica base64 e texto em UTF-8 ou no formato do Excel brasileiro', () => {
+    const bytes = Uint8Array.from({ length: 1000 }, (_, i) => (i * 37) % 256);
+    expect([...deBase64(paraBase64(bytes))]).toEqual([...bytes]);
+    expect(deTexto(new TextEncoder().encode('\uFEFFÁgua;R$ 3,00'))).toBe('Água;R$ 3,00');
+    expect(deTexto(Uint8Array.from([0xc1, 0x67, 0x75, 0x61, 0x3b, 0x33]))).toBe('Água;3');
+  });
+
+  it('tira o texto de Word, Excel, PowerPoint e LibreOffice', () => {
+    const docx = zipSync({
+      'word/document.xml': strToU8(
+        '<w:document><w:body><w:p><w:r><w:t>Pedido Distribuidora</w:t></w:r></w:p><w:p><w:r><w:t>Skol</w:t></w:r><w:tab/><w:r><w:t>2 fardos &amp; 1 caixa</w:t></w:r></w:p></w:body></w:document>',
+      ),
+    });
+    expect(textoDoOffice('pedido.docx', docx)).toBe('Pedido Distribuidora\nSkol\t2 fardos & 1 caixa');
+
+    const xlsx = zipSync({
+      'xl/workbook.xml': strToU8('<workbook><sheets><sheet name="Preços" sheetId="1"/></sheets></workbook>'),
+      'xl/sharedStrings.xml': strToU8('<sst><si><t>Produto</t></si><si><t>Preço</t></si><si><t>Skol Lata</t></si></sst>'),
+      'xl/worksheets/sheet1.xml': strToU8(
+        '<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>' +
+          '<row r="2"><c r="A2" t="s"><v>2</v></c><c r="C2"><v>3.5</v></c></row>' +
+          '<row r="3"><c r="A3" t="inlineStr"><is><t>Gelo</t></is></c><c r="B3"><v>7</v></c></row></sheetData></worksheet>',
+      ),
+    });
+    expect(textoDoOffice('precos.xlsx', xlsx)).toBe('Aba "Preços":\nProduto ; Preço\nSkol Lata ;  ; 3.5\nGelo ; 7');
+
+    const pptx = zipSync({
+      'ppt/slides/slide2.xml': strToU8('<p:sld><a:p><a:r><a:t>Promoção</a:t></a:r></a:p></p:sld>'),
+      'ppt/slides/slide1.xml': strToU8('<p:sld><a:p><a:r><a:t>Pop</a:t></a:r></a:p></p:sld>'),
+    });
+    expect(textoDoOffice('apresentacao.pptx', pptx)).toBe('Slide 1:\nPop\n\nSlide 2:\nPromoção');
+
+    const ods = zipSync({
+      'content.xml': strToU8(
+        '<office:document-content><table:table><table:table-row><table:table-cell><text:p>Água</text:p></table:table-cell><table:table-cell><text:p>3</text:p></table:table-cell></table:table-row></table:table></office:document-content>',
+      ),
+    });
+    expect(textoDoOffice('estoque.ods', ods)).toBe('Água ; 3');
+    expect(() => textoDoOffice('quebrado.docx', strToU8('não é zip'))).toThrow('Não consegui abrir');
+  });
+
+  it('corta texto muito grande e recusa arquivo vazio', () => {
+    const grande = textoDoArquivo('enorme.txt', 'texto', strToU8('x'.repeat(50_000)));
+    expect(grande.length).toBeLessThan(41_000);
+    expect(grande).toContain('cortado aqui');
+    expect(() => textoDoArquivo('vazio.txt', 'texto', strToU8('  '))).toThrow('está vazio');
+  });
+
+  it('o agente lê a foto com o Gemini, junta com a planilha e responde com tudo', async () => {
+    const { conexao } = await preparar();
+    const { buscar, pedidos } = geminiFalso([
+      () => modelo({ text: 'Nota fiscal da Distribuidora Central\n- Skol Lata 350ml: 2 fardos de 12, R$ 33,00 cada, total R$ 66,00' }),
+      () => modelo({ text: 'É a nota da Distribuidora Central, R$ 66,00. Quer que eu registre a entrada?' }),
+      () => modelo({ text: ILEGIVEL }),
+    ]);
+    const agente = new AgenteAdega({ cliente: conexao.cliente, chave: 'k', buscar, agora: relogio });
+    const foto = await agente.ler({ nome: 'nota.jpg', tipo: 'imagem', mimeType: 'image/jpeg', dados: '/9j/AAAA' });
+    expect(foto).toMatchObject({ legivel: true, tipo: 'imagem' });
+    expect(pedidos[0].corpo!.systemInstruction!.parts[0].text).toContain('Notas, pedidos, cupons e listas de preço');
+    expect(pedidos[0].corpo!.contents[0].parts[0].inlineData).toEqual({ mimeType: 'image/jpeg', data: '/9j/AAAA' });
+    expect(pedidos[0].corpo!.tools).toBeUndefined();
+
+    // Planilha já vem com o texto: não precisa do Gemini para ler.
+    const planilha = await agente.ler({ nome: 'precos.csv', tipo: 'planilha', mimeType: 'text/plain', texto: 'Skol;4,50' });
+    expect(pedidos).toHaveLength(1);
+
+    const r = await agente.enviar('', { anexos: [foto, planilha] });
+    expect(r.texto).toContain('Quer que eu registre');
+    const enviado = pedidos[1].corpo!.contents[0].parts[0].text!;
+    expect(enviado).toContain('[Anexo 1: "nota.jpg" (imagem) — conteúdo]\nNota fiscal da Distribuidora Central');
+    expect(enviado).toContain('[Anexo 2: "precos.csv" (planilha) — conteúdo]\nSkol;4,50\n[Fim do anexo 2]');
+    expect(enviado).toContain('A pessoa mandou só o anexo, sem escrever nada.');
+    expect(pedidos[1].corpo!.systemInstruction!.parts[0].text).toContain('não registre nada sem pedido');
+
+    const borrada = await agente.ler({ nome: 'borrada.jpg', tipo: 'imagem', mimeType: 'image/jpeg', dados: 'AAAA' });
+    expect(borrada.legivel).toBe(false);
   });
 });
 
