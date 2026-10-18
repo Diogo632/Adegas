@@ -1,8 +1,9 @@
 import type { Usuario } from '@adegas/core';
 import { NOME_DA_LOJA, NOME_PAPEL, PINS_DE_EXEMPLO, TAMANHO_PIN, iniciais, useAdega, usuariosAtivos } from '@adegas/core';
-import { Beer, ChevronLeft, Delete } from 'lucide-react';
+import { ChevronLeft, Delete } from 'lucide-react';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { movimentoReduzido } from '../animacoes';
+import logoPop from '../assets/logo-pop.png';
 
 /** Quem está usando? Escolhe a pessoa e digita o PIN (na tela ou no teclado). */
 export function Entrar() {
@@ -15,9 +16,7 @@ export function Entrar() {
     <main className="entrar">
       <div className="entrar-caixa">
         <div className="entrar-marca">
-          <span className="entrar-logo">
-            <Beer size={30} strokeWidth={2} />
-          </span>
+          <img className="entrar-logo" src={logoPop} alt="" width={112} height={112} />
           <h1>{NOME_DA_LOJA}</h1>
           <p className="suave">{escolhido ? `Olá, ${escolhido.nome}. Digite seu PIN.` : 'Quem está usando?'}</p>
         </div>

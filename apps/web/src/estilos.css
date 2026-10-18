@@ -113,15 +113,12 @@ button:disabled {
   padding: 0 8px 28px;
 }
 
-.marca-simbolo {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--primaria);
-  color: var(--sobrePrimaria);
-  box-shadow: var(--brilho);
+.marca-logo {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 99px;
+  box-shadow: 0 0 0 1px var(--destaqueBorda), var(--brilho);
 }
 
 .marca strong {
@@ -2068,15 +2065,11 @@ button:disabled {
 }
 
 .entrar-logo {
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
+  width: 112px;
+  height: 112px;
   margin-bottom: 10px;
-  border-radius: 18px;
-  background: var(--primaria);
-  color: var(--sobrePrimaria);
-  box-shadow: var(--brilho);
+  border-radius: 99px;
+  box-shadow: 0 0 0 1px var(--destaqueBorda), 0 16px 48px -16px color-mix(in srgb, var(--primaria) 55%, transparent);
 }
 
 .entrar-pessoas {

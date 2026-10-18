@@ -3,7 +3,6 @@ import { NOME_DA_LOJA, NOME_DO_ASSISTENTE, NOME_PAPEL, formatarDiaExtenso, inici
 import type { LucideIcon } from 'lucide-react';
 import {
   Armchair,
-  Beer,
   Boxes,
   ChartColumn,
   LayoutDashboard,
@@ -17,6 +16,7 @@ import {
 import { useLayoutEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { animarEntradaDaTela } from '../animacoes';
+import logoPop from '../assets/logo-pop.png';
 
 interface ItemMenu {
   para: string;
@@ -58,9 +58,7 @@ export function Layout() {
     <div className="layout">
       <aside className="menu">
         <div className="marca">
-          <span className="marca-simbolo">
-            <Beer size={18} strokeWidth={2} />
-          </span>
+          <img className="marca-logo" src={logoPop} alt="" width={40} height={40} />
           <div>
             <strong>{NOME_DA_LOJA}</strong>
             <small>{formatarDiaExtenso(hoje)}</small>

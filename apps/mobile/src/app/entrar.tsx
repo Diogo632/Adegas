@@ -1,8 +1,8 @@
 import type { Usuario } from '@adegas/core';
 import { NOME_DA_LOJA, NOME_PAPEL, PINS_DE_EXEMPLO, TAMANHO_PIN, useAdega, usuariosAtivos } from '@adegas/core';
-import { Beer, ChevronLeft, Delete } from 'lucide-react-native';
+import { ChevronLeft, Delete } from 'lucide-react-native';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import { Animated, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Entrar, Tocavel } from '../components/animacoes';
 import { Avatar } from '../components/pessoas';
@@ -22,9 +22,7 @@ export default function TelaEntrar() {
   return (
     <ScrollView contentContainerStyle={[estilos.tela, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}>
       <Entrar style={estilos.marca}>
-        <View style={estilos.logo}>
-          <Beer size={30} color={CORES.sobrePrimaria} strokeWidth={2} />
-        </View>
+        <Image source={require('../../assets/logo-pop.png')} style={estilos.logo} accessibilityIgnoresInvertColors />
         <Text style={TEXTO.tituloTela}>{NOME_DA_LOJA}</Text>
         <Text style={TEXTO.legenda}>{escolhido ? `Olá, ${escolhido.nome}. Digite seu PIN.` : 'Quem está usando?'}</Text>
       </Entrar>
@@ -123,15 +121,7 @@ function TecladoPin({
 const estilos = StyleSheet.create({
   tela: { flexGrow: 1, paddingHorizontal: 24, gap: 28, alignItems: 'stretch' },
   marca: { alignItems: 'center', gap: 8 },
-  logo: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: CORES.primaria,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
+  logo: { width: 112, height: 112, borderRadius: 56, marginBottom: 8 },
   lista: { gap: 10 },
   pessoa: {
     flexDirection: 'row',
