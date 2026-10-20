@@ -7,5 +7,6 @@ export * from './audio-navegador';
 export * from './ferramentas';
 export * from './gemini';
 export * from './local';
+export * from './notaPorFoto';
 export * from './react';
 export * from './servidor';

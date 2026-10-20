@@ -11,10 +11,10 @@ import {
   previaEntrada,
   useAdega,
 } from '@adegas/core';
-import { Check, Search } from 'lucide-react';
+import { Check, ChevronRight, ScanBarcode, Search } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { Numero, Surgir } from '../componentes/Animados';
 import { Contador } from '../componentes/Contador';
 import { IconeQuadrado } from '../componentes/IconeQuadrado';
@@ -96,6 +96,17 @@ export function Entrada() {
           <h1>Entrada de produto</h1>
         </div>
       </header>
+
+      <Link to="/entrada/nota" className="atalho-nota">
+        <span className="atalho-nota-icone">
+          <ScanBarcode size={22} strokeWidth={1.75} />
+        </span>
+        <span>
+          <strong>Chegou com nota fiscal? Dê entrada pela nota</strong>
+          <small>Bipe a nota pelo celular ou mande o XML: os produtos são reconhecidos e entram todos de uma vez.</small>
+        </span>
+        <ChevronRight size={20} />
+      </Link>
 
       {concluida && (
         <Surgir className="sucesso" chave={concluida.id}>

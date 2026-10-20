@@ -4,6 +4,8 @@ Sistema para adegas controlarem **estoque** (bebidas, cigarros, gelo...), **vend
 
 A adega dos dados de exemplo se chama **Pop**, e o assistente com IA é o **Pop AI**: ele entende texto, **áudio** (mensagem de voz ou o áudio do WhatsApp) e **arquivos** (foto da nota fiscal, PDF de boleto, planilha de preços, documentos, vídeos).
 
+Mercadoria com nota fiscal entra **bipando a nota**: pela câmera do app, ou no painel usando o **celular como leitor** (lê um QR Code na tela e pronto). Os produtos vêm do XML ou da foto da nota, são reconhecidos pelo código de barras e pelo nome e entram todos de uma vez.
+
 📄 **Fluxo completo das telas, regras e próximas etapas:** [`docs/FLUXO.md`](docs/FLUXO.md)
 
 📊 **Comparativo com o Cplug e direção de design:** [`docs/ANALISE-CPLUG.md`](docs/ANALISE-CPLUG.md)
@@ -16,17 +18,21 @@ A adega dos dados de exemplo se chama **Pop**, e o assistente com IA é o **Pop 
 apps/
   mobile/   App (Expo + React Native) — Entrar (PIN); abas Início, Estoque, Financeiro,
             Relatórios, Pop AI; Nova venda, Pagamento, Mesas (conta, pedido, fechar),
-            Entrada de produto, Produto, Nova movimentação, Conta, Usuários
+            Entrada de produto, Entrada pela nota (câmera), Produto, Nova movimentação,
+            Conta, Usuários
   web/      Painel web (Vite + React) — Entrar (PIN), Início, Vender, Mesas, Entrada de
-            produto, Estoque, Financeiro, Relatórios, Usuários, Pop AI
+            produto, Entrada pela nota (celular como leitor, webcam, leitor USB),
+            Estoque, Financeiro, Relatórios, Usuários, Pop AI
 packages/
   core/     Regras compartilhadas: produtos, estoque, ajustes, custo médio, vendas, troco,
-            contas por mesa, financeiro, relatórios, lembretes, usuários e permissões
+            contas por mesa, financeiro, relatórios, lembretes, usuários e permissões,
+            nota fiscal (chave de acesso, XML, reconhecer produtos, conferência)
   ia/       Pop AI: servidor MCP com tudo da plataforma + agente que usa o Gemini
             (texto e áudio)
 docs/
   FLUXO.md  Fluxo do sistema
   ASSISTENTE.md  Pop AI, o assistente com IA
+  exemplos/ Nota de exemplo (XML) e códigos de barras para testar a entrada pela nota
 ```
 
 > Os dados ainda ficam na memória e começam com produtos e 30 dias de vendas, compras e contas de exemplo. O banco na nuvem (para app e web verem os mesmos dados) é a próxima etapa.
@@ -74,6 +80,10 @@ Os dados ainda ficam só na memória: ao fechar ou recarregar, tudo volta para o
 - **Venda no dinheiro:** Nova venda → 2 Heineken + 1 Gelo → Pagamento → Dinheiro → R$ 50,00. O troco deve ser **R$ 19,00**. Volte ao início: o "Vendido hoje" sobe R$ 31,00 e o Gelo passa a ter 3 em estoque.
 - **Reposição:** no início, toque em **Repor** no Gelo → Unidade → 10 unidades a R$ 7,00 → Registrar. O estoque vai a 13 e o Gelo sai da lista de repor.
 - **Produto novo:** Entrada (no app; "Entrada de produto" no painel) → Produto novo → preencha nome, preço e custo. Ele aparece na tela de venda.
+- **Entrada pela nota:** em **Entrada** toque em **Chegou com nota fiscal?**.
+  - **No painel:** clique em **Celular como leitor** e leia o QR Code com a câmera do celular. Abra no computador a imagem [`docs/exemplos/codigo-da-nota.png`](docs/exemplos/codigo-da-nota.png) e bipe com o celular: o painel mostra "Nota 12345". Depois mande o XML [`docs/exemplos/nota-exemplo.xml`](docs/exemplos/nota-exemplo.xml) em **XML, foto ou PDF**: aparecem Skol e Água (reconhecidas pelo nome) e o Gin (produto novo). Bipe [`codigo-skol-caixa.png`](docs/exemplos/codigo-skol-caixa.png): a Skol fica **1/2**. Ponha o preço de venda do Gin e clique em **Dar entrada em 3 produtos**: entram 39 unidades e R$ 378,90 vão para o financeiro. Mande o mesmo XML de novo: o sistema avisa que a nota já deu entrada.
+  - **No app:** a câmera já abre na tela: bipe a nota e os produtos (dá para apontar o celular para as imagens acima na tela do computador). O XML vai por **XML ou PDF**; a foto da nota, por **Foto da nota** ou **Da galeria** (com o Pop AI ligado).
+  - A câmera do navegador só funciona em **https** (a prévia do GitHub Pages serve). Na prévia aberta dentro do Claude, a câmera e o celular como leitor não funcionam.
 - **Proteções:** tente vender mais do que tem em estoque, ou receber em dinheiro menos que o total. O sistema não deixa.
 - **Estoque:** abra o Gelo → Ajustar → Perda, 1 unidade → Salvar. O estoque cai 1 e a perda aparece no Financeiro.
 - **Financeiro:** Nova movimentação → Saída → Luz, água e internet → R$ 120,00. Ela entra no topo das movimentações e no "Para onde foi o dinheiro".

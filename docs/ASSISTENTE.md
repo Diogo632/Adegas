@@ -51,6 +51,10 @@ No balão de cada arquivo aparece **"O que o Pop AI leu"**: toque para conferir.
 
 Não dá para ler: arquivos antigos do Office (.doc, .xls, .ppt; salve como PDF ou no formato novo), arquivos protegidos por senha e arquivos maiores que 10 MB. Textos muito longos são cortados nos primeiros 40 mil caracteres.
 
+### Na entrada pela nota fiscal
+
+Na tela **Entrada pela nota** (app e painel), a **foto ou o PDF da nota** vai para o Gemini com um pedido diferente: em vez de conversar, ele devolve os dados organizados (número, fornecedor, CNPJ e cada produto com quantidade, unidade e valores), no formato JSON. A tela então reconhece os produtos do estoque e mostra tudo para conferir antes da entrada. A foto pode vir do próprio celular ou do **celular como leitor** do painel. Sem o Pop AI configurado, a entrada pela nota continua funcionando pelo XML e pelos bipes. Veja [`FLUXO.md`](FLUXO.md#321-entrada-pela-nota-fiscal-bipar-a-nota).
+
 ## Por áudio
 
 Tudo o que dá para escrever também dá para falar.
@@ -212,6 +216,7 @@ packages/ia/src/
   anexos-navegador.ts  prepara arquivos no navegador (foto em JPEG, PDF, texto)
   audio.ts         formatos de áudio aceitos, WAV e base64 (código puro)
   audio-navegador.ts  gravação e conversão para WAV no navegador
+  notaPorFoto.ts   lê a foto ou o PDF da nota fiscal (resposta em JSON) para a entrada pela nota
   react.ts         useAssistente() (enviar e enviarAudio), usado pelas telas
   node/            servidor stdio, arquivo de dados e assistente de terminal
 apps/web/src/paginas/Assistente.tsx

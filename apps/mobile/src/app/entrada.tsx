@@ -11,7 +11,7 @@ import {
   useAdega,
 } from '@adegas/core';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Check, Search } from 'lucide-react-native';
+import { Check, ChevronRight, ScanBarcode, Search } from 'lucide-react-native';
 import { Fragment, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Entrar, NumeroAnimado, Surgir, Tocavel } from '../components/animacoes';
@@ -115,6 +115,17 @@ export default function Entrada() {
 
   return (
     <ScrollView contentContainerStyle={estilos.tela} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <Tocavel onPress={() => router.push('/nota')} escala={0.98} style={estilos.atalhoNota}>
+        <View style={estilos.atalhoIcone}>
+          <ScanBarcode size={22} color={CORES.sobrePrimaria} strokeWidth={1.75} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={TEXTO.corpoForte}>Chegou com nota fiscal?</Text>
+          <Text style={TEXTO.legenda}>Bipe a nota com a câmera: os produtos são reconhecidos e entram todos de uma vez.</Text>
+        </View>
+        <ChevronRight size={20} color={CORES.primariaClara} />
+      </Tocavel>
+
       <Passo numero={1} titulo="Qual produto chegou?" />
       <Segmentado
         opcoes={[
@@ -325,6 +336,24 @@ function EntradaConcluida({
 
 const estilos = StyleSheet.create({
   tela: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 48, gap: 14 },
+  atalhoNota: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: RAIO.grande,
+    borderWidth: 1,
+    borderColor: CORES.destaqueBorda,
+    backgroundColor: CORES.destaqueFundo,
+  },
+  atalhoIcone: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: CORES.primaria,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   linha: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   duasColunas: { flexDirection: 'row', gap: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },

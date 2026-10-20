@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe><infNFe Id="NFe35261012345678000190550010000123451123456786" versao="4.00">
+<ide><cUF>35</cUF><serie>1</serie><nNF>12345</nNF><dhEmi>2026-10-15T09:30:00-03:00</dhEmi></ide>
+<emit><CNPJ>12345678000190</CNPJ><xNome>DISTRIBUIDORA CENTRAL DE BEBIDAS LTDA</xNome><xFant>Distribuidora Central</xFant></emit>
+<det nItem="1"><prod><cProd>1020</cProd><cEAN>4006381333931</cEAN><xProd>CERV SKOL LT 350ML CX C/12</xProd><uCom>CX</uCom><qCom>2.0000</qCom><vUnCom>33.0000</vUnCom><vProd>66.00</vProd><cEANTrib>96385074</cEANTrib><uTrib>UN</uTrib><qTrib>24.0000</qTrib></prod></det>
+<det nItem="2"><prod><cProd>2001</cProd><cEAN>SEM GTIN</cEAN><xProd>AGUA MIN CRYSTAL S/GAS 500ML FD 12</xProd><uCom>FD</uCom><qCom>1</qCom><vUnCom>13.20</vUnCom><vProd>13.20</vProd></prod></det>
+<det nItem="3"><prod><cProd>3005</cProd><cEAN>SEM GTIN</cEAN><xProd>GIN TANQUERAY 750ML</xProd><uCom>UN</uCom><qCom>3</qCom><vUnCom>99.90</vUnCom><vProd>299.70</vProd></prod></det>
+<total><ICMSTot><vNF>378.90</vNF></ICMSTot></total></infNFe></NFe></nfeProc>

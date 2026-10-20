@@ -1,6 +1,28 @@
 import { describe, expect, it } from 'vitest';
+import type { DadosEntradaNota } from './index';
 import {
   ESTADO_VAZIO,
+  biparNaConferencia,
+  casarItem,
+  categoriaSugerida,
+  conferenciaDaNota,
+  itensDaConferencia,
+  ligarCodigo,
+  mudarCustoDaLinha,
+  nomeSugerido,
+  totaisDaConferencia,
+  digitoDaChave,
+  entenderCodigo,
+  entradasDaNota,
+  formatarChave,
+  formatarCnpj,
+  gtinValido,
+  lerChaveDeAcesso,
+  lerXmlNFe,
+  montarEntradaDaNota,
+  produtoPorCodigo,
+  semelhanca,
+  unidadesPorEmbalagemDaNota,
   estadoDeExemplo,
   estoqueBaixo,
   formatarDinheiro,
@@ -506,5 +528,172 @@ describe('usuários e acesso', () => {
     ]);
     expect(entrar(exemplo, 'u-ana', '1111').ok).toBe(true);
     expect(exemplo.comandas[0].abertaPor).toBe('Ana');
+  });
+});
+
+describe('nota fiscal', () => {
+  const base = '35' + '2610' + '12345678000190' + '55' + '001' + '000012345' + '1' + '12345678';
+  const chave = base + digitoDaChave(base);
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe"><NFe><infNFe Id="NFe${chave}" versao="4.00">
+<ide><serie>1</serie><nNF>12345</nNF><dhEmi>2026-10-15T09:30:00-03:00</dhEmi></ide>
+<emit><CNPJ>12345678000190</CNPJ><xNome>DISTRIBUIDORA CENTRAL DE BEBIDAS LTDA</xNome><xFant>Distribuidora Central</xFant></emit>
+<det nItem="1"><prod><cProd>1020</cProd><cEAN>4006381333931</cEAN><xProd>CERV SKOL LT 350ML CX C/12</xProd><uCom>CX</uCom><qCom>2.0000</qCom><vUnCom>33.0000</vUnCom><vProd>66.00</vProd><cEANTrib>96385074</cEANTrib><uTrib>UN</uTrib><qTrib>24.0000</qTrib></prod></det>
+<det nItem="2"><prod><cProd>2001</cProd><cEAN>SEM GTIN</cEAN><xProd>AGUA MIN CRYSTAL S/GAS 500ML FD 12</xProd><uCom>FD</uCom><qCom>1</qCom><vUnCom>13.20</vUnCom><vProd>13.20</vProd></prod></det>
+<det nItem="3"><prod><cProd>3005</cProd><cEAN>SEM GTIN</cEAN><xProd>GIN TANQUERAY 750ML</xProd><uCom>UN</uCom><qCom>3</qCom><vUnCom>99.90</vUnCom><vProd>299.70</vProd></prod></det>
+<total><ICMSTot><vNF>378.90</vNF></ICMSTot></total></infNFe></NFe></nfeProc>`;
+
+  it('lê a chave do código de barras do DANFE e do QR Code da NFC-e', () => {
+    const lida = lerChaveDeAcesso(chave)!;
+    expect(lida).toMatchObject({ uf: 'SP', ano: 2026, mes: 10, cnpj: '12345678000190', modelo: '55', serie: 1, numero: 12345 });
+    expect(lerChaveDeAcesso(formatarChave(chave))?.chave).toBe(chave);
+    expect(lerChaveDeAcesso(`https://www.fazenda.sp.gov.br/nfce/qrcode?p=${chave}|2|1|1|ABC`)?.chave).toBe(chave);
+    expect(lerChaveDeAcesso(chave.slice(0, 43) + ((Number(chave[43]) + 1) % 10))).toBeNull();
+    expect(formatarChave(chave).split(' ')).toHaveLength(11);
+    expect(formatarCnpj('12345678000190')).toBe('12.345.678/0001-90');
+    expect(entenderCodigo('4006381333931')).toEqual({ tipo: 'produto', codigo: '4006381333931' });
+    expect(entenderCodigo('4006381333932').tipo).toBe('outro');
+    expect(entenderCodigo(chave).tipo).toBe('nota');
+    expect(gtinValido('96385074')).toBe(true);
+  });
+
+  it('lê o XML da NF-e com os itens, os códigos e os totais', () => {
+    const r = lerXmlNFe(xml);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.valor).toMatchObject({ chave, numero: '12345', serie: '1', emissao: '2026-10-15', valorTotal: 37890, origem: 'xml' });
+    expect(r.valor.emitente).toEqual({ nome: 'Distribuidora Central', cnpj: '12345678000190' });
+    expect(r.valor.itens[0]).toMatchObject({ ean: '4006381333931', eanUnidade: '96385074', unidade: 'CX', quantidade: 2, valorUnitario: 3300, valorTotal: 6600, quantidadeTributavel: 24 });
+    expect(r.valor.itens[1].ean).toBeUndefined();
+    expect(lerXmlNFe('<html>não é nota</html>').ok).toBe(false);
+  });
+
+  it('descobre quantas unidades vêm em cada caixa ou fardo', () => {
+    const r = lerXmlNFe(xml);
+    if (!r.ok) throw new Error(r.erro);
+    expect(r.valor.itens.map((i) => unidadesPorEmbalagemDaNota(i))).toEqual([12, 12, 1]);
+    const item = (descricao: string, unidade = 'CX') => unidadesPorEmbalagemDaNota({ descricao, unidade, quantidade: 1 });
+    expect(item('CERVEJA BRAHMA 12X350ML')).toBe(12);
+    expect(item('REFRIGERANTE COCA COLA 2L PACK 6 UN', 'PCT')).toBe(6);
+    expect(item('GELO EM CUBOS 5KG', 'PCT')).toBeNull();
+  });
+
+  it('reconhece os produtos do estoque pelo código, pelo nome salvo ou pelo nome parecido', () => {
+    const estado = estadoDeExemplo(new Date(2026, 9, 12, 20, 0));
+    const r = lerXmlNFe(xml);
+    if (!r.ok) throw new Error(r.erro);
+    const [skol, agua, gin] = r.valor.itens;
+    expect(casarItem(skol, estado.produtos)).toMatchObject({ produto: { id: 'skol-lata' }, como: 'parecido' });
+    expect(casarItem(agua, estado.produtos)).toMatchObject({ produto: { id: 'agua-500' }, como: 'parecido' });
+    expect(casarItem(gin, estado.produtos)).toBeNull();
+    expect(casarItem({ descricao: 'CERV BRAHMA LT 473ML' }, estado.produtos)).toBeNull();
+    expect(semelhanca('HEINEKEN LONG NECK 330ML', 'Heineken Long Neck 330ml')).toBe(1);
+
+    const aprendido = reducer(estado, { tipo: 'aprender-produto', produtoId: 'skol-lata', codigosBarras: ['4006381333931'], nomesNaNota: ['CERV SKOL LT 350ML CX C/12'] });
+    expect(casarItem(skol, aprendido.produtos)).toMatchObject({ produto: { id: 'skol-lata' }, como: 'codigo' });
+    expect(casarItem({ descricao: 'CERV SKOL LT 350ML CX C/12' }, aprendido.produtos)).toMatchObject({ como: 'nome-da-nota' });
+    expect(produtoPorCodigo(aprendido.produtos, '4006381333931')?.id).toBe('skol-lata');
+    expect(buscarProdutos(aprendido.produtos, '4006381333931').map((p) => p.id)).toEqual(['skol-lata']);
+  });
+
+  it('dá entrada na nota inteira, aprende os códigos e não deixa repetir a nota', () => {
+    const estado = estadoDeExemplo(new Date(2026, 9, 12, 20, 0));
+    const antes = (id: string) => estado.produtos.find((p) => p.id === id)!.estoque;
+    const dados: DadosEntradaNota = {
+      fornecedor: 'Distribuidora Central',
+      formaPagamento: 'pix',
+      nota: { chave, numero: '12345', serie: '1' },
+      itens: [
+        { produtoId: 'skol-lata', quantidade: 2, unidadesPorEmbalagem: 12, custoTotal: 6600, ean: '4006381333931', descricaoNaNota: 'CERV SKOL LT 350ML CX C/12' },
+        { produtoId: 'agua-500', quantidade: 1.5, unidadesPorEmbalagem: 12, custoTotal: 1980 },
+        { produtoNovo: { nome: 'Gin Tanqueray 750ml', categoria: 'destilado', precoVenda: 15990, estoqueMinimo: 2 }, quantidade: 3, unidadesPorEmbalagem: 1, custoTotal: 29970 },
+      ],
+    };
+    const r = montarEntradaDaNota(estado, dados);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    let depois = estado;
+    for (const acao of r.valor.acoes) depois = reducer(depois, acao);
+    const produto = (id: string) => depois.produtos.find((p) => p.id === id)!;
+    expect(produto('skol-lata').estoque).toBe(antes('skol-lata') + 24);
+    expect(produto('agua-500').estoque).toBe(antes('agua-500') + 18);
+    const gin = depois.produtos.find((p) => p.nome === 'Gin Tanqueray 750ml')!;
+    expect(gin.estoque).toBe(3);
+    expect(r.valor.entradas.map((e) => e.custoTotal)).toEqual([6600, 1980, 29970]);
+    expect(r.valor.entradas.every((e) => e.notaFiscal?.chave === chave)).toBe(true);
+    expect(produto('skol-lata').codigosBarras).toEqual(['4006381333931']);
+    expect(produto('skol-lata').nomesNaNota).toEqual(['CERV SKOL LT 350ML CX C/12']);
+    expect(depois.lancamentos[0].descricao).toContain('NF 12345');
+    expect(entradasDaNota(depois, chave)).toHaveLength(3);
+
+    const deNovo = montarEntradaDaNota(depois, dados);
+    expect(deNovo.ok).toBe(false);
+    if (!deNovo.ok) expect(deNovo.erro).toContain('já deu entrada');
+    const ruim = montarEntradaDaNota(estado, { ...dados, nota: undefined, itens: [dados.itens[0], { ...dados.itens[1], produtoId: 'nao-existe' }] });
+    expect(ruim.ok).toBe(false);
+    if (!ruim.ok) expect(ruim.erro).toContain('Item 2');
+  });
+  it('confere a nota bipando os produtos e monta a entrada', () => {
+    const estado = estadoDeExemplo(new Date(2026, 9, 12, 20, 0));
+    const r = lerXmlNFe(xml);
+    if (!r.ok) throw new Error(r.erro);
+    let linhas = conferenciaDaNota(r.valor, estado.produtos);
+    expect(linhas.map((l) => [l.acao, l.produtoId, l.unidadesPorEmbalagem])).toEqual([
+      ['produto', 'skol-lata', 12],
+      ['produto', 'agua-500', 12],
+      ['novo', undefined, 1],
+    ]);
+    expect(linhas[2].novo).toMatchObject({ nome: 'Gin Tanqueray 750ml', categoria: 'destilado' });
+
+    // Código da caixa da Skol (está na nota): conta 1 de 2.
+    let bipe = biparNaConferencia(linhas, '4006381333931', estado.produtos);
+    expect(bipe).toMatchObject({ ok: true, indice: 0 });
+    expect(bipe.texto).toContain('1 de 2 CX');
+    linhas = bipe.linhas;
+    // Produto do estoque que não veio na nota.
+    const heineken = estado.produtos.find((p) => p.nome.includes('Heineken'))!;
+    const comCodigo = estado.produtos.map((p) => (p.id === heineken.id ? { ...p, codigoBarras: '7896045506088' } : p));
+    bipe = biparNaConferencia(linhas, '7896045506088', comCodigo);
+    expect(bipe.ok).toBe(false);
+    expect(bipe.texto).toContain('não está nesta nota');
+    // Código que ninguém conhece: a pessoa liga ao item do gin.
+    bipe = biparNaConferencia(linhas, '7891234567895', estado.produtos);
+    expect(bipe).toMatchObject({ ok: false, codigoSemDono: '7891234567895' });
+    linhas = ligarCodigo(linhas, 2, '7891234567895');
+    expect(linhas[2]).toMatchObject({ bipados: 1, item: { ean: '7891234567895' } });
+    expect(biparNaConferencia(linhas, '7891234567895', estado.produtos)).toMatchObject({ ok: true, indice: 2 });
+
+    linhas = linhas.map((l, i) => (i === 2 ? { ...l, novo: { ...l.novo, precoVenda: 15990 } } : i === 1 ? { ...l, acao: 'ignorar' as const } : l));
+    expect(totaisDaConferencia(linhas)).toEqual({ itens: 2, unidades: 27, valor: 36570 });
+    const itens = itensDaConferencia(linhas);
+    expect(itens[0]).toMatchObject({ produtoId: 'skol-lata', quantidade: 2, unidadesPorEmbalagem: 12, custoTotal: 6600, ean: '4006381333931', eanUnidade: '96385074' });
+    expect(itens[1]).toMatchObject({ produtoNovo: { nome: 'Gin Tanqueray 750ml', precoVenda: 15990 }, ean: '7891234567895' });
+    const entrada = montarEntradaDaNota(estado, { itens, formaPagamento: 'pix' });
+    expect(entrada.ok).toBe(true);
+  });
+
+  it('monta a entrada só com os bipes quando não há os itens da nota', () => {
+    const estado = estadoDeExemplo(new Date(2026, 9, 12, 20, 0));
+    const produtos = estado.produtos.map((p) => (p.id === 'skol-lata' ? { ...p, codigoBarras: '7891149101900' } : p));
+    let bipe = biparNaConferencia([], '7891149101900', produtos, true);
+    bipe = biparNaConferencia(bipe.linhas, '7891149101900', produtos, true);
+    expect(bipe.linhas).toHaveLength(1);
+    expect(bipe.linhas[0]).toMatchObject({ produtoId: 'skol-lata', bipados: 2, foraDaNota: true, item: { quantidade: 2 } });
+    bipe = biparNaConferencia(bipe.linhas, '7891234567895', produtos, true);
+    expect(bipe.linhas[1]).toMatchObject({ acao: 'novo', item: { ean: '7891234567895' } });
+    const linha = mudarCustoDaLinha(bipe.linhas[0], 700);
+    expect(linha.item).toMatchObject({ valorTotal: 700, valorUnitario: 350 });
+    expect(biparNaConferencia([linha], '7891149101900', produtos, true).linhas[0].item).toMatchObject({ quantidade: 3, valorTotal: 1050 });
+  });
+
+  it('sugere nome e categoria para cadastrar o que veio na nota', () => {
+    expect(nomeSugerido('CERV SKOL LT 350ML C/12')).toBe('Cerveja Skol Lata 350ml');
+    expect(nomeSugerido('REFRIG COCA COLA PET 2L PACK 6 UN')).toBe('Refrigerante Coca Cola PET 2L');
+    expect(nomeSugerido('VODKA SMIRNOFF 998ML')).toBe('Vodka Smirnoff 998ml');
+    expect(categoriaSugerida('CERV SKOL LT 350ML C/12')).toBe('cerveja');
+    expect(categoriaSugerida('ENERG RED BULL 250ML')).toBe('energetico');
+    expect(categoriaSugerida('AGUA MIN CRYSTAL 500ML')).toBe('refrigerante');
+    expect(categoriaSugerida('CIG MARLBORO RED BOX')).toBe('cigarro');
+    expect(categoriaSugerida('PARAFUSO 3MM')).toBe('outros');
   });
 });

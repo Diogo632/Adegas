@@ -34,6 +34,8 @@ export interface DadosEntrada {
   unidadesPorEmbalagem?: number;
   /** Quanto foi pago por fardo (ou por unidade). */
   custoPorEmbalagem: Centavos;
+  /** Valor exato pago no total, quando se sabe (ex.: o valor do item na nota). */
+  custoTotal?: Centavos;
   fornecedor?: string;
   formaPagamento: FormaPagamento;
 }
@@ -47,12 +49,12 @@ export interface PreviaEntrada {
 
 /** Contas que a tela mostra enquanto a pessoa preenche. */
 export function previaEntrada(
-  dados: Pick<DadosEntrada, 'embalagem' | 'quantidade' | 'unidadesPorEmbalagem' | 'custoPorEmbalagem'>,
+  dados: Pick<DadosEntrada, 'embalagem' | 'quantidade' | 'unidadesPorEmbalagem' | 'custoPorEmbalagem' | 'custoTotal'>,
 ): PreviaEntrada {
   const porEmbalagem = dados.embalagem === 'fardo' ? Math.max(dados.unidadesPorEmbalagem ?? 0, 0) : 1;
   const quantidade = Math.max(dados.quantidade, 0);
   const unidades = quantidade * porEmbalagem;
-  const custoTotal = quantidade * Math.max(dados.custoPorEmbalagem, 0);
+  const custoTotal = dados.custoTotal ?? quantidade * Math.max(dados.custoPorEmbalagem, 0);
   return {
     unidades,
     unidadesPorEmbalagem: porEmbalagem,
@@ -163,7 +165,10 @@ export function buscarProdutos(
   const busca = normalizar(texto);
   return produtos
     .filter((p) => !categoria || p.categoria === categoria)
-    .filter((p) => !busca || normalizar(p.nome).includes(busca) || p.codigoBarras === texto.trim())
+    .filter(
+      (p) =>
+        !busca || normalizar(p.nome).includes(busca) || p.codigoBarras === texto.trim() || (p.codigosBarras ?? []).includes(texto.trim()),
+    )
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 

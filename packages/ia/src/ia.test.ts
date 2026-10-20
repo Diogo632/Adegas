@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { criarLojaNaMemoria, estadoDeExemplo, lembretesPendentes } from '@adegas/core';
+import { criarLojaNaMemoria, digitoDaChave, estadoDeExemplo, formatarChave, lembretesPendentes } from '@adegas/core';
 import { AgenteAdega } from './agente';
 import { blocosDeTexto, descreverPasso } from './apresentacao';
 import { SEM_FALA, codificarWav, formatarDuracao, misturarEReamostrar, paraBase64, tipoDoAudio } from './audio';
@@ -8,6 +8,7 @@ import { ILEGIVEL, classificarArquivo, deBase64, deTexto, textoDoArquivo, textoD
 import type { Buscar, ConteudoGemini, EsquemaGemini, PedidoGemini } from './gemini';
 import { paraEsquemaGemini } from './gemini';
 import { conectarNaMemoria } from './local';
+import { lerNotaPorImagem } from './notaPorFoto';
 
 const agora = new Date(2026, 9, 12, 14, 0);
 const relogio = () => agora;
@@ -534,6 +535,43 @@ describe('arquivos', () => {
 
     const borrada = await agente.ler({ nome: 'borrada.jpg', tipo: 'imagem', mimeType: 'image/jpeg', dados: 'AAAA' });
     expect(borrada.legivel).toBe(false);
+  });
+});
+
+describe('nota fiscal pela foto', () => {
+  it('pede a leitura em JSON e converte para a nota com centavos', async () => {
+    const base = '35' + '2610' + '12345678000190' + '55' + '001' + '000012345' + '1' + '12345678';
+    const chave = base + digitoDaChave(base);
+    const { buscar, pedidos } = geminiFalso([
+      () =>
+        modelo({
+          text: JSON.stringify({
+            chave_de_acesso: formatarChave(chave),
+            numero: '12345',
+            data_emissao: '2026-10-15',
+            emitente_nome: 'Distribuidora Central',
+            emitente_cnpj: '12.345.678/0001-90',
+            valor_total: 79.2,
+            itens: [
+              { descricao: 'CERV SKOL LT 350ML CX C/12', unidade: 'cx', quantidade: 2, valor_unitario: 33, valor_total: 66, ean: '4006381333931' },
+              { descricao: 'AGUA MIN 500ML FD 12', unidade: 'FD', quantidade: 1, valor_total: 13.2, ean: '123' },
+              { descricao: '', quantidade: 1, valor_total: 1 },
+            ],
+          }),
+        }),
+      () => modelo({ text: JSON.stringify({ itens: [] }) }),
+    ]);
+    const nota = await lerNotaPorImagem({ nome: 'nota.jpg', mimeType: 'image/jpeg', dados: '/9j/AAAA' }, { chave: 'k', buscar });
+    const corpo = pedidos[0].corpo!;
+    expect(corpo.generationConfig).toMatchObject({ responseMimeType: 'application/json', temperature: 0 });
+    expect(corpo.generationConfig!.responseSchema!.properties!.itens.type).toBe('ARRAY');
+    expect(corpo.contents[0].parts[0].inlineData).toEqual({ mimeType: 'image/jpeg', data: '/9j/AAAA' });
+    expect(nota).toMatchObject({ chave, numero: '12345', emissao: '2026-10-15', valorTotal: 7920, origem: 'foto' });
+    expect(nota.emitente).toEqual({ nome: 'Distribuidora Central', cnpj: '12345678000190' });
+    expect(nota.itens).toHaveLength(2);
+    expect(nota.itens[0]).toMatchObject({ unidade: 'CX', quantidade: 2, valorUnitario: 3300, valorTotal: 6600, ean: '4006381333931' });
+    expect(nota.itens[1]).toMatchObject({ valorUnitario: 1320, ean: undefined });
+    await expect(lerNotaPorImagem({ nome: 'gato.jpg', mimeType: 'image/jpeg', dados: 'AAAA' }, { chave: 'k', buscar })).rejects.toThrow('Não achei produtos');
   });
 });
 

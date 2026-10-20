@@ -3185,3 +3185,736 @@ button:disabled {
     animation-duration: 2.4s;
   }
 }
+
+/* ---------- Entrada pela nota fiscal ---------- */
+
+.carregando {
+  padding: 24px;
+}
+
+.atalho-nota {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding: 16px 18px;
+  border-radius: var(--raio-grande);
+  border: 1px solid var(--destaqueBorda);
+  background: var(--destaqueFundo);
+  color: var(--texto);
+  text-decoration: none;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.atalho-nota:hover {
+  border-color: var(--primaria);
+}
+
+.atalho-nota > span:nth-child(2) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.atalho-nota small {
+  color: var(--textoSuave);
+}
+
+.atalho-nota > svg {
+  color: var(--primariaClara);
+}
+
+.atalho-nota-icone {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--primaria);
+  color: var(--sobrePrimaria);
+  flex-shrink: 0;
+}
+
+.nota-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.nota-fontes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.nota-fonte {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  padding: 16px;
+  border-radius: var(--raio);
+  border: 1px solid var(--borda);
+  background: var(--superficieAlta);
+  color: var(--texto);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.nota-fonte svg {
+  color: var(--primariaClara);
+  margin-bottom: 6px;
+}
+
+.nota-fonte small {
+  color: var(--textoSuave);
+  font-size: 13px;
+}
+
+.nota-fonte:hover,
+.nota-fonte:has(.so-leitor:focus-visible) {
+  border-color: var(--destaqueBorda);
+}
+
+.nota-fonte.ativa {
+  border-color: var(--primaria);
+  background: var(--primariaSuave);
+}
+
+.nota-fonte.desligado {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.nota-digitar {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.nota-digitar .campo-icone {
+  flex: 1;
+}
+
+.nota-lendo,
+.nota-retorno {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.nota-lendo {
+  background: var(--superficieAlta);
+  color: var(--textoSuave);
+}
+
+.nota-retorno svg,
+.nota-lendo svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.nota-retorno.ok {
+  background: var(--receitaFundo);
+  color: var(--receita);
+}
+
+.nota-retorno.aviso {
+  background: var(--alertaFundo);
+  color: var(--alerta);
+}
+
+.nota-explica {
+  margin: 0 0 16px;
+}
+
+.nota-cabecalho {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--raio);
+  background: var(--superficieAlta);
+  border: 1px solid var(--borda);
+}
+
+.nota-cabecalho > svg {
+  color: var(--primariaClara);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.nota-cabecalho > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.nota-chave {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--textoFraco);
+  overflow-wrap: anywhere;
+}
+
+.nota-diferenca {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--alerta);
+}
+
+.nota-pagamento {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 16px 0 4px;
+}
+
+select.campo {
+  appearance: none;
+  padding-right: 36px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--textoSuave) 50%), linear-gradient(135deg, var(--textoSuave) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.ligar-codigo {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: var(--raio);
+  background: var(--alertaFundo);
+  border: 1px solid color-mix(in srgb, var(--alerta) 35%, transparent);
+}
+
+.ligar-codigo p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+
+.ligar-codigo p svg {
+  color: var(--alerta);
+}
+
+.ligar-codigo-acoes {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ligar-codigo-acoes .campo {
+  flex: 1;
+  min-width: 0;
+}
+
+.itens-nota {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item-nota {
+  padding: 16px;
+  border-radius: var(--raio);
+  border: 1px solid var(--borda);
+  background: var(--superficie);
+  transition: border-color 0.3s, background-color 0.3s;
+}
+
+.item-nota.destaque {
+  border-color: var(--primaria);
+  background: var(--primariaSuave);
+}
+
+.item-nota.ignorado {
+  opacity: 0.6;
+}
+
+.item-nota-topo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.item-nota-titulo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item-nota-titulo strong {
+  overflow-wrap: anywhere;
+}
+
+.pilula.novo {
+  color: var(--primariaClara);
+  background: var(--primariaSuave);
+}
+
+.pilula.nenhum {
+  color: var(--textoFraco);
+  background: var(--superficieAlta);
+}
+
+.item-bipes {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--textoSuave);
+  background: var(--superficieAlta);
+  font-variant-numeric: tabular-nums;
+}
+
+.item-bipes.completo {
+  color: var(--receita);
+  background: var(--receitaFundo);
+}
+
+.item-nota-campos {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.item-nota .campo {
+  padding: 9px 12px;
+  font-size: 15px;
+}
+
+.item-nota select.campo {
+  padding-right: 32px;
+}
+
+.rotulo.falta .campo {
+  border-color: var(--alerta);
+}
+
+.rotulo.falta {
+  color: var(--alerta);
+}
+
+.item-nota-resumo {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+
+.item-nota-resumo strong {
+  color: var(--texto);
+}
+
+.item-nota-novo {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--borda);
+}
+
+/* Celular como leitor (QR Code no computador) */
+
+.celular-leitor {
+  position: relative;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 18px;
+  margin-bottom: 4px;
+  border-radius: var(--raio);
+  border: 1px solid var(--destaqueBorda);
+  background: var(--destaqueFundo);
+}
+
+.celular-leitor.conectado {
+  border-color: color-mix(in srgb, var(--receita) 45%, transparent);
+  background: var(--receitaFundo);
+}
+
+.celular-leitor-qr {
+  display: grid;
+  place-items: center;
+  width: 176px;
+  height: 176px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  color: var(--textoSuave);
+}
+
+.celular-leitor-qr svg[role='img'] {
+  width: 100%;
+  height: 100%;
+}
+
+.celular-leitor.conectado .celular-leitor-qr {
+  width: 84px;
+  height: 84px;
+  background: color-mix(in srgb, var(--receita) 18%, transparent);
+  color: var(--receita);
+}
+
+.celular-leitor-texto {
+  flex: 1;
+  min-width: 0;
+  padding-right: 28px;
+}
+
+.celular-leitor-texto strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+}
+
+.celular-leitor.conectado .celular-leitor-texto strong {
+  color: var(--receita);
+}
+
+.celular-leitor-texto p {
+  margin: 6px 0 10px;
+  font-size: 14px;
+}
+
+.celular-leitor-fechar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 99px;
+  border: none;
+  background: transparent;
+  color: var(--textoSuave);
+  cursor: pointer;
+}
+
+.celular-leitor-fechar:hover {
+  background: var(--superficieAlta);
+  color: var(--texto);
+}
+
+/* Câmera lendo códigos */
+
+.leitor-camera {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--raio);
+  background: #000;
+  aspect-ratio: 4 / 3;
+  max-height: 60vh;
+  width: 100%;
+}
+
+.leitor-camera video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.leitor-mira {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 34%;
+  bottom: 34%;
+  border: 2px solid var(--primaria);
+  border-radius: 12px;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 35%);
+}
+
+.leitor-mira::after {
+  content: '';
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 50%;
+  height: 2px;
+  background: var(--despesa);
+  box-shadow: 0 0 10px var(--despesa);
+  animation: leitor-varrer 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes leitor-varrer {
+  from {
+    transform: translateY(-28px);
+  }
+  to {
+    transform: translateY(28px);
+  }
+}
+
+.leitor-topo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+}
+
+.leitor-dica {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 99px;
+  background: rgb(0 0 0 / 60%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.leitor-botoes {
+  display: flex;
+  gap: 8px;
+}
+
+.leitor-botoes button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 99px;
+  border: none;
+  background: rgb(0 0 0 / 60%);
+  color: #fff;
+  cursor: pointer;
+}
+
+.leitor-botoes button.ligado {
+  background: var(--primaria);
+  color: var(--sobrePrimaria);
+}
+
+.leitor-retorno {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  background: rgb(0 0 0 / 72%);
+}
+
+.leitor-retorno.ok {
+  color: var(--receita);
+}
+
+.leitor-retorno.aviso {
+  color: var(--alerta);
+}
+
+/* Página do celular-leitor (aberta pelo QR Code) */
+
+.leitor-remoto {
+  max-width: 560px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: 16px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.leitor-remoto header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.leitor-remoto header img {
+  border-radius: 10px;
+}
+
+.leitor-remoto header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.leitor-situacao {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--textoSuave);
+}
+
+.leitor-situacao.conectado {
+  color: var(--receita);
+}
+
+.leitor-situacao.erro,
+.leitor-situacao.caiu {
+  color: var(--despesa);
+}
+
+.leitor-remoto .leitor-camera {
+  aspect-ratio: 3 / 4;
+  max-height: 62dvh;
+}
+
+.leitor-erro {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 16px;
+  border-radius: var(--raio);
+  background: var(--despesaFundo);
+  color: var(--despesa);
+  font-weight: 500;
+}
+
+.leitor-erro svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.botao.leitor-foto {
+  position: relative;
+  margin-top: 0;
+}
+
+.botao.leitor-foto.desligado {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.leitor-explica {
+  margin: -4px 0 0;
+  font-size: 13px;
+  text-align: center;
+}
+
+.leitor-registros {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.leitor-registros li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--superficie);
+  font-size: 14px;
+}
+
+.leitor-registros li svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.leitor-registros li.ok svg {
+  color: var(--receita);
+}
+
+.leitor-registros li.aviso {
+  color: var(--alerta);
+}
+
+.leitor-registros li:first-child {
+  border: 1px solid var(--bordaForte);
+}
+
+@media (max-width: 1150px) {
+  .item-nota-campos {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .item-produto {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .nota-fontes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nota-fonte {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    column-gap: 10px;
+  }
+
+  .nota-fonte svg {
+    margin-bottom: 0;
+  }
+
+  .nota-fonte small {
+    flex-basis: 100%;
+  }
+
+  .celular-leitor {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .celular-leitor-texto {
+    padding-right: 0;
+  }
+
+  .celular-leitor-texto strong {
+    justify-content: center;
+  }
+
+  .item-nota-novo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .item-nota-topo {
+    flex-wrap: wrap;
+  }
+
+  .item-nota-titulo {
+    flex-basis: 100%;
+  }
+
+  .ligar-codigo-acoes {
+    flex-wrap: wrap;
+  }
+}

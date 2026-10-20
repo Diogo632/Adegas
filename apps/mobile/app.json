@@ -35,7 +35,15 @@
         "expo-image-picker",
         {
           "photosPermission": "O Pop AI lê as fotos que você escolher, como notas fiscais e listas de preço.",
-          "cameraPermission": "O Pop AI usa a câmera para fotografar notas fiscais, boletos e produtos."
+          "cameraPermission": "A Pop usa a câmera para bipar o código de barras das notas fiscais e dos produtos, e para fotografar notas e boletos para o Pop AI."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "A Pop usa a câmera para bipar o código de barras das notas fiscais e dos produtos, e para fotografar notas e boletos para o Pop AI.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ]
     ],

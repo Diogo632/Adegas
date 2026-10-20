@@ -18,7 +18,9 @@ export type Acao =
   | { tipo: 'remover-da-comanda'; comandaId: string; produtoId: string; quantidade: number }
   | { tipo: 'fechar-comanda'; comandaId: string; venda: Venda }
   | { tipo: 'cancelar-comanda'; comandaId: string; data: string; operador?: string }
-  | { tipo: 'salvar-usuario'; usuario: Usuario };
+  | { tipo: 'salvar-usuario'; usuario: Usuario }
+  /** O que o sistema aprende numa nota: códigos de barras e o nome do produto no fornecedor. */
+  | { tipo: 'aprender-produto'; produtoId: string; codigosBarras: string[]; nomesNaNota: string[] };
 
 export const ESTADO_VAZIO: Estado = {
   produtos: [],
@@ -138,6 +140,23 @@ export function reducer(estado: Estado, acao: Acao): Estado {
         usuarios: existe ? estado.usuarios.map((u) => (u.id === acao.usuario.id ? acao.usuario : u)) : [...estado.usuarios, acao.usuario],
       };
     }
+    case 'aprender-produto':
+      return {
+        ...estado,
+        produtos: estado.produtos.map((p) => {
+          if (p.id !== acao.produtoId) return p;
+          const juntar = (lista: string[] | undefined, novos: string[]) => {
+            const todos = [...(lista ?? [])];
+            for (const n of novos) if (!todos.some((t) => t.toLowerCase() === n.toLowerCase())) todos.push(n);
+            return todos;
+          };
+          return {
+            ...p,
+            codigosBarras: juntar(p.codigosBarras, acao.codigosBarras.filter((c) => c !== p.codigoBarras)),
+            nomesNaNota: juntar(p.nomesNaNota, acao.nomesNaNota).slice(-10),
+          };
+        }),
+      };
   }
 }
 
@@ -203,7 +222,7 @@ export function lancamentoDaEntrada(entrada: EntradaEstoque): Lancamento {
     tipo: 'despesa',
     origem: 'compra',
     categoria: 'mercadoria',
-    descricao: `Compra · ${entrada.produtoNome} (+${entrada.unidades} un)`,
+    descricao: `Compra · ${entrada.produtoNome} (+${entrada.unidades} un)${entrada.notaFiscal?.numero ? ` · NF ${entrada.notaFiscal.numero}` : ''}`,
     valor: entrada.custoTotal,
     formaPagamento: entrada.formaPagamento,
     referenciaId: entrada.id,

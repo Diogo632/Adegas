@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  produtoPorCodigo,
   CATEGORIAS,
   CATEGORIAS_LANCAMENTO,
   categoria,
@@ -148,7 +149,9 @@ function resumoProduto(p: Produto, verCustos = true) {
 function buscarPorNome(produtos: Produto[], termo: string, aproximado = false): Produto[] {
   const busca = normalizar(termo);
   if (!busca) return produtos;
-  const contem = produtos.filter((p) => normalizar(p.nome).includes(busca) || p.codigoBarras === termo.trim());
+  const porCodigo = produtoPorCodigo(produtos, termo);
+  if (porCodigo) return [porCodigo];
+  const contem = produtos.filter((p) => normalizar(p.nome).includes(busca));
   if (contem.length) return contem;
   const palavras = busca.split(/\s+/).filter((w) => w.length >= 2);
   const todas = produtos.filter((p) => palavras.every((w) => normalizar(p.nome).includes(w)));

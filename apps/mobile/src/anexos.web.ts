@@ -1,5 +1,5 @@
-import { prepararArquivos } from '@adegas/ia';
-import type { Escolha } from './anexos';
+import { prepararArquivo, prepararArquivos } from '@adegas/ia';
+import type { ArquivoDaNota, Escolha } from './anexos';
 
 /** Abre a janela de escolher arquivo do navegador. Lista vazia = desistiu. */
 function escolherNoNavegador(aceita: string, varios: boolean, camera = false): Promise<File[]> {
@@ -33,4 +33,22 @@ export async function escolherFotos(jaAnexados = 0): Promise<Escolha> {
 
 export async function escolherArquivos(jaAnexados = 0): Promise<Escolha> {
   return prepararArquivos(await escolherNoNavegador('', true), jaAnexados);
+}
+
+/** XML, PDF ou foto da nota (versão web do app). */
+export async function escolherArquivoDaNota(): Promise<ArquivoDaNota | null> {
+  const [arquivo] = await escolherNoNavegador('.xml,text/xml,application/xml,application/pdf,image/*', false);
+  if (!arquivo) return null;
+  try {
+    if (/\.xml$/i.test(arquivo.name) || /xml/.test(arquivo.type)) {
+      if (arquivo.size > 5 * 1024 * 1024) return { erro: 'Esse XML é grande demais para ser uma nota.' };
+      return { xml: await arquivo.text() };
+    }
+    if (!/^image\/|pdf$/.test(arquivo.type)) return { erro: 'Mande o XML da nota, uma foto ou o PDF (DANFE).' };
+    const preparado = await prepararArquivo(arquivo);
+    if (!preparado.dados) return { erro: 'Não consegui abrir esse arquivo.' };
+    return { nome: preparado.nome, mimeType: preparado.mimeType, dados: preparado.dados };
+  } catch (erro) {
+    return { erro: erro instanceof Error ? erro.message : 'Não consegui abrir esse arquivo.' };
+  }
 }

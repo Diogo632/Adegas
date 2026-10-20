@@ -50,6 +50,8 @@ flowchart TD
 
     Inicio -->|Entrada| Entrada
     Inicio -->|"Repor (estoque baixo)"| Entrada
+    Entrada -->|"Chegou com nota fiscal?"| Nota["🧾 Entrada pela nota<br/>bipar a nota e os produtos"]
+    Nota -->|Dar entrada| EntradaOk
     Entrada -->|Registrar| EntradaOk
     EntradaOk -->|Registrar outra| Entrada
     EntradaOk -->|Voltar ao início| Inicio
@@ -130,6 +132,52 @@ Enquanto preenche, o **resumo** mostra: quantas unidades entram, custo por unida
 - O estoque do produto **sobe** em unidades (4 fardos de 12 = +48 latas).
 - O **custo médio** do produto é recalculado (ver regras abaixo).
 - Entra uma **despesa** no financeiro, com a forma de pagamento usada.
+
+### 3.2.1 Entrada pela nota fiscal (bipar a nota)
+
+Na tela de Entrada, o cartão **"Chegou com nota fiscal?"** abre a entrada pela nota. Ela dá entrada em **todos os produtos da nota de uma vez**.
+
+```mermaid
+flowchart TD
+    Bipar["📷 Bipar a nota<br/>código de barras do DANFE ou QR Code do cupom"]
+    Itens["📄 Trazer os produtos<br/>XML da nota · foto ou PDF (Pop AI)"]
+    Bipes["🔎 Bipar os produtos<br/>confere a quantidade e reconhece o produto"]
+    Conferir["✅ Conferir<br/>produto do estoque · cadastrar novo · não entra"]
+    Ok["Dar entrada<br/>estoque, custo médio e despesa"]
+
+    Bipar --> Itens --> Conferir
+    Bipar -->|sem XML nem foto| Bipes
+    Itens --> Bipes --> Conferir
+    Conferir --> Ok
+```
+
+**De onde vem a leitura:**
+
+| Onde | Como bipa |
+|---|---|
+| **App** (celular) | A câmera do próprio celular, na tela da nota (com lanterna) |
+| **Painel** (computador) | **Celular como leitor:** o painel mostra um QR Code; o celular lê com a câmera, abre o leitor (sem precisar entrar no sistema) e tudo o que ele bipa aparece na hora no computador, que responde no celular com bip e texto. Também dá para tirar a **foto da nota pelo celular** e ela vai para o computador |
+| | **Câmera deste aparelho:** webcam ou câmera do tablet |
+| | **Leitor USB** (pistola de código de barras): funciona no campo "Chave da nota ou código do produto", que também serve para digitar a chave |
+
+**Os passos:**
+
+1. **Bipar a nota.** O código de barras do DANFE é a **chave de acesso** (44 números): dela saem o número da nota, a série, o CNPJ do fornecedor e o mês. O QR Code do cupom (NFC-e, como o do atacarejo) também serve. Se a nota já deu entrada antes, o sistema avisa e não deixa entrar de novo.
+2. **Trazer os produtos.** O mais certo é o **XML da nota** (o arquivo que o fornecedor manda por e-mail junto do boleto): vem com os produtos, códigos de barras, quantidades e valores exatos. Sem o XML, **tire uma foto ou mande o PDF** da nota: o Pop AI lê os produtos (precisa do Pop AI configurado; confira os valores). Sem nada disso, dá para **bipar os produtos um por um**: cada bipe soma 1 na lista.
+3. **Conferir.** Cada produto da nota aparece com o produto do estoque que o sistema reconheceu:
+   - **Reconhecido pelo código** (o código de barras já é conhecido) ou **pelo nome** (o fornecedor já escreveu esse nome numa nota anterior);
+   - **Nome parecido: confira** (o nome bate com um produto do estoque; confira antes de dar entrada);
+   - **Produto novo** (cadastra junto, com nome e categoria já sugeridos pela descrição da nota; falta só o preço de venda);
+   - ou **Não dar entrada** neste item.
+
+   Ao bipar a caixa ou a lata, o item da nota é marcado como conferido (**1/2, 2/2**). Um código que o sistema não conhece pergunta "de qual produto ele é?". Quantas unidades vêm em cada caixa ou fardo já vem da nota (ex.: "CX C/12"); quando não dá para saber, o campo fica laranja para você informar.
+4. **Pagamento e entrada.** Fornecedor (vem da nota), forma de pagamento, e o resumo mostra o total da entrada ao lado do total da nota (a diferença costuma ser imposto ou frete). **Dar entrada** registra uma entrada por produto, cada uma com a despesa e o número da nota.
+
+**O sistema aprende:** ao dar entrada, ele guarda o **código de barras** de cada produto (da caixa e da unidade) e **como o fornecedor escreve o nome** na nota. Na próxima nota desse fornecedor, os produtos já vêm reconhecidos.
+
+**Hoje não dá** para baixar os produtos da nota **direto da Receita (SEFAZ)** só bipando a chave: isso exige o **certificado digital** da loja e um servidor nosso (é a "Manifestação do Destinatário"). Fica para a etapa 2, com o banco na nuvem. Até lá, os produtos vêm do XML, da foto ou dos bipes.
+
+**Câmera no navegador:** só funciona em endereço seguro (**https**, como a prévia do GitHub Pages) ou no próprio computador (`localhost`). Na primeira vez o navegador pergunta se pode usar a câmera: toque em **Permitir**. A conexão entre o celular e o computador é direta e criptografada (WebRTC); um servidor gratuito do PeerJS só apresenta um aparelho ao outro.
 
 ### 3.3 Nova venda → Pagamento
 
@@ -236,6 +284,7 @@ Cada venda, entrada, despesa, ajuste e pedido de mesa guarda **quem fez** (o nom
 | Venda | − quantidade vendida de cada produto | + receita (na forma de pagamento) |
 | Entrada de produto | + unidades; recalcula o custo médio | − despesa (na forma de pagamento) |
 | Produto novo | cria o produto já com o estoque da 1ª entrada | − despesa da 1ª entrada |
+| Entrada pela nota | + unidades de cada produto da nota (cadastra os novos); guarda os códigos de barras e os nomes da nota | − uma despesa por produto, com o número da nota |
 | Ajuste (perda, consumo) | − unidades | não mexe no caixa; aparece como **perda** (pelo custo) |
 | Ajuste (contagem) | estoque passa a ser o contado | nada |
 | Editar produto | nada (muda nome, preço, mínimo) | nada |
@@ -259,6 +308,7 @@ O assistente não tem regras próprias: cada ferramenta dele faz exatamente uma 
 - **Lucro bruto** = vendas − custo dos produtos vendidos. **Saldo** = tudo que entrou − tudo que saiu no período.
 - **Situação do estoque:** zerado = sem estoque; no mínimo ou abaixo = baixo; acima = em dia.
 - **Perda** = unidades que saíram por ajuste × custo médio no momento do ajuste.
+- **Nota fiscal:** a chave de acesso só vale com o dígito verificador certo; a **mesma nota não entra duas vezes**; se um item tiver problema, **nada** da nota é registrado. Quantidade quebrada (1,5 caixa) entra contada em unidades. O custo de cada produto é o valor do item na nota.
 
 ## 6. Dados guardados
 
@@ -283,6 +333,8 @@ erDiagram
         centavos custoMedio
         int estoque
         int estoqueMinimo
+        lista codigosBarras "da unidade e da caixa"
+        lista nomesNaNota "como o fornecedor escreve"
     }
     ENTRADA {
         data data
@@ -291,6 +343,7 @@ erDiagram
         centavos custoTotal
         texto fornecedor
         forma formaPagamento
+        texto notaFiscal "chave, número e série"
     }
     VENDA {
         data data
@@ -367,8 +420,9 @@ Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, 
 | **4.3 Usuários e acesso** | Entrar com nome e PIN; administrador × funcionário com permissões ligáveis; cadastro de funcionários; menus, telas e assistente respeitam a permissão; cada registro guarda quem fez. Mesas: pedido só entra pelo botão "Lançar na Mesa X" | ✅ pronto |
 | **4.4 Pop e áudio** | A adega passa a se chamar **Pop** e o assistente **Pop AI**. O Pop AI entende **áudio**: grava a voz no app e no painel, ou recebe um arquivo (áudio do WhatsApp, MP3, M4A...), transcreve com o Gemini, mostra o que entendeu e age | ✅ pronto (receber o áudio direto pelo "compartilhar" do WhatsApp precisa do app publicado nas lojas) |
 | **4.5 Arquivos no Pop AI** | Fotos (câmera e galeria), PDFs, planilhas, documentos, vídeos e áudios: o Pop AI lê, mostra o que leu e age quando pedido. Configuração do Pop AI só no código. Usuário de exemplo "Dono" passa a se chamar "Admin" | ✅ pronto |
+| **4.6 Entrada pela nota** | Bipar a nota fiscal (DANFE ou cupom) pela câmera do app, pela webcam ou com o **celular como leitor do painel** (QR Code); produtos pelo XML, pela foto (Pop AI) ou pelos bipes; reconhece os produtos pelo código e pelo nome, confere bipando, cadastra os novos e dá entrada em tudo de uma vez | ✅ pronto (baixar a nota da SEFAZ pela chave precisa do certificado digital e fica para a etapa 2) |
 | **5. Caixa do dia** | **Abrir/fechar o caixa, sangria e reforço**, conferência do dinheiro da gaveta, taxa da maquininha | |
-| **6. Extras** | Leitor de código de barras pela câmera, desconto na venda, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, vendas por funcionário (comissão), publicar o app nas lojas | |
+| **6. Extras** | Bipar o produto na venda (o leitor já existe na entrada), desconto na venda, pagamento dividido (parte Pix, parte dinheiro — o modelo de venda já aceita), fiado, vendas por funcionário (comissão), publicar o app nas lojas | |
 
 ## 8. Perguntas para decidir antes da etapa 2
 
@@ -376,5 +430,5 @@ Categorias iniciais: Cervejas, Destilados, Vinhos, Refri e água, Energéticos, 
 2. É **uma loja** ou mais de uma?
 3. Vende **fiado** / tem cliente com conta?
 4. Quer descontar a **taxa da maquininha** automaticamente (ex.: crédito 3%, débito 1,5%) para o lucro ficar real?
-5. Vai precisar emitir **nota fiscal** (NFC-e) pelo sistema?
+5. Vai precisar emitir **nota fiscal** (NFC-e) pelo sistema? E quer que as notas de compra **cheguem sozinhas da SEFAZ** (precisa do certificado digital A1 da loja)?
 6. Faz sentido o app funcionar **sem internet** e sincronizar depois?

@@ -10,6 +10,8 @@ import { montarLancamento } from './financeiro';
 import type { DadosLembrete } from './lembretes';
 import { montarLembrete } from './lembretes';
 import { estadoDeExemplo } from './exemplo';
+import type { DadosEntradaNota } from './notaFiscal';
+import { montarEntradaDaNota } from './notaFiscal';
 import type {
   AjusteEstoque,
   Comanda,
@@ -43,6 +45,8 @@ interface ContextoAdega {
   definirQuantidade(produtoId: string, quantidade: number): void;
   limparCarrinho(): void;
   registrarEntrada(dados: DadosEntrada): Resultado<EntradaEstoque>;
+  /** Dá entrada em todos os produtos de uma nota fiscal de uma vez. */
+  registrarEntradaDaNota(dados: DadosEntradaNota): Resultado<EntradaEstoque[]>;
   /** Fecha a venda com o que está no carrinho e esvazia o carrinho. */
   finalizarVenda(pagamento: DadosPagamento): Resultado<Venda>;
   editarProduto(produtoId: string, dados: DadosEdicaoProduto): Resultado<Produto>;
@@ -155,6 +159,14 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
     if (!resultado.ok) return resultado;
     despachar({ tipo: 'registrar-entrada', ...resultado.valor });
     return { ok: true, valor: resultado.valor.entrada };
+  }, [despachar, permitido]);
+
+  const registrarEntradaDaNota = useCallback((dados: DadosEntradaNota): Resultado<EntradaEstoque[]> => {
+    if (!permitido('entrada')) return semPermissao('registrar entrada');
+    const resultado = montarEntradaDaNota(estadoAtual.current, dados);
+    if (!resultado.ok) return resultado;
+    for (const acao of resultado.valor.acoes) despachar(acao);
+    return { ok: true, valor: resultado.valor.entradas };
   }, [despachar, permitido]);
 
   const finalizarVenda = useCallback((pagamento: DadosPagamento): Resultado<Venda> => {
@@ -277,6 +289,7 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
       definirQuantidade,
       limparCarrinho,
       registrarEntrada,
+      registrarEntradaDaNota,
       finalizarVenda,
       editarProduto,
       ajustarEstoque,
@@ -303,6 +316,7 @@ export function AdegaProvider({ children, estadoInicial }: { children: ReactNode
       definirQuantidade,
       limparCarrinho,
       registrarEntrada,
+      registrarEntradaDaNota,
       finalizarVenda,
       editarProduto,
       ajustarEstoque,

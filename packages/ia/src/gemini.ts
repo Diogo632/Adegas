@@ -56,7 +56,7 @@ export interface PedidoGemini {
   contents: ConteudoGemini[];
   tools?: { functionDeclarations: DeclaracaoFuncao[] }[];
   toolConfig?: { functionCallingConfig: { mode: 'AUTO' | 'ANY' | 'NONE' } };
-  generationConfig?: { temperature?: number };
+  generationConfig?: { temperature?: number; responseMimeType?: string; responseSchema?: EsquemaGemini };
 }
 
 export interface RespostaGemini {

@@ -53,6 +53,7 @@ function Navegacao() {
         </Stack.Protected>
         <Stack.Protected guard={pode('entrada')}>
           <Stack.Screen name="entrada" options={{ title: 'Entrada de produto' }} />
+          <Stack.Screen name="nota" options={{ title: 'Entrada pela nota' }} />
         </Stack.Protected>
         <Stack.Protected guard={pode('estoque')}>
           <Stack.Screen name="produto/[id]" options={{ title: 'Produto' }} />

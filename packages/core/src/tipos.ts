@@ -29,6 +29,17 @@ export interface Produto {
   /** Abaixo ou igual a isso o produto aparece no alerta de estoque baixo. */
   estoqueMinimo: number;
   codigoBarras?: string;
+  /** Códigos de barras do produto (da unidade e da caixa/fardo), aprendidos nas notas. */
+  codigosBarras?: string[];
+  /** Como os fornecedores escrevem o produto na nota ("CERV SKOL LT 350ML C/12"). */
+  nomesNaNota?: string[];
+}
+
+/** De qual nota fiscal veio a entrada. */
+export interface NotaDaEntrada {
+  chave?: string;
+  numero?: string;
+  serie?: string;
 }
 
 /** Compra de mercadoria: aumenta o estoque e gera uma despesa. */
@@ -50,6 +61,7 @@ export interface EntradaEstoque {
   formaPagamento: FormaPagamento;
   /** Quem registrou. */
   operador?: string;
+  notaFiscal?: NotaDaEntrada;
 }
 
 export interface ItemVenda {

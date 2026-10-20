@@ -148,6 +148,7 @@ export function Campo({
   prefixo,
   icone: Icone,
   seguro,
+  aoEnviar,
 }: {
   rotulo?: string;
   value: string;
@@ -158,6 +159,8 @@ export function Campo({
   icone?: LucideIcon;
   /** Esconde o que é digitado (PIN). */
   seguro?: boolean;
+  /** Tecla "ok" do teclado (ou Enter de um leitor de código USB). */
+  aoEnviar?: () => void;
 }) {
   const [foco, setFoco] = useState(false);
   return (
@@ -173,6 +176,9 @@ export function Campo({
           placeholderTextColor={CORES.textoFraco}
           keyboardType={teclado}
           secureTextEntry={seguro}
+          onSubmitEditing={aoEnviar}
+          returnKeyType={aoEnviar ? 'done' : undefined}
+          aria-label={rotulo ?? placeholder}
           keyboardAppearance="dark"
           selectionColor={CORES.primariaClara}
           onFocus={() => setFoco(true)}

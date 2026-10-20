@@ -66,7 +66,7 @@ export function Layout() {
         </div>
         <nav>
           {OPERACAO.filter(visivel).map(({ para, rotulo, icone: Icone }) => (
-            <NavLink key={para} to={para} end className="menu-item">
+            <NavLink key={para} to={para} end={para === '/'} className="menu-item">
               <Icone size={18} strokeWidth={1.75} /> {rotulo}
             </NavLink>
           ))}

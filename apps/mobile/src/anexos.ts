@@ -81,3 +81,27 @@ export async function escolherArquivos(jaAnexados = 0): Promise<Escolha> {
   }
   return { anexos, erros };
 }
+
+/** Arquivo da nota fiscal para a entrada por nota: o XML (lido inteiro) ou foto/PDF (para o Gemini). */
+export type ArquivoDaNota = { xml: string } | { nome: string; mimeType: string; dados: string } | { erro: string };
+
+const MAIOR_XML = 5 * 1024 * 1024;
+
+/** XML, PDF ou foto da nota salvos no celular. null = desistiu. */
+export async function escolherArquivoDaNota(): Promise<ArquivoDaNota | null> {
+  const r = await getDocumentAsync({ type: ['text/xml', 'application/xml', 'application/pdf', 'image/*', '*/*'], copyToCacheDirectory: true });
+  if (r.canceled || !r.assets[0]) return null;
+  const { uri, name, mimeType: informado, size } = r.assets[0];
+  try {
+    if (/\.xml$/i.test(name) || /xml/.test(informado ?? '')) {
+      if (size && size > MAIOR_XML) return { erro: 'Esse XML é grande demais para ser uma nota.' };
+      return { xml: await new File(uri).text() };
+    }
+    const { tipo, mimeType } = classificarArquivo(name, informado);
+    if (tipo !== 'pdf' && !(tipo === 'imagem' && IMAGENS_ACEITAS.has(mimeType))) return { erro: 'Mande o XML da nota, uma foto ou o PDF (DANFE).' };
+    if (size) conferirTamanho(name, size);
+    return { nome: name, mimeType, dados: await new File(uri).base64() };
+  } catch (erro) {
+    return { erro: erro instanceof Error ? erro.message : `Não consegui abrir "${name}".` };
+  }
+}
