@@ -32,7 +32,7 @@ packages/
 docs/
   FLUXO.md  Fluxo do sistema
   ASSISTENTE.md  Pop AI, o assistente com IA
-  exemplos/ Nota de exemplo (XML) e códigos de barras para testar a entrada pela nota
+  exemplos/ Kit de teste da entrada pela nota: DANFEs fictícios, XMLs e etiquetas
 ```
 
 > Os dados ainda ficam na memória e começam com produtos e 30 dias de vendas, compras e contas de exemplo. O banco na nuvem (para app e web verem os mesmos dados) é a próxima etapa.
@@ -84,6 +84,7 @@ Os dados ainda ficam só na memória: ao fechar ou recarregar, tudo volta para o
   - **No painel:** clique em **Celular como leitor** e leia o QR Code com a câmera do celular. Abra no computador a imagem [`docs/exemplos/codigo-da-nota.png`](docs/exemplos/codigo-da-nota.png) e bipe com o celular: o painel mostra "Nota 12345". Depois mande o XML [`docs/exemplos/nota-exemplo.xml`](docs/exemplos/nota-exemplo.xml) em **XML, foto ou PDF**: aparecem Skol e Água (reconhecidas pelo nome) e o Gin (produto novo). Bipe [`codigo-skol-caixa.png`](docs/exemplos/codigo-skol-caixa.png): a Skol fica **1/2**. Ponha o preço de venda do Gin e clique em **Dar entrada em 3 produtos**: entram 39 unidades e R$ 378,90 vão para o financeiro. Mande o mesmo XML de novo: o sistema avisa que a nota já deu entrada.
   - **No app:** a câmera já abre na tela: bipe a nota e os produtos (dá para apontar o celular para as imagens acima na tela do computador). O XML vai por **XML ou PDF**; a foto da nota, por **Foto da nota** ou **Da galeria** (com o Pop AI ligado).
   - A câmera do navegador só funciona em **https** (a prévia do GitHub Pages serve). Na prévia aberta dentro do Claude, a câmera e o celular como leitor não funcionam.
+  - **DANFE fictício para testar:** em [`docs/exemplos/`](docs/exemplos/README.md) há DANFEs de teste (PDF e imagem, sem valor fiscal) das notas 12345 e 4521, com os XMLs e as etiquetas das caixas. Abra ou imprima o DANFE e bipe o código de barras dele.
 - **Proteções:** tente vender mais do que tem em estoque, ou receber em dinheiro menos que o total. O sistema não deixa.
 - **Estoque:** abra o Gelo → Ajustar → Perda, 1 unidade → Salvar. O estoque cai 1 e a perda aparece no Financeiro.
 - **Financeiro:** Nova movimentação → Saída → Luz, água e internet → R$ 120,00. Ela entra no topo das movimentações e no "Para onde foi o dinheiro".
