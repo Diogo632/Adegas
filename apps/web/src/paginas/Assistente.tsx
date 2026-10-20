@@ -1,3 +1,4 @@
+import { useAdega } from '@adegas/core';
 import {
   GravadorNavegador,
   MAXIMO_ANEXOS,
@@ -18,10 +19,13 @@ import {
   ArrowUp,
   Check,
   CircleAlert,
+  Eye,
+  EyeOff,
   File as IconeArquivo,
   FileText,
   Film,
   Image,
+  KeyRound,
   LoaderCircle,
   Mic,
   Paperclip,
@@ -36,7 +40,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { surgir } from '../animacoes';
 import { IconeQuadrado } from '../componentes/IconeQuadrado';
-import { CONFIG_POP_AI } from '../configAssistente';
+import { useConfigAssistente } from '../configAssistente';
 
 /** Depois que o assistente muda algo, um atalho para conferir na tela certa. */
 const ONDE_VER: Record<string, { para: string; rotulo: string }> = {
@@ -81,7 +85,12 @@ const ICONE_ANEXO: Record<TipoAnexo, LucideIcon> = {
 };
 
 export function Assistente() {
-  const { mensagens, enviando, enviar, enviarAudio, enviarComAnexos, novaConversa, configurado } = useAssistente(CONFIG_POP_AI);
+  const { config, chaveNoCodigo, chaveDeTeste, salvarChaveDeTeste } = useConfigAssistente();
+  const { mensagens, enviando, enviar, enviarAudio, enviarComAnexos, novaConversa, configurado } = useAssistente(config);
+  const { usuario } = useAdega();
+  // Só para testes, enquanto a chave não vai para o código: o administrador cola uma chave aqui.
+  const podeTestar = !chaveNoCodigo && usuario?.papel === 'admin';
+  const [configurando, setConfigurando] = useState(podeTestar && !config.chave);
   const [texto, setTexto] = useState('');
   const [anexos, setAnexos] = useState<AnexoParaEnviar[]>([]);
   const [preparando, setPreparando] = useState(false);
@@ -169,14 +178,32 @@ export function Assistente() {
           <p className="sobretitulo">Assistente com inteligência artificial</p>
           <h1>{NOME_DO_ASSISTENTE}</h1>
         </div>
-        {mensagens.length > 0 && (
+        {(mensagens.length > 0 || podeTestar) && (
           <div className="acoes">
-            <button type="button" className="botao contorno" onClick={novaConversa}>
-              <RotateCcw size={17} strokeWidth={1.75} /> Nova conversa
-            </button>
+            {mensagens.length > 0 && (
+              <button type="button" className="botao contorno" onClick={novaConversa}>
+                <RotateCcw size={17} strokeWidth={1.75} /> Nova conversa
+              </button>
+            )}
+            {podeTestar && (
+              <button type="button" className="botao contorno" onClick={() => setConfigurando((v) => !v)} aria-expanded={configurando}>
+                <KeyRound size={17} strokeWidth={1.75} /> Chave de teste
+              </button>
+            )}
           </div>
         )}
       </header>
+
+      {podeTestar && configurando && (
+        <ChaveDeTeste
+          inicial={chaveDeTeste}
+          aoSalvar={(chave) => {
+            salvarChaveDeTeste(chave);
+            if (chave.trim()) setConfigurando(false);
+          }}
+          aoFechar={chaveDeTeste ? () => setConfigurando(false) : undefined}
+        />
+      )}
 
       {SEM_INTERNET ? (
         <p className="aviso-previa" role="note">
@@ -187,7 +214,8 @@ export function Assistente() {
           </span>
         </p>
       ) : (
-        !configurado && (
+        !configurado &&
+        !podeTestar && (
           <p className="aviso-previa" role="note">
             <CircleAlert size={17} strokeWidth={2} />
             <span>O {NOME_DO_ASSISTENTE} ainda não foi configurado neste sistema. Avise o administrador.</span>
@@ -260,7 +288,13 @@ export function Assistente() {
           <form className={`chat-entrada ${audio.gravando ? 'gravando' : ''}`} onSubmit={aoEnviar}>
             {audio.gravando ? (
               <div className="gravacao" role="status" aria-label={`Gravando áudio, ${formatarDuracao(audio.segundos)}`}>
-                <button type="button" className="botao contorno quadrado" onClick={audio.cancelar} aria-label="Cancelar gravação" title="Cancelar">
+                <button
+                  type="button"
+                  className="botao contorno quadrado"
+                  onClick={audio.cancelar}
+                  aria-label="Cancelar gravação"
+                  title="Cancelar"
+                >
                   <X size={18} strokeWidth={2} />
                 </button>
                 <span className="gravacao-ponto" aria-hidden />
@@ -287,7 +321,9 @@ export function Assistente() {
                   ref={campo}
                   className="campo"
                   rows={1}
-                  placeholder={anexos.length ? 'Escreva o que fazer com o arquivo (opcional)' : 'Ex.: chegaram 3 fardos de Skol por R$ 33 cada'}
+                  placeholder={
+                    anexos.length ? 'Escreva o que fazer com o arquivo (opcional)' : 'Ex.: chegaram 3 fardos de Skol por R$ 33 cada'
+                  }
                   value={texto}
                   onChange={(e) => setTexto(e.target.value)}
                   onKeyDown={aoTeclar}
@@ -309,7 +345,14 @@ export function Assistente() {
                 <ArrowUp size={19} strokeWidth={2.2} />
               </button>
             ) : (
-              <button type="button" className="botao enviar" onClick={audio.iniciar} disabled={preparando} aria-label="Gravar áudio" title="Gravar áudio">
+              <button
+                type="button"
+                className="botao enviar"
+                onClick={audio.iniciar}
+                disabled={preparando}
+                aria-label="Gravar áudio"
+                title="Gravar áudio"
+              >
                 <Mic size={19} strokeWidth={2.1} />
               </button>
             )}
@@ -425,14 +468,20 @@ function Mensagem({ mensagem }: { mensagem: MensagemAssistente }) {
     }
     return (
       <div ref={ref} className={`msg pessoa ${mensagem.anexos ? 'com-anexos' : ''}`}>
-        {mensagem.anexos?.map((a, i) => <AnexoNaMensagem key={i} anexo={a} />)}
+        {mensagem.anexos?.map((a, i) => (
+          <AnexoNaMensagem key={i} anexo={a} />
+        ))}
         {mensagem.texto && <p>{mensagem.texto}</p>}
       </div>
     );
   }
 
   const passos = mensagem.passos ?? [];
-  const atalhos = [...new Map(passos.filter((p) => p.alterouDados && ONDE_VER[p.ferramenta]).map((p) => [ONDE_VER[p.ferramenta].para, ONDE_VER[p.ferramenta]])).values()];
+  const atalhos = [
+    ...new Map(
+      passos.filter((p) => p.alterouDados && ONDE_VER[p.ferramenta]).map((p) => [ONDE_VER[p.ferramenta].para, ONDE_VER[p.ferramenta]]),
+    ).values(),
+  ];
 
   return (
     <div ref={ref} className="msg assistente">
@@ -555,4 +604,77 @@ function TextoFormatado({ texto }: { texto: string }) {
   });
   fecharLista();
   return <div className="msg-texto">{itens}</div>;
+}
+
+/** Chave do Gemini colada na tela, só para testes (fica neste navegador). */
+function ChaveDeTeste({ inicial, aoSalvar, aoFechar }: { inicial: string; aoSalvar: (chave: string) => void; aoFechar?: () => void }) {
+  const [chave, setChave] = useState(inicial);
+  const [mostrar, setMostrar] = useState(false);
+  const ref = useRef<HTMLFormElement>(null);
+  useLayoutEffect(() => {
+    if (ref.current) surgir(ref.current);
+  }, []);
+
+  return (
+    <form
+      ref={ref}
+      className="cartao config-ia"
+      onSubmit={(e) => {
+        e.preventDefault();
+        aoSalvar(chave);
+      }}
+    >
+      <div className="config-ia-topo">
+        <IconeQuadrado icone={KeyRound} />
+        <div>
+          <h2>Chave do Gemini para testes</h2>
+          <p className="suave">
+            Enquanto a chave não está no código do sistema, cole aqui uma chave para testar o {NOME_DO_ASSISTENTE}. Ela fica salva só neste
+            navegador. Crie uma grátis em{' '}
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
+              aistudio.google.com/apikey
+            </a>
+            .
+          </p>
+        </div>
+        {aoFechar && (
+          <button type="button" className="link fechar" onClick={aoFechar} aria-label="Fechar">
+            <X size={18} />
+          </button>
+        )}
+      </div>
+      <label className="rotulo">
+        Chave da API
+        <span className="campo-senha">
+          <input
+            className="campo"
+            type={mostrar ? 'text' : 'password'}
+            value={chave}
+            onChange={(e) => setChave(e.target.value)}
+            placeholder="Cole a chave aqui (começa com AIza…)"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button
+            type="button"
+            className="link"
+            onClick={() => setMostrar((v) => !v)}
+            aria-label={mostrar ? 'Esconder chave' : 'Mostrar chave'}
+          >
+            {mostrar ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </span>
+      </label>
+      <div className="acoes">
+        <button type="submit" className="botao" disabled={!chave.trim()}>
+          Salvar
+        </button>
+        {inicial && (
+          <button type="button" className="botao contorno" onClick={() => aoSalvar('')}>
+            Remover chave
+          </button>
+        )}
+      </div>
+    </form>
+  );
 }

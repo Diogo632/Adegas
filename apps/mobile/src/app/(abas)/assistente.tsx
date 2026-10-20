@@ -17,11 +17,13 @@ import {
   Check,
   ChevronDown,
   CircleAlert,
+  ExternalLink,
   File as IconeArquivo,
   FileText,
   Film,
   Image as IconeImagem,
   Images,
+  KeyRound,
   LoaderCircle,
   Mic,
   Paperclip,
@@ -32,13 +34,26 @@ import {
   X,
 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useAdega } from '@adegas/core';
+import {
+  Animated,
+  Easing,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Escolha } from '../../anexos';
 import { escolherArquivos, escolherFotos, tirarFoto } from '../../anexos';
 import { Entrar, Tocavel, useMovimentoReduzido } from '../../components/animacoes';
-import { IconeQuadrado, TituloAba } from '../../components/ui';
-import { CONFIG_POP_AI } from '../../configAssistente';
+import { Botao, Cartao, IconeQuadrado, TituloAba } from '../../components/ui';
+import { useConfigAssistente } from '../../configAssistente';
 import { useGravador } from '../../gravador';
 import { CORES, FONTE, RAIO, TEXTO } from '../../tema';
 
@@ -76,7 +91,13 @@ const ICONE_ANEXO: Record<TipoAnexo, LucideIcon> = {
 
 export default function Assistente() {
   const insets = useSafeAreaInsets();
-  const { mensagens, enviando, enviar, enviarAudio, enviarComAnexos, novaConversa, configurado } = useAssistente(CONFIG_POP_AI);
+  const { config, chaveNoCodigo, chaveDeTeste, salvarChaveDeTeste, carregado } = useConfigAssistente();
+  const { mensagens, enviando, enviar, enviarAudio, enviarComAnexos, novaConversa, configurado } = useAssistente(config);
+  const { usuario } = useAdega();
+  // Só para testes, enquanto a chave não vai para o código: o administrador cola uma chave aqui.
+  const podeTestar = !chaveNoCodigo && usuario?.papel === 'admin';
+  const [configurando, setConfigurando] = useState(false);
+  const mostrarChave = podeTestar && carregado && (configurando || !config.chave);
   const [texto, setTexto] = useState('');
   const [anexos, setAnexos] = useState<AnexoParaEnviar[]>([]);
   const [menuAnexo, setMenuAnexo] = useState(false);
@@ -135,7 +156,6 @@ export default function Assistente() {
     }
   }
 
-
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
@@ -156,10 +176,31 @@ export default function Assistente() {
                 <RotateCcw size={19} color={CORES.texto} strokeWidth={1.8} />
               </Tocavel>
             )}
+            {podeTestar && (
+              <Tocavel
+                accessibilityRole="button"
+                accessibilityLabel="Chave de teste"
+                onPress={() => setConfigurando((v) => !v)}
+                style={[estilos.iconeBotao, mostrarChave && { borderColor: CORES.primariaClara }]}
+              >
+                <KeyRound size={19} color={CORES.texto} strokeWidth={1.8} />
+              </Tocavel>
+            )}
           </View>
         </View>
 
-        {!SEM_INTERNET && !configurado && (
+        {mostrarChave && (
+          <ChaveDeTeste
+            inicial={chaveDeTeste}
+            aoSalvar={(chave) => {
+              salvarChaveDeTeste(chave);
+              if (chave.trim()) setConfigurando(false);
+            }}
+            aoFechar={chaveDeTeste ? () => setConfigurando(false) : undefined}
+          />
+        )}
+
+        {!SEM_INTERNET && !configurado && !podeTestar && (
           <View style={estilos.avisoPrevia}>
             <CircleAlert size={18} color={CORES.alerta} strokeWidth={2} />
             <Text style={[TEXTO.legenda, { flex: 1, color: CORES.texto }]}>
@@ -622,6 +663,51 @@ function AnexoNaMensagem({ anexo }: { anexo: AnexoNaConversa }) {
   );
 }
 
+/** Chave do Gemini colada na tela, só para testes (fica neste aparelho). */
+function ChaveDeTeste({ inicial, aoSalvar, aoFechar }: { inicial: string; aoSalvar: (chave: string) => void; aoFechar?: () => void }) {
+  const [chave, setChave] = useState(inicial);
+  return (
+    <Entrar>
+      <Cartao style={{ borderColor: CORES.destaqueBorda, gap: 14 }}>
+        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+          <IconeQuadrado icone={KeyRound} tamanho={40} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={TEXTO.titulo}>Chave do Gemini para testes</Text>
+            <Text style={TEXTO.legenda}>
+              Enquanto a chave não está no código do sistema, cole aqui uma chave para testar o {NOME_DO_ASSISTENTE}. Ela fica salva só
+              neste aparelho.
+            </Text>
+          </View>
+          {aoFechar && (
+            <Tocavel accessibilityLabel="Fechar" onPress={aoFechar} style={{ padding: 4 }}>
+              <X size={20} color={CORES.textoSuave} />
+            </Tocavel>
+          )}
+        </View>
+        <Tocavel accessibilityRole="link" onPress={() => Linking.openURL('https://aistudio.google.com/apikey')} style={estilos.linkLinha}>
+          <ExternalLink size={16} color={CORES.primariaClara} strokeWidth={2} />
+          <Text style={estilos.link}>Criar chave grátis no Google AI Studio</Text>
+        </Tocavel>
+        <TextInput
+          value={chave}
+          onChangeText={setChave}
+          placeholder="Cole a chave aqui (começa com AIza…)"
+          placeholderTextColor={CORES.textoFraco}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardAppearance="dark"
+          selectionColor={CORES.primariaClara}
+          style={estilos.campoChave}
+          accessibilityLabel="Chave da API"
+        />
+        <Botao titulo="Salvar" onPress={() => aoSalvar(chave)} desabilitado={!chave.trim()} />
+        {inicial ? <Botao titulo="Remover chave" variante="contorno" onPress={() => aoSalvar('')} /> : null}
+      </Cartao>
+    </Entrar>
+  );
+}
+
 const estilos = StyleSheet.create({
   tela: { paddingHorizontal: 20, paddingBottom: 24, gap: 16, flexGrow: 1 },
   topo: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
@@ -735,6 +821,18 @@ const estilos = StyleSheet.create({
     backgroundColor: CORES.primaria,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  linkLinha: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start' },
+  campoChave: {
+    borderWidth: 1,
+    borderColor: CORES.borda,
+    borderRadius: 12,
+    backgroundColor: CORES.superficieAlta,
+    color: CORES.texto,
+    fontFamily: FONTE.regular,
+    fontSize: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   avisoPrevia: {
     flexDirection: 'row',

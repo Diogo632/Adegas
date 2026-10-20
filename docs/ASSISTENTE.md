@@ -62,7 +62,15 @@ Tudo o que dá para escrever também dá para falar.
 
 Por baixo: no navegador (painel e app aberto no navegador), a gravação e os arquivos são convertidos para **WAV mono de 16 kHz** antes de ir para o Gemini; no celular, o app grava em WAV (iPhone) ou AAC (Android). A transcrição é um pedido separado ao Gemini, só com o áudio e a instrução de transcrever; a conversa recebe a transcrição marcada como "[Áudio transcrito]". Assim o áudio não fica sendo reenviado a cada mensagem.
 
-## Como ligar (configuração interna, só no código)
+## Como ligar
+
+### Para testar agora: chave na tela
+
+Enquanto a chave não está no código, o **Admin** abre o **Pop AI** e cola uma chave de teste no cartão **"Chave do Gemini para testes"** (no painel, botão **Chave de teste**; no app, o botão da chave 🔑 no topo). Ela fica salva **só naquele navegador ou celular**. Funcionários não veem esse cartão: para eles aparece "ainda não foi configurado, avise o administrador".
+
+Assim que a chave for para o código (abaixo), o cartão e o botão somem sozinhos e vale a chave do código.
+
+### Definitivo: configuração interna, no código
 
 A chave e o modelo **não aparecem na tela** e ninguém da equipe mexe neles. Quem cuida do sistema configura uma vez:
 
@@ -79,7 +87,7 @@ A chave e o modelo **não aparecem na tela** e ninguém da equipe mexe neles. Qu
    Os arquivos `.env.local` **não vão para o GitHub** (estão no `.gitignore`). Pare e rode de novo o `npm run web` / `npm run app` depois de mudar.
 3. **Na prévia do GitHub Pages** (opcional): no GitHub, **Settings → Secrets and variables → Actions → New repository secret**, nome `GEMINI_API_KEY`, valor a chave. O próximo envio de código monta a prévia com ela.
 
-Onde isso é lido: `apps/web/src/configAssistente.ts` e `apps/mobile/src/configAssistente.ts`. Sem chave, a tela do Pop AI mostra "ainda não foi configurado neste sistema. Avise o administrador".
+Onde isso é lido: `apps/web/src/configAssistente.ts` e `apps/mobile/src/configAssistente.ts`. A chave do código sempre vale mais que a chave de teste da tela.
 
 > ⚠️ **A chave vai junto do app e do site.** Qualquer pessoa com acesso ao app, ou que abra a prévia pública do GitHub Pages, consegue achar a chave no código da página e usar a sua cota do Gemini. Por isso: use uma chave do **plano gratuito** (sem cartão) ou, no Google Cloud, **restrinja a chave** ao endereço do site e coloque um **limite de gasto**. A solução definitiva é a chamada ao Gemini passar por um servidor nosso (etapa 2), e aí a chave nunca sai dele.
 

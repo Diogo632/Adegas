@@ -2995,6 +2995,66 @@ button:disabled {
   margin: 14px 0 0;
 }
 
+/* Pop AI: chave de teste */
+
+.config-ia {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-color: var(--destaqueBorda);
+}
+
+.config-ia-topo {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.config-ia-topo h2 {
+  margin: 0 0 4px;
+}
+
+.config-ia-topo p {
+  margin: 0;
+  max-width: 640px;
+}
+
+.config-ia-topo a {
+  color: var(--primariaClara);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.config-ia-topo a:hover {
+  text-decoration: underline;
+}
+
+.config-ia-topo .fechar {
+  margin-left: auto;
+}
+
+.config-ia .rotulo {
+  max-width: 560px;
+}
+
+.campo-senha {
+  position: relative;
+  display: block;
+}
+
+.campo-senha .campo {
+  padding-right: 48px;
+}
+
+.campo-senha .link {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-grid;
+  color: var(--textoSuave);
+}
+
 @media (max-width: 1500px) {
   .some-medio {
     display: none;
@@ -3088,6 +3148,10 @@ button:disabled {
   }
 
   .msg-avatar {
+    display: none;
+  }
+
+  .config-ia-topo .icone-quadrado {
     display: none;
   }
 
